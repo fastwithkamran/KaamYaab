@@ -91,6 +91,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
                 widget.request.preferredTime == 'morning')
             ? base * 0.10
             : 0.0;
+    // README pricing rule caps demand surge contribution at 35%.
     final demandRate = (widget.surgeMultiplier - 1).clamp(0.0, 0.35);
     final demandSurcharge =
         (base + distanceCharge + complexitySurcharge + urgencyAdj) * demandRate;
