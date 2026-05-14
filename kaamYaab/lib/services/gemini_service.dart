@@ -1,16 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// Bridges Flutter app to the Gemini 1.5 Flash API for all AI agent operations.
 class GeminiService {
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-  static String get _apiKey => EnvConfig.geminiApiKey;
+  static final String _apiKey = RuntimeConfig.geminiApiKey.trim();
+  static bool get _hasApiKey => _apiKey.isNotEmpty;
 
   // â”€â”€â”€ Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static Future<Map<String, dynamic>> extractIntent(String rawInput) async {
+    if (!_hasApiKey) {
+      return _mockIntentParse(rawInput);
+    }
+
     final prompt = '''
 You are the Intent Agent for KaamYaab, an AI service orchestrator for Pakistan's informal economy.
 
@@ -71,6 +76,10 @@ Only return the JSON. No explanation.
     required bool isRepeatCustomer,
     required String providerName,
   }) async {
+    if (!_hasApiKey) {
+      return _mockNegotiation(originalQuote, userOffer, isRepeatCustomer, surgeMultiplier);
+    }
+
     final prompt = '''
 You are the Negotiation Agent for KaamYaab.
 
@@ -131,6 +140,10 @@ Return JSON:
     required int providerDnaScore,
     required int providerDisputeCount,
   }) async {
+    if (!_hasApiKey) {
+      return _mockDisputeAnalysis(disputeType, quotedPrice, chargedPrice, providerDnaScore);
+    }
+
     final prompt = '''
 You are the Dispute Agent for KaamYaab.
 

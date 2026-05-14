@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// Auth service — uses SharedPreferences as a local store for Hackathon Pitch.
 class AuthService {
@@ -21,7 +21,7 @@ class AuthService {
   /// Returns true if the current user is the Super Admin.
   bool get isAdmin =>
       _currentUser != null &&
-      _currentUser!.phone == EnvConfig.superAdminPhone;
+      _currentUser!.phone == RuntimeConfig.superAdminPhone;
 
   // ── Initialise (call in main) ─────────────────────────────────────────────
   Future<void> init() async {
