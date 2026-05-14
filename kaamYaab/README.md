@@ -240,7 +240,11 @@ flutter run \
   --dart-define=SMS_ENABLED=$SMS_ENABLED \
   --dart-define=OTP_EXPIRY_SECONDS=$OTP_EXPIRY_SECONDS
 # PowerShell:
-flutter run --dart-define=GEMINI_API_KEY=$env:GEMINI_API_KEY --dart-define=SUPER_ADMIN_PHONE=$env:SUPER_ADMIN_PHONE --dart-define=SMS_ENABLED=$env:SMS_ENABLED --dart-define=OTP_EXPIRY_SECONDS=$env:OTP_EXPIRY_SECONDS
+flutter run `
+  --dart-define=GEMINI_API_KEY=$env:GEMINI_API_KEY `
+  --dart-define=SUPER_ADMIN_PHONE=$env:SUPER_ADMIN_PHONE `
+  --dart-define=SMS_ENABLED=$env:SMS_ENABLED `
+  --dart-define=OTP_EXPIRY_SECONDS=$env:OTP_EXPIRY_SECONDS
 
 # 6. Run Python agents test
 cd functions/agents
