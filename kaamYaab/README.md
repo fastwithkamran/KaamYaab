@@ -212,21 +212,37 @@ An **agent-first Flutter mobile app** that transforms Pakistan's informal servic
 ```bash
 # 1. Install Flutter SDK (3.x or higher)
 # 2. Clone and open project
-cd KaamYaab
+cd kaamYaab
 
 # 3. Install dependencies
 flutter pub get
 
-# 4. Add API keys
-# lib/services/gemini_service.dart -> replace YOUR_GEMINI_API_KEY
-# android/app/src/main/AndroidManifest.xml -> add Google Maps API key
+# 4. Set runtime secrets/config
+# PowerShell:
+$env:GEMINI_API_KEY="your_gemini_api_key"
+$env:SUPER_ADMIN_PHONE="03001234567"
+$env:SMS_ENABLED="false"
+$env:OTP_EXPIRY_SECONDS="120"
+# Bash:
+export GEMINI_API_KEY="your_gemini_api_key"
+export SUPER_ADMIN_PHONE="03001234567"
+export SMS_ENABLED="false"
+export OTP_EXPIRY_SECONDS="120"
+# Also replace YOUR_GOOGLE_MAPS_API_KEY in:
+# - android/app/src/main/AndroidManifest.xml
+# - web/index.html
 
 # 5. Run on Android device/emulator
-flutter run
+flutter run \
+  --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY \
+  --dart-define=SUPER_ADMIN_PHONE=$SUPER_ADMIN_PHONE \
+  --dart-define=SMS_ENABLED=$SMS_ENABLED \
+  --dart-define=OTP_EXPIRY_SECONDS=$OTP_EXPIRY_SECONDS
 
 # 6. Run Python agents test
 cd functions/agents
 pip install google-generativeai
+export GEMINI_API_KEY="your_gemini_api_key"
 python intent_agent.py
 python orchestrator_agents.py
 

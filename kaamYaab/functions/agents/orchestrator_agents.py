@@ -4,13 +4,18 @@ Google Antigravity Orchestrator | Challenge 2
 """
 
 import json
+import os
 import uuid
 import datetime
 from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
-model = genai.GenerativeModel("gemini-1.5-pro")
+_gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+if _gemini_api_key:
+    genai.configure(api_key=_gemini_api_key)
+    model = genai.GenerativeModel("gemini-1.5-pro")
+else:
+    model = None
 
 
 # ════════════════════════════════════════════════════════════════════════════
