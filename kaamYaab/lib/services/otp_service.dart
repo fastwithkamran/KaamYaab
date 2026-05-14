@@ -1,5 +1,5 @@
 import 'dart:math';
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// OTP (One-Time Password) service for phone verification.
 ///

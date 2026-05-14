@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// Auth service — uses SharedPreferences as a local store for Hackathon Pitch.
 class AuthService {

@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:async';
 import '../../theme/app_theme.dart';
 import '../../services/otp_service.dart';
-import '../../config/env_config.dart';
+import '../../config/runtime_config.dart';
 
 /// OTP verification screen shown after signup to confirm phone number.
 class OtpScreen extends StatefulWidget {
