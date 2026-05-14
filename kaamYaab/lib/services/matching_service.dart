@@ -5,6 +5,13 @@ import '../services/auth_service.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
+  static const double _maxReviewCountForScore = 200.0;
+  static const double _maxModeledBaseRatePkr = 2000.0;
+  static const double _maxDemandSurgeRate = 0.35; // README cap: 35%
+  static const double _priceFitBalanceBase = 0.6;
+  static const double _priceFitCenterRate = 0.5;
+  static const double _priceFitBalanceScale = 62.5;
+
   static List<ServiceProvider>? _allProviders;
 
   /// Load providers from AuthService (SharedPreferences, Firestore-ready).
@@ -37,7 +44,7 @@ class MatchingService {
         priceFairnessScore: 0.85,
         disputeCount: 0,
         surgeAcceptor: true,
-        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'advanced' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
+        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'expert' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
         profileImage: '',
         lastActiveDate: DateTime.now().toIso8601String().substring(0, 10),
         dnascore: ((u.rating / 5.0) * 850 + 50).toInt().clamp(0, 1000),
@@ -105,7 +112,8 @@ class MatchingService {
     final distanceScore = _distanceScore(distKm);
     final availabilityScore = _availabilityScore(p, req.preferredTime);
     final ratingScore = (p.rating / 5.0) * 100.0;
-    final reviewRecencyScore = (p.reviewCount / 200.0).clamp(0.0, 1.0) * 100.0;
+    final reviewRecencyScore =
+        (p.reviewCount / _maxReviewCountForScore).clamp(0.0, 1.0) * 100.0;
     final reliabilityScore = p.onTimeRate * 100.0;
     final specializationScore = _specializationScore(p, req);
     final priceFitScore = _priceFitScore(p, req.budgetSensitivity);
@@ -162,7 +170,7 @@ class MatchingService {
     final distanceCharge = dist > 5 ? (dist - 5) * 15 : 0.0;
     final complexitySurcharge = _complexityRate(req.jobComplexity) * base;
     final urgencyPremium = _urgencyPremiumRate(req) * base;
-    final demandSurgeRate = (surge - 1.0).clamp(0.0, 0.35);
+    final demandSurgeRate = (surge - 1.0).clamp(0.0, _maxDemandSurgeRate);
     final demandSurge =
         (base + distanceCharge + complexitySurcharge + urgencyPremium) *
             demandSurgeRate;
@@ -239,7 +247,7 @@ class MatchingService {
   static int _experienceRank(String experienceLevel) {
     switch (experienceLevel.toLowerCase()) {
       case 'expert':
-      case 'advanced':
+      case 'advanced': // accepted alias for external/legacy datasets
         return 2;
       case 'intermediate':
         return 1;
@@ -249,19 +257,21 @@ class MatchingService {
   }
 
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
-    // Balanced mode constants:
-    // Score formula: (balanceBase + (1 - abs(rate - centerRate))) * balanceScale
+    // Score formula:
+    // (_priceFitBalanceBase + (1 - abs(rate - _priceFitCenterRate))) * _priceFitBalanceScale
+    // With defaults this yields:
+    // - rate=0.5 => (0.6 + 1.0) * 62.5 = 100
+    // - rate=0.0 or 1.0 => (0.6 + 0.5) * 62.5 = 68.75
     // Tuned so:
     // - median-priced providers (~centerRate) score near 100 for flexible users
     // - very high/very low rates still retain a meaningful mid-band score
     // - output range stays close to 35..100 for non-budget-constrained flows
-    const balanceBase = 0.6;
-    const centerRate = 0.5;
-    const balanceScale = 62.5;
-    final normalizedRate = (p.baseRatePkr / 2000.0).clamp(0.0, 1.0);
+    final normalizedRate =
+        (p.baseRatePkr / _maxModeledBaseRatePkr).clamp(0.0, 1.0);
     if (budgetSensitivity >= 0.75) return (1 - normalizedRate) * 100;
-    return (balanceBase + (1 - (normalizedRate - centerRate).abs())) *
-        balanceScale;
+    return (_priceFitBalanceBase +
+            (1 - (normalizedRate - _priceFitCenterRate).abs())) *
+        _priceFitBalanceScale;
   }
 
   static double _cancellationRiskScore(ServiceProvider p) {
