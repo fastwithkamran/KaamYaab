@@ -1,0 +1,32 @@
+# Final Polish & Firestore Integration Plan
+
+This plan addresses all the issues you raised regarding responsiveness, mock data, broken characters, missing Firestore integration, and the AI agent real-time simulation.
+
+## Proposed Changes
+
+### 1. Home Screen UI Refactor (Live Bookings)
+#### [MODIFY] `lib/screens/home_screen.dart`
+- **Remove Latin/Broken Characters:** I will completely remove the "Quick Book" chips section and the magnifying glass/describe section that are causing the garbled text (`ðŸ›`, `ðŸ”§`, etc.).
+- **Add Live Bookings Section:** In place of the removed elements, I will add a new **"Live Bookings"** section. This will be a vertically scrolling or animated list showing recent simulated (or real) activity (e.g., "Ali just booked an AC Technician in G-13") to make the platform feel active and bustling.
+
+### 2. Provider Card Responsiveness
+#### [MODIFY] `lib/screens/workers_browse_screen.dart`
+- **Fix Stretching:** The current `GridView` uses a fixed `childAspectRatio` which causes cards to stretch unnaturally on web browsers. I will change this to `SliverGridDelegateWithMaxCrossAxisExtent`.
+- **Responsive Layout:** This ensures cards maintain a maximum width (e.g., 400px) and wrap elegantly depending on the screen size, preventing the massive, stretched UI shown in your screenshots.
+
+### 3. Remove Mock Workers & Integrate Firestore
+#### [MODIFY] `lib/services/auth_service.dart`
+- **The Issue:** The app is currently using `SharedPreferences` (local storage) as a placeholder database, which is why Firestore is empty and you see hardcoded workers like "UA" (Usman Ali) and "ZA".
+- **The Fix:** I will completely remove the `_seedDemoWorkers()` method so the mock workers disappear. 
+- **Firestore Integration:** I will rewrite the core methods in `AuthService` (`register`, `login`, `getAllWorkers`) to actually read and write from your connected Firebase Firestore database (`FirebaseFirestore.instance.collection('users')`). This means real data will now flow into your Firebase console!
+
+### 4. Real-Time AI Agent Simulation
+#### [MODIFY] `lib/screens/voice_booking_agent.dart`
+- **The Issue:** The agent steps are currently hardcoded to appear all at once instantly.
+- **The Fix:** I will introduce asynchronous delays (`await Future.delayed`) between each reasoning step (Intent Parsing -> Demand Checking -> Provider Ranking). This will force the UI to render the steps sequentially, creating a true "real-time" checking experience.
+
+## Open Questions
+- Since I am removing the mock workers and connecting to your live Firestore, **your "Browse Workers" screen will initially be empty** until you register actual workers through the app. Are you okay with this, or would you like me to create a quick "Seed Firestore" hidden button to upload realistic data directly to your Firebase?
+
+## User Review Required
+Please review the plan above. If you approve, I will execute these changes immediately.
