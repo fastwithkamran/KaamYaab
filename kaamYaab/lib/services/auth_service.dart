@@ -21,7 +21,7 @@ class AuthService {
   /// Returns true if the current user is the Super Admin.
   bool get isAdmin =>
       _currentUser != null &&
-      _currentUser!.phone == EnvConfig.superAdminPhone;
+      _currentUser!.phone == RuntimeConfig.superAdminPhone;
 
   // ── Initialise (call in main) ─────────────────────────────────────────────
   Future<void> init() async {

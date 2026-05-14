@@ -16,6 +16,7 @@ if _gemini_api_key:
     model = genai.GenerativeModel("gemini-1.5-pro")
 else:
     model = None
+    print("[OrchestratorAgents] GEMINI_API_KEY not set — running without Gemini model")
 
 
 # ════════════════════════════════════════════════════════════════════════════
