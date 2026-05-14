@@ -70,7 +70,9 @@ def compute_dna_score(provider: Dict, intent: Dict, surge_mult: float = 1.0) -> 
     reliability_score = max(0, min(100, on_time * 100))
     exp_level = str(p.get("experience_level", "")).lower()
     if exp_level == "complex":
-        exp_level = "expert"  # legacy data normalization
+        # Temporary normalization while older seeded records are phased out.
+        # Remove once all sources emit "expert" / "advanced" only.
+        exp_level = "expert"
     if exp_level in {"expert", "advanced"}:
         specialization_bonus = 20
     elif exp_level == "intermediate":

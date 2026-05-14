@@ -32,6 +32,7 @@
   - Applied override filtering for dispute-heavy providers.
   - Added tie-break ordering priorities (reliability, cancellation, review recency).
 - Updated `kaamYaab/functions/agents/matching_agent.py` with the same 10-factor model and updated tool definition text.
+- Added experience-level normalization (`complex` -> `expert`) for backward compatibility with older seeded records, with migration intent toward canonical `expert/advanced` labels.
 
 ### 3) Pricing Formula Alignment
 - Updated Flutter booking quote calculation in `kaamYaab/lib/screens/booking_flow_screen.dart` to reflect the README formula components.
