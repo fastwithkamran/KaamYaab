@@ -1,51 +1,91 @@
-Challenge 2: AI Service Orchestrator for Informal Economy
+# Challenge 2: AI Service Orchestrator for Informal Economy
 
-CHALLENGE OVERVIEW
-Informal service economy includes plumbers, electricians, tutors, beauticians, drivers, mechanics, AC technicians, home service providers, and small local professionals. Service discovery often happens through WhatsApp, phone calls, referrals, and informal networks, causing missed opportunities, poor matching, unpredictable pricing, weak follow-up, and limited trust. This challenge requires an agentic system that automates the end-to-end service lifecycle from natural-language request to matching, scheduling, pricing, booking, follow-up, quality feedback, and dispute handling.
-PROBLEM STATEMENT
-Understand multilingual service requests (for example Urdu, Roman Urdu, English, and mixed/code-switched language).
-Extract service type, location, urgency, preferred time, constraints, and user preferences.
-Discover providers using mock data, Google Maps/Places, or other APIs.
-Rank providers using a multi-factor matching algorithm rather than distance alone.
-Generate dynamic price quotes with transparent breakdowns.
-Simulate booking, confirmation, reminders, service progress, feedback, reputation updates, and dispute resolution.
-MANDATORY REQUIREMENT: GOOGLE ANTIGRAVITY
-Use Google Antigravity as the main orchestrator for intent understanding, matching, scheduling, pricing, booking, follow-up, and service-quality workflows.
-Show Antigravity reasoning traces for provider selection, price estimation, scheduling conflicts, confirmation actions, and dispute escalation. External LLMs, Maps/Places APIs, spreadsheets, mock datasets, and messaging APIs may be used, but Antigravity must control the agentic workflow.
-SYSTEM REQUIREMENTS
-Multilingual and noisy input handling: Handle Urdu, Roman Urdu, English, misspellings, slang, and code-switching such as "Mujhe kal morning main AC service chahiye". Provide confidence score and confirmation questions when confidence is low.
-Advanced provider matching: Use at least six factors: distance/travel time, availability, rating, review recency, reliability/on-time score, skill specialization, price, capacity, cancellation rate, user preference, and risk score.
-Skill and job complexity classification: Classify job complexity as basic, intermediate, or complex and match to provider specialization, experience, tools, or certifications.
-Scheduling intelligence: Prevent double booking, include travel-time buffers, suggest alternate slots, manage waitlists, and reschedule automatically if a provider cancels.
-Dynamic pricing: Calculate price using demand, urgency, distance, service complexity, provider rate, loyalty discount, and surge conditions. Show breakdown and fairness to both user and provider.
-Booking simulation: Simulate booking confirmation, provider assignment, calendar update, SMS/WhatsApp notification, receipt, and database/spreadsheet update.
-Service-quality loop: Simulate en-route update, service completion checklist, photo/video evidence placeholder, customer feedback, rating adjustment, and future matching impact.
-Dispute and escalation workflow: Handle no-show, cancellation, quality complaint, price disagreement, overrun, refund, compensation, blacklist, or human escalation simulation.
-Provider-side optimization: Show provider workload balancing, fair earning opportunity, demand forecasting, or recommended time slots for provider utilization.
-Robustness and fallback: Handle no provider available, low-confidence language parsing, Maps/API failure, payment confirmation failure, and user preference conflicts.
-EXAMPLE SCENARIO
-User input: "AC bilkul kaam nahi kar raha, kal subah G-13 mein technician chahiye, budget zyada nahi hai."
-Understanding: Service = AC repair; issue severity = high; location = G-13; time = tomorrow morning; price sensitivity = high.
-Matching: Ranks providers using travel time, availability, AC specialization, on-time score, review sentiment, rate, cancellation risk, and capacity.
-Decision: Recommends Provider A despite Provider B being closer because Provider A has higher reliability and specialized AC repair reviews.
-Pricing: Generates quote with visit fee, distance cost, urgency adjustment, and budget-sensitive alternative.
-Simulation: Books 10:00 AM slot, sends confirmation, updates booking sheet, schedules reminder, simulates provider en-route update, collects feedback, and updates reputation score.
-RECOMMENDED STRESS-TEST SCENARIOS
-No suitable provider is available in the requested time window.
-A provider cancels after confirmation and the system must reschedule.
-User input is misspelled, mixed-language, or ambiguous.
-Two users request the same provider at overlapping times.
-Customer disputes price or quality after service completion. Provider has high rating but recent negative reviews and high cancellation rate.
-DELIVERABLES
-Working prototype with a mobile app as mandatory and web app as optional.
-Demo video of 3-5 minutes showing user request -> intent extraction -> provider ranking -> pricing -> booking -> follow-up -> feedback/dispute workflow.
-Antigravity agent trace/logs showing language parsing confidence, provider ranking rationale, scheduling decisions, price logic, action execution, and fallback behavior.
-README with architecture, provider dataset schema, matching factors, Antigravity workflow, APIs/tools, assumptions, cost/latency analysis, baseline comparison, privacy note, and limitations.
-EVALUATION CRITERIA
-Antigravity integration 20%
-Matching and decision quality 25%
-Multilingual robustness and edge cases 15%
-Scheduling, pricing and service workflow 15%
-Dispute handling, reliability and scalability 15%
-Innovation and UX 10%
+## 📌 Challenge Overview
+The informal service economy—comprising plumbers, electricians, tutors, and local technicians—often suffers from fragmented discovery and a lack of trust. Service matching typically happens via informal networks like WhatsApp or word-of-mouth, leading to unpredictable pricing and poor follow-up.
 
+This challenge tasks participants with building an **agentic system** that automates the end-to-end service lifecycle. From natural-language intent extraction to dispute resolution, the system must provide a seamless bridge between local professionals and customers.
+
+---
+
+## 📑 Problem Statement
+The goal is to develop a system capable of:
+*   **Multilingual Understanding:** Processing requests in Urdu, Roman Urdu, English, and code-switched "hinglish/urdish" text.
+*   **Intent Extraction:** Identifying service type, location, urgency, and constraints.
+*   **Provider Discovery:** Utilizing mock data or real-world APIs (Google Maps/Places) to find the best local talent.
+*   **Dynamic Logic:** Implementing complex ranking, pricing, and scheduling algorithms.
+*   **Full Lifecycle Simulation:** Managing bookings, reminders, service progress, and reputation updates.
+
+---
+
+## 🛠 Mandatory Requirement: Google Antigravity
+> [!IMPORTANT]
+> **Google Antigravity** must serve as the core orchestrator for all agentic workflows.
+
+*   **Orchestration:** Use Antigravity for intent understanding, provider matching, and scheduling logic.
+*   **Transparency:** You must provide **Antigravity reasoning traces** for every major decision (e.g., why Provider A was chosen over Provider B).
+*   **Integration:** While you may use external LLMs or Maps APIs, Antigravity must control the execution flow and decision-making.
+
+---
+
+## ⚙️ System Requirements
+
+### 1. Multilingual & Noisy Input Handling
+*   Handle slang and code-switching (e.g., *"Mujhe kal morning main AC service chahiye"*).
+*   Provide confidence scores; trigger confirmation questions if the intent is ambiguous.
+
+### 2. Advanced Provider Matching
+Rank providers based on at least **six factors**:
+*   Distance & travel time
+*   Availability & capacity
+*   Rating & review recency
+*   Reliability (on-time score)
+*   Skill specialization & job complexity (Basic/Intermediate/Complex)
+*   Cancellation rates & risk scores
+
+### 3. Scheduling & Pricing Intelligence
+*   **Scheduling:** Prevent double bookings, include travel-time buffers, and handle auto-rescheduling for cancellations.
+*   **Dynamic Pricing:** Calculate quotes based on demand, urgency, distance, and provider experience. Provide a transparent breakdown for fairness.
+
+### 4. Service-Quality & Dispute Loop
+*   **Execution:** Simulate en-route updates and service completion checklists.
+*   **Feedback:** Collect ratings and photo/video evidence.
+*   **Disputes:** Handle no-shows, price disagreements, and refund requests via an escalation workflow.
+
+---
+
+## 🏃 Example Scenario
+*   **User Input:** *"AC bilkul kaam nahi kar raha, kal subah G-13 mein technician chahiye, budget zyada nahi hai."*
+*   **Antigravity Understanding:** 
+    *   **Service:** AC Repair | **Urgency:** High | **Location:** G-13 | **Constraint:** Budget Sensitive.
+*   **Decision:** System recommends Provider A (Higher reliability) over Provider B (Closer proximity) due to specialized repair history.
+*   **Result:** Generates a quote with a visit fee breakdown and schedules a 10:00 AM slot.
+
+---
+
+## 🧪 Stress-Test Scenarios
+Your system should be robust enough to handle:
+1.  **Zero Availability:** No providers found in the requested window.
+2.  **Provider Flaking:** A provider cancels 30 minutes before the appointment.
+3.  **Conflict Resolution:** Two users booking the same "last available" provider simultaneously.
+4.  **Trust Issues:** Matching a high-rated provider who has had a recent string of negative reviews.
+
+---
+
+## 📦 Deliverables
+*   **Working Prototype:** Mobile App (Mandatory) / Web App (Optional).
+*   **Demo Video:** A 3-5 minute walkthrough of the entire user journey.
+*   **Reasoning Logs:** Antigravity agent traces showing the logic behind ranking, pricing, and fallbacks.
+*   **README:** Documentation covering architecture, data schemas, cost/latency analysis, and privacy notes.
+
+---
+
+## 📊 Evaluation Criteria
+
+| Criteria | Weight |
+| :--- | :--- |
+| **Antigravity Integration** | 20% |
+| **Matching & Decision Quality** | 25% |
+| **Multilingual Robustness** | 15% |
+| **Workflow Logic (Scheduling/Pricing)** | 15% |
+| **Dispute & Reliability Handling** | 15% |
+| **Innovation & UX** | 10% |
