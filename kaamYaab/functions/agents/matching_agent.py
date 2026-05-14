@@ -68,7 +68,14 @@ def compute_dna_score(provider: Dict, intent: Dict, surge_mult: float = 1.0) -> 
     rating_score = max(0, min(100, (rating / 5.0) * 100))
     review_recency_score = min(100, (review_count / 200.0) * 100)
     reliability_score = max(0, min(100, on_time * 100))
-    specialization_score = 70 + (20 if p.get("experience_level") == "complex" else 10 if p.get("experience_level") == "intermediate" else 0)
+    exp_level = str(p.get("experience_level", "")).lower()
+    if exp_level in {"expert", "advanced", "complex"}:  # "complex" kept for legacy seeded data compatibility
+        specialization_bonus = 20
+    elif exp_level == "intermediate":
+        specialization_bonus = 10
+    else:
+        specialization_bonus = 0
+    specialization_score = 70 + specialization_bonus
     specialization_score += 10 if len(p.get("skills", [])) >= 4 else 0
     specialization_score = min(100, specialization_score)
     rate_norm = min(1.0, p.get("base_rate_pkr", 1000) / 2000.0)
