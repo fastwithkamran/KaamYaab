@@ -7,9 +7,12 @@ Extracts structured intent from multilingual user input
 """
 
 import json
+import logging
 import os
 import re
 import google.generativeai as genai
+
+logger = logging.getLogger(__name__)
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 model = None
@@ -163,9 +166,9 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
             result["model"] = "gemini-1.5-pro"
             return result
         except Exception as e:
-            print(f"[IntentAgent] Gemini failed: {e} — using fast_parse fallback")
+            logger.warning("[IntentAgent] Gemini failed: %s — using fast_parse fallback", e)
     elif use_gemini and model is None:
-        print("[IntentAgent] GEMINI_API_KEY not set — using fast_parse fallback")
+        logger.info("[IntentAgent] GEMINI_API_KEY not set — using fast_parse fallback")
 
     result = fast_parse(raw_input)
     result["agent"] = "IntentAgent"
