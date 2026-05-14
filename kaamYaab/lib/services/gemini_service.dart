@@ -7,8 +7,8 @@ class GeminiService {
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-  static String get _apiKey => RuntimeConfig.geminiApiKey;
-  static bool get _hasApiKey => _apiKey.trim().isNotEmpty;
+  static final String _apiKey = RuntimeConfig.geminiApiKey.trim();
+  static bool get _hasApiKey => _apiKey.isNotEmpty;
 
   // â”€â”€â”€ Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static Future<Map<String, dynamic>> extractIntent(String rawInput) async {

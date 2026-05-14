@@ -228,6 +228,7 @@ export GEMINI_API_KEY="your_gemini_api_key"
 export SUPER_ADMIN_PHONE="03001234567"
 export SMS_ENABLED="false"
 export OTP_EXPIRY_SECONDS="120"
+# Note: dart-define values are passed as strings and parsed by the app.
 # Also replace YOUR_GOOGLE_MAPS_API_KEY in:
 # - android/app/src/main/AndroidManifest.xml
 # - web/index.html
