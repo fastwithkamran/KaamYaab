@@ -1,0 +1,72 @@
+name: kaamyaab
+description: AI Service Orchestrator for Pakistan's Informal Economy
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # HTTP & API
+  dio: ^5.4.3
+  http: ^1.2.1
+
+  # Firebase
+  firebase_core: ^2.30.1
+  cloud_firestore: ^4.17.3
+  firebase_auth: ^4.19.4
+  firebase_messaging: ^14.9.3
+
+  # Google Maps
+  google_maps_flutter: ^2.6.1
+  geocoding: ^3.0.0
+  geolocator: ^11.1.0
+
+  # Animations & UI
+  lottie: ^3.1.2
+  shimmer: ^3.0.0
+  animated_text_kit: ^4.2.2
+  fl_chart: ^0.68.0
+  flutter_animate: ^4.5.0
+  glassmorphism: ^3.0.0
+
+  # Storage & Persistence
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.4
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.4.0
+  timeago: ^3.6.1
+  url_launcher: ^6.3.0
+  permission_handler: ^11.3.1
+  image_picker: ^1.1.2
+  flutter_tts: ^4.2.2
+
+  # Typography
+  google_fonts: ^6.2.1
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  riverpod_generator: ^2.4.0
+  build_runner: ^2.4.9
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/data/providers_mock.json
+    - assets/data/demand_mock.json
+    - assets/images/
+    - assets/animations/

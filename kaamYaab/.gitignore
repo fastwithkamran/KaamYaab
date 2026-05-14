@@ -1,0 +1,63 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains build tasks and settings for VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+pubspec.lock
+
+# Web related
+
+# Exceptions to above rules.
+!/packages/flutter_tools/test/data/dart_dependencies_setup/**/packages/foo/**/lib/*
+!/packages/flutter_tools/test/data/dart_dependencies_setup/**/packages/foo/**/packages/foo/*
+!/packages/flutter_tools/test/data/dart_dependencies_setup/**/packages/foo/pubspec.yaml
+!/packages/flutter_tools/test/data/dart_dependencies_setup/**/packages/foo/pubspec.lock
+
+# Firebase Configuration Files (Do not commit to version control)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+firebase.json
+google-services.json
+
+# Environment files
+.env
+.env.*
+lib/config/env_config.dart
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
