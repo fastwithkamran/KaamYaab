@@ -1,4 +1,4 @@
-# Challenge 2: AI Service Orchestrator for Informal Economy
+# Challenge: AI Service Orchestrator for Informal Economy
 
 ## 📌 Challenge Overview
 The informal service economy—comprising plumbers, electricians, tutors, and local technicians—often suffers from fragmented discovery and a lack of trust. Service matching typically happens via informal networks like WhatsApp or word-of-mouth, leading to unpredictable pricing and poor follow-up.
