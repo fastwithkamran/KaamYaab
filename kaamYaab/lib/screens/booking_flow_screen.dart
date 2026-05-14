@@ -104,6 +104,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         demandSurcharge -
         loyaltyDiscount -
         budgetAdjustment;
+    final breakdownParts = [
+      'Base Rs.${base.toInt()}',
+      'Distance Rs.${distanceCharge.toInt()}',
+      'Complexity Rs.${complexitySurcharge.toInt()}',
+      'Urgency Rs.${urgencyAdj.toInt()}',
+      'Demand Rs.${demandSurcharge.toInt()}',
+      '- Loyalty Rs.${loyaltyDiscount.toInt()}',
+      '- Budget Rs.${budgetAdjustment.toInt()}',
+    ];
 
     return PriceQuote(
       basePkr: base,
@@ -112,8 +121,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       surgeMultiplier: widget.surgeMultiplier,
       loyaltyDiscountPkr: loyaltyDiscount,
       totalPkr: total,
-      breakdown:
-          'Base Rs.${base.toInt()} + Distance Rs.${distanceCharge.toInt()} + Complexity Rs.${complexitySurcharge.toInt()} + Urgency Rs.${urgencyAdj.toInt()} + Demand Rs.${demandSurcharge.toInt()} - Loyalty Rs.${loyaltyDiscount.toInt()} - Budget Rs.${budgetAdjustment.toInt()}',
+      breakdown: breakdownParts.join(' | '),
       isNegotiable: p.dnascore < 900,
     );
   }

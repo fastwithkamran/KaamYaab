@@ -240,6 +240,7 @@ class MatchingService {
     switch (experienceLevel.toLowerCase()) {
       case 'expert':
       case 'advanced':
+      // Backward compatibility with existing seeded worker data.
       case 'complex':
         return 2;
       case 'intermediate':
@@ -250,7 +251,10 @@ class MatchingService {
   }
 
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
-    // Balanced mode constants tuned so median rates score around the mid-high band.
+    // Balanced mode constants:
+    // - balanceBase: minimum score floor for non-budget-constrained users.
+    // - centerRate: normalized "middle" price point (50% of max modeled rate).
+    // - balanceScale: converts blended normalized value to a 0..100-like range.
     const balanceBase = 0.6;
     const centerRate = 0.5;
     const balanceScale = 62.5;
