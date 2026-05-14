@@ -102,6 +102,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       _showError('Enter valid latitude and longitude.');
       return;
     }
+    if (lat < -90 || lat > 90) {
+      _showError('Latitude must be between -90 and 90.');
+      return;
+    }
+    if (lng < -180 || lng > 180) {
+      _showError('Longitude must be between -180 and 180.');
+      return;
+    }
     Navigator.pop(
       context,
       LocationResult(

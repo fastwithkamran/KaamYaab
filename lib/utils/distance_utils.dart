@@ -15,6 +15,7 @@ double haversineDistanceKm(GeoPoint from, GeoPoint to) {
   return earthRadiusKm * c;
 }
 
+// Assumes average urban speed of 30 km/h for ETA estimation.
 double estimateTravelTimeHours(double distanceKm) => distanceKm / 30.0;
 
 double _toRad(double deg) => deg * pi / 180.0;

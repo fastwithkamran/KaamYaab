@@ -284,7 +284,7 @@ Analyze and return JSON:
         body: jsonEncode(payload),
       );
       lastResponse = response;
-      if (response.statusCode < 400 || response.statusCode == 400) {
+      if (response.statusCode < 400) {
         return response;
       }
 

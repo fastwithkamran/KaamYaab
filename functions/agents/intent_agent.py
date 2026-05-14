@@ -14,6 +14,7 @@ import time
 import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
+MAX_GEMINI_RETRIES = 3
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 model = None
@@ -184,7 +185,7 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
 
 def _generate_with_retry(prompt: str):
     last_error = None
-    for retry in range(0, 4):
+    for retry in range(0, MAX_GEMINI_RETRIES + 1):
         try:
             return model.generate_content(
                 prompt,
@@ -197,7 +198,7 @@ def _generate_with_retry(prompt: str):
             last_error = e
             msg = str(e).lower()
             is_rate_limited = "429" in msg or "rate" in msg or "quota" in msg
-            if retry == 3 or not is_rate_limited:
+            if retry == MAX_GEMINI_RETRIES or not is_rate_limited:
                 break
             time.sleep(2 ** retry)
     raise last_error
