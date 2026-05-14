@@ -69,7 +69,9 @@ def compute_dna_score(provider: Dict, intent: Dict, surge_mult: float = 1.0) -> 
     review_recency_score = min(100, (review_count / 200.0) * 100)
     reliability_score = max(0, min(100, on_time * 100))
     exp_level = str(p.get("experience_level", "")).lower()
-    if exp_level in {"expert", "advanced", "complex"}:  # "complex" kept for legacy seeded data compatibility
+    if exp_level == "complex":
+        exp_level = "advanced"  # legacy data normalization
+    if exp_level in {"expert", "advanced"}:
         specialization_bonus = 20
     elif exp_level == "intermediate":
         specialization_bonus = 10
