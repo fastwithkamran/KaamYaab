@@ -39,12 +39,13 @@ Return ONLY a valid JSON object with these exact fields:
   "language": "urdu | roman_urdu | english | mixed",
   "clarification_needed": false,
   "clarification_question": "",
-  "issue_description": "brief description of the problem"
+  "issue_description": "brief description of the problem",
+  "job_complexity": "basic | intermediate | complex"
 }}
 
 Rules:
 - budget_sensitivity: 0.0=budget flexible, 1.0=very tight budget
-- confidence: your certainty 0.0-1.0; if <0.7 set clarification_needed=true
+- confidence: your certainty 0.0-1.0; if <0.75 set clarification_needed=true
 - For Urdu keywords: "subah"=morning, "kal"=tomorrow, "urgent/jaldi"=high urgency
 - "zyada nahi", "sasta", "budget tight" → budget_sensitivity > 0.7
 - "bijli"=Electrical, "AC/ٹھنڈا"=AC Repair, "pani/pipe"=Plumbing, "safai"=Cleaning
@@ -120,8 +121,15 @@ def fast_parse(text: str) -> dict:
     elif any(w in lower for w in ["kal", "tomorrow"]):
         preferred_date = "tomorrow"
 
-    confidence = 0.87 if service != "Unknown" else 0.52
+    confidence = 0.91 if service != "Unknown" else 0.58
+    if preferred_time == "flexible":
+        confidence = max(0.75, confidence - 0.05) if service != "Unknown" else confidence
     lang = detect_language(text)
+    complexity = "basic"
+    if any(w in lower for w in ["install", "wiring", "replace", "compressor", "overhaul", "rewire"]):
+        complexity = "complex"
+    elif any(w in lower for w in ["gas", "diagnose", "repair", "service", "leak"]):
+        complexity = "intermediate"
 
     return {
         "service_type": service,
@@ -133,13 +141,14 @@ def fast_parse(text: str) -> dict:
         "budget_sensitivity": budget,
         "confidence": confidence,
         "language": lang,
-        "clarification_needed": service == "Unknown" or confidence < 0.70,
+        "clarification_needed": service == "Unknown" or confidence < 0.75,
         "clarification_question": (
             "Ap kis service ki zaroorat hai? "
             "(AC Repair, Plumbing, Electrical, Tutoring, ya Cleaning)"
             if service == "Unknown" else ""
         ),
         "issue_description": text[:120],
+        "job_complexity": complexity,
     }
 
 

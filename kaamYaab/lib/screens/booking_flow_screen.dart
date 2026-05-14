@@ -76,24 +76,44 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   PriceQuote _buildQuote() {
     final p = widget.match.provider;
     final base = p.baseRatePkr;
-    final urgencyAdj = widget.request.urgency == 'emergency'
-        ? base * 0.3
-        : widget.request.urgency == 'high'
-            ? base * 0.15
+    final distanceCharge = widget.match.distanceKm > 5
+        ? (widget.match.distanceKm - 5) * 15
+        : 0.0;
+    final complexitySurcharge = widget.request.jobComplexity == 'complex'
+        ? base * 0.40
+        : widget.request.jobComplexity == 'intermediate'
+            ? base * 0.20
             : 0.0;
-    final distCost = widget.match.distanceKm * 30;
-    final loyaltyDiscount = 50.0;
-    final total = (base + urgencyAdj + distCost) * widget.surgeMultiplier - loyaltyDiscount;
+    final urgencyAdj = (widget.request.preferredDate == 'today' ||
+            widget.request.urgency == 'emergency')
+        ? base * 0.25
+        : (widget.request.preferredDate == 'tomorrow' &&
+                widget.request.preferredTime == 'morning')
+            ? base * 0.10
+            : 0.0;
+    final demandRate = (widget.surgeMultiplier - 1).clamp(0.0, 0.35);
+    final demandSurcharge =
+        (base + distanceCharge + complexitySurcharge + urgencyAdj) * demandRate;
+    final loyaltyDiscount = base * 0.05;
+    final budgetAdjustment =
+        widget.request.budgetSensitivity >= 0.75 ? base * 0.05 : 0.0;
+    final total = base +
+        distanceCharge +
+        complexitySurcharge +
+        urgencyAdj +
+        demandSurcharge -
+        loyaltyDiscount -
+        budgetAdjustment;
 
     return PriceQuote(
       basePkr: base,
       urgencyAdjPkr: urgencyAdj,
-      distanceCostPkr: distCost,
+      distanceCostPkr: distanceCharge,
       surgeMultiplier: widget.surgeMultiplier,
       loyaltyDiscountPkr: loyaltyDiscount,
       totalPkr: total,
       breakdown:
-          'Base Rs.${base.toInt()} + Urgency Rs.${urgencyAdj.toInt()} + Distance Rs.${distCost.toInt()} Ã— ${widget.surgeMultiplier.toStringAsFixed(1)}x - Rs.${loyaltyDiscount.toInt()} loyalty',
+          'Base Rs.${base.toInt()} + Distance Rs.${distanceCharge.toInt()} + Complexity Rs.${complexitySurcharge.toInt()} + Urgency Rs.${urgencyAdj.toInt()} + Demand Rs.${demandSurcharge.toInt()} - Loyalty Rs.${loyaltyDiscount.toInt()} - Budget Rs.${budgetAdjustment.toInt()}',
       isNegotiable: p.dnascore < 900,
     );
   }
