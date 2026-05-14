@@ -124,8 +124,20 @@ def calculate_quote(provider: Dict, intent: Dict, dist_km: float, surge_mult: fl
     complexity = intent.get("job_complexity", "basic")
     budget_sensitivity = intent.get("budget_sensitivity", 0.5)
     distance_charge = max(0, (dist_km - 5) * 15)
-    complexity_surcharge = base * (0.4 if complexity == "complex" else 0.2 if complexity == "intermediate" else 0.0)
-    urgency_adj = base * 0.25 if (preferred_date == "today" or urgency == "emergency") else base * 0.10 if (preferred_date == "tomorrow" and preferred_time == "morning") else 0
+    if complexity == "complex":
+        complexity_rate = 0.4
+    elif complexity == "intermediate":
+        complexity_rate = 0.2
+    else:
+        complexity_rate = 0.0
+    complexity_surcharge = base * complexity_rate
+
+    if preferred_date == "today" or urgency == "emergency":
+        urgency_adj = base * 0.25
+    elif preferred_date == "tomorrow" and preferred_time == "morning":
+        urgency_adj = base * 0.10
+    else:
+        urgency_adj = 0
     demand_rate = max(0, min(0.35, surge_mult - 1.0))
     demand_surge = (base + distance_charge + complexity_surcharge + urgency_adj) * demand_rate
     loyalty_discount = base * 0.05

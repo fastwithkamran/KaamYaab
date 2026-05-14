@@ -226,20 +226,38 @@ class MatchingService {
   }
 
   static bool _meetsComplexityRequirement(ServiceProvider p, String complexity) {
-    final exp = p.experienceLevel.toLowerCase();
+    final expRank = _experienceRank(p.experienceLevel);
     if (complexity == 'complex') {
-      return exp == 'complex' || p.certifications.isNotEmpty;
+      return expRank >= 2 || p.certifications.isNotEmpty;
     }
     if (complexity == 'intermediate') {
-      return exp == 'complex' || exp == 'intermediate';
+      return expRank >= 1;
     }
     return true;
   }
 
+  static int _experienceRank(String experienceLevel) {
+    switch (experienceLevel.toLowerCase()) {
+      case 'expert':
+      case 'advanced':
+      case 'complex':
+        return 2;
+      case 'intermediate':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
+    // Balanced mode constants tuned so median rates score around the mid-high band.
+    const balanceBase = 0.6;
+    const centerRate = 0.5;
+    const balanceScale = 62.5;
     final normalizedRate = (p.baseRatePkr / 2000.0).clamp(0.0, 1.0);
     if (budgetSensitivity >= 0.75) return (1 - normalizedRate) * 100;
-    return (0.6 + (1 - (normalizedRate - 0.5).abs())) * 62.5;
+    return (balanceBase + (1 - (normalizedRate - centerRate).abs())) *
+        balanceScale;
   }
 
   static double _cancellationRiskScore(ServiceProvider p) {
