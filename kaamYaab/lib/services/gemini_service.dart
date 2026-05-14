@@ -34,7 +34,7 @@ Return a JSON object with these exact fields:
   "confidence": 0.0 to 1.0,
   "language": "urdu | roman_urdu | english | mixed",
   "clarification_needed": true or false,
-  "clarification_question": "question to ask user if confidence < 0.7",
+  "clarification_question": "question to ask user if confidence < 0.75",
   "job_complexity": "basic | intermediate | complex"
 }
 
@@ -214,6 +214,9 @@ Analyze and return JSON:
     if (lower.contains('bilkul kaam nahi') || lower.contains('kharab') || lower.contains('broken') || lower.contains('install')) complexity = 'complex';
     else if (lower.contains('service') || lower.contains('check')) complexity = 'intermediate';
 
+    final confidence = service == 'Unknown' ? 0.58 : 0.91;
+    final needsClarification = confidence < 0.75;
+
     return {
       'service_type': service,
       'location': 'Pakistan',
@@ -222,10 +225,12 @@ Analyze and return JSON:
       'preferred_time': lower.contains('subah') || lower.contains('morning') ? 'morning' : 'flexible',
       'preferred_date': lower.contains('kal') || lower.contains('tomorrow') ? 'tomorrow' : 'flexible',
       'budget_sensitivity': budget,
-      'confidence': service == 'Unknown' ? 0.55 : 0.87,
+      'confidence': confidence,
       'language': _detectLanguage(rawInput),
-      'clarification_needed': service == 'Unknown',
-      'clarification_question': service == 'Unknown' ? 'Ap kis service ki zaroorat hai? (AC, Plumbing, Electrical, Tutoring, Cleaning)' : '',
+      'clarification_needed': needsClarification,
+      'clarification_question': needsClarification
+          ? 'Ap kis service ki zaroorat hai? (AC, Plumbing, Electrical, Tutoring, Cleaning)'
+          : '',
       'job_complexity': complexity,
     };
   }
