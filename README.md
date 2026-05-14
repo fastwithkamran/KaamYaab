@@ -76,7 +76,7 @@ This system automates the **entire service lifecycle** — from a natural-langua
   ┌───────────────┐  ┌────────────────┐  ┌──────────────────────┐
   │ Haversine     │  │ Provider DB /  │  │ In-App Notification  │
   │ Distance Calc │  │ Mock Dataset   │  │ (Toast / Modal sim)  │
-  │ (no Maps API) │  │ (static JSON)  │  │ (no Twilio/WA API)   │
+  │ (no Maps API) │  │ (static JSON)  │  │ (in-app only)        │
   └───────────────┘  └────────────────┘  └──────────────────────┘
 ```
 
@@ -104,16 +104,16 @@ This system automates the **entire service lifecycle** — from a natural-langua
 | **Web App** | React + Next.js (optional) | Free |
 | **NLU / LLM** | Google Gemini 1.5 Flash — free tier (15 req/min, 1M tokens/day) | Free |
 | **Provider Discovery** | Static mock dataset (JSON) + local Haversine distance calculation — no Maps API calls | Free |
-| **Distance / Travel Time** | Haversine formula on provider `GeoPoint` coordinates stored in mock data — no Distance Matrix API | Free |
-| **Notifications** | Fully simulated in-app (toast / bottom-sheet modal) — no Twilio, no WhatsApp API | Free |
+| **Distance / Travel Time** | Haversine formula on provider `GeoPoint` coordinates stored in mock data — no external maps API | Free |
+| **Notifications** | Fully simulated in-app (toast / bottom-sheet modal) — no third-party notification API | Free |
 | **Database** | Firebase Firestore — Spark free plan (50K reads/day, 20K writes/day) | Free |
 | **Spreadsheet Logging** | Google Sheets API — included free with GCP | Free |
 | **Auth** | Firebase Auth — free tier | Free |
 | **Hosting** | Google Cloud Run — 2M requests/month free tier | Free |
-| **GCP Budget** | $5 credit held in reserve for any Cloud Run overage | $5 cap |
+| **GCP Budget** | Not required for this prototype | $0 |
 
 ### Why no Google Maps API?
-For the prototype, all 50–200 providers have pre-seeded `GeoPoint` coordinates. Distance between user and provider is calculated client-side using the Haversine formula (accurate to ~0.5%). This removes the need for Distance Matrix or Places API calls entirely, costs nothing, and works offline. Production deployment would introduce real Maps API calls once revenue supports it.
+For the prototype, all 50–200 providers have pre-seeded `GeoPoint` coordinates. Distance between user and provider is calculated client-side using the Haversine formula (accurate to ~0.5%). This removes the need for external maps API calls entirely, costs nothing, and works offline.
 
 ---
 
@@ -159,7 +159,7 @@ Step 7  DYNAMIC PRICING
         ▼
 Step 8  BOOKING EXECUTION
         │  Booking Agent confirms slot, locks provider calendar
-        │  Dispatches SMS/WhatsApp to user and provider
+        │  Dispatches in-app notifications to user and provider
         │  Writes booking record to DB + audit sheet
         ▼
 Step 9  SERVICE EXECUTION LOOP
@@ -406,7 +406,7 @@ The Intent Agent extracts and returns:
 
 | # | Factor | Weight | Description |
 |---|---|---|---|
-| 1 | **Distance / Travel Time** | 12% | Estimated travel time via Maps Distance Matrix; penalizes >30 min |
+| 1 | **Distance / Travel Time** | 12% | Estimated from Haversine distance with `distance_km / 30` hours; penalizes >30 min |
 | 2 | **Availability** | 15% | Slot open in requested window with travel-time buffer |
 | 3 | **Rating** | 12% | Weighted average, decays older reviews |
 | 4 | **Review Recency** | 8% | Recency-weighted sentiment of last 10 reviews |
@@ -457,7 +457,7 @@ The Matching Agent verifies that the shortlisted provider's `certifications` and
 ### 9.1 Slot Validation Rules
 
 - No overlapping bookings for the same provider
-- Minimum **30-minute travel buffer** inserted between consecutive jobs (pulled from Maps Distance Matrix)
+- Minimum **30-minute travel buffer** inserted between consecutive jobs (using local Haversine travel-time estimates)
 - Provider must not exceed `max_daily_jobs` cap
 - Scheduled end time includes a **15-minute buffer** for handover
 
@@ -630,14 +630,14 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 | Failure Mode | Fallback Strategy |
 |---|---|
 | **No provider available** | Expand search radius (+5 km increments up to 3×); offer waitlist; suggest next available date |
-| **Maps / Places API failure** | Fall back to straight-line distance using stored `GeoPoint`; flag reduced accuracy in trace |
+| **Distance computation issue** | Fall back to local Haversine distance using stored `GeoPoint`; flag reduced accuracy in trace |
 | **Low-confidence language parse** | Trigger slot-by-slot clarification dialog; never fail silently |
 | **Payment confirmation failure** | Hold booking in `pending_payment` state for 10 min; release slot if unresolved |
 | **Provider no-show** | Auto-reroute within 15 min; compensate user; escalate dispute |
 | **Double-booking race condition** | DB transaction lock ensures atomicity; losing request receives immediate next-best offer |
 | **User preference conflicts** | Surface conflict explicitly: *"Your preferred provider is unavailable — would you like the next best match or to wait?"* |
 | **Antigravity agent timeout** | Retry with exponential backoff ×3; if all fail, surface graceful error with manual booking option |
-| **Notification delivery failure** | Retry via alternate channel (SMS if WhatsApp fails); log delivery status in booking record |
+| **Notification delivery failure** | Retry as in-app toast/bottom-sheet and log delivery status in booking record |
 
 ---
 
@@ -696,8 +696,8 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 ## 17. Assumptions
 
 - Provider data is seeded from a mock dataset of 50–200 providers covering Islamabad, Rawalpindi, Karachi, and Lahore.
-- Distance between user and provider is calculated using the **Haversine formula** on pre-seeded `GeoPoint` coordinates. No Google Maps Distance Matrix API is called. Travel time is estimated as `distance_km / 30 km/h` (average urban speed).
-- SMS and WhatsApp notifications are **fully simulated** as in-app toasts and modals. No Twilio or WhatsApp Business API is used in the prototype.
+- Distance between user and provider is calculated using the **Haversine formula** on pre-seeded `GeoPoint` coordinates. No external maps API is called. Travel time is estimated as `distance_km / 30 km/h` (average urban speed).
+- Notifications are **fully simulated** as in-app toasts and modals. No third-party notification API is used in the prototype.
 - Payments are simulated (no real payment gateway integrated in the prototype). A payment confirmation webhook stub is used.
 - Provider GPS location during en-route simulation is mocked with a linear interpolation between provider base and job address.
 - The prototype assumes mobile users have a stable internet connection; offline mode is not supported in v1.
@@ -727,21 +727,9 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 | **Total prototype cost** | | **$0** |
 | **GCP credit ($5)** | Held as safety buffer, not expected to be used | $5 reserved |
 
-### 18.2 Production Cost Estimate (Future — Not Applicable to Prototype)
+### 18.2 Production Cost Estimate
 
-For reference, if this were deployed at scale with real APIs:
-
-| Operation | API / Service | Estimated Cost per Request |
-|---|---|---|
-| Intent extraction + NLU | Gemini (paid tier) | ~$0.002 |
-| Distance Matrix (10 providers) | Google Maps Distance Matrix | ~$0.005 |
-| Places API lookup | Google Places | ~$0.002 |
-| Provider DB query | Firestore reads (20 docs) | ~$0.0001 |
-| SMS notification (×2) | Twilio | ~$0.015 |
-| WhatsApp notification (×2) | WhatsApp Business API | ~$0.010 |
-| Dispute resolution (if triggered) | Antigravity + extra LLM calls | ~$0.008 |
-| **Total (happy path)** | | **~$0.034 per booking** |
-| **Total (with dispute)** | | **~$0.042 per booking** |
+This repository intentionally avoids paid service dependencies. All flows are designed for free-tier or local-only operation (Gemini 1.5 Flash free tier, static provider JSON, local Haversine distance, and in-app notifications).
 
 ### 18.2 Latency Breakdown (P50 / P95)
 
@@ -787,8 +775,8 @@ For reference, if this were deployed at scale with real APIs:
 - **User data collected:** Phone number, service request text, location (GPS or manual entry), booking history, ratings given.
 - **Provider data collected:** Phone number, business name, location, availability, performance metrics, earnings.
 - **Data storage:** All records stored in Firebase Firestore with role-based access control. User data and provider data are stored in separate collections with no cross-collection public access.
-- **Location data:** GPS coordinates are used only for distance calculation and are not shared with third parties beyond the Google Maps API call. Coordinates are not stored in plain text after the booking is confirmed; only the human-readable address is retained.
-- **Notification data:** In the prototype, notifications are simulated entirely in-app and no phone numbers are passed to any external notification service. Production deployment would use Twilio/WhatsApp Business API with appropriate data handling agreements.
+- **Location data:** GPS coordinates are used only for local distance calculation and are not shared with third-party Maps APIs. Coordinates are not stored in plain text after the booking is confirmed; only the human-readable address is retained.
+- **Notification data:** Notifications are simulated entirely in-app and no phone numbers are passed to any external notification service.
 - **Data retention:** Booking records retained for 12 months; dispute records retained for 24 months for compliance. User accounts and provider profiles retained until deletion is requested.
 - **Third-party APIs:** Firebase and Google Cloud services each have their own privacy policies. Users are informed of this at onboarding.
 - **No advertising:** User data and provider data are not used for advertising or sold to third parties.
@@ -802,8 +790,8 @@ For reference, if this were deployed at scale with real APIs:
 - **No real payment processing:** Payments are simulated. Production would require PCI-compliant payment gateway integration (e.g., JazzCash, EasyPaisa, Stripe).
 - **Mock provider dataset:** The 50–200 provider dataset is synthetic. Real deployment requires a provider onboarding pipeline with identity verification.
 - **GPS simulation:** En-route provider tracking uses linear interpolation, not live GPS. Real deployment would require a provider-side mobile SDK with background location permission.
-- **Haversine distance accuracy:** The prototype uses Haversine straight-line distance with an estimated travel speed of 30 km/h. This approximates travel time but does not account for traffic, road layout, or one-way streets. Production deployment would replace this with the Google Maps Distance Matrix API.
-- **No real notifications:** SMS and WhatsApp notifications are simulated as in-app toasts/modals. Production would require Twilio account + WhatsApp Business API approval from Meta (a multi-week process).
+- **Haversine distance accuracy:** The prototype uses Haversine straight-line distance with an estimated travel speed of 30 km/h. This approximates travel time but does not account for traffic, road layout, or one-way streets.
+- **No external notification gateways:** Notifications are simulated as in-app toasts/modals to keep the prototype fully free-tier and local-first.
 - **Antigravity availability:** The system's core reasoning capability is dependent on Google Antigravity's uptime and API quota. No non-Antigravity fallback orchestrator exists in v1.
 - **Gemini free tier rate limits:** Gemini 1.5 Flash free tier allows 15 requests/minute. Under concurrent load (e.g., multiple simultaneous bookings), requests may be queued. A retry-with-backoff strategy is implemented.
 - **Urdu NLU accuracy:** While Gemini handles multilingual input well, highly dialectal or heavily slang-laden input may still produce low-confidence parses requiring manual confirmation.
