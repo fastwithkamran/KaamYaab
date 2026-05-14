@@ -48,7 +48,7 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCX0lQaNZFHXlwDS8aM3Yz3yLNBrQRkHiw"/>
+            android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
 
         <!-- Firebase Cloud Messaging -->
         <service

@@ -7,12 +7,18 @@ Extracts structured intent from multilingual user input
 """
 
 import json
+import logging
+import os
 import re
 import google.generativeai as genai
 
-# Configure Gemini
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
-model = genai.GenerativeModel("gemini-1.5-pro")
+logger = logging.getLogger(__name__)
+
+_gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+model = None
+if _gemini_api_key:
+    genai.configure(api_key=_gemini_api_key)
+    model = genai.GenerativeModel("gemini-1.5-pro")
 
 INTENT_PROMPT = """
 You are the Intent Agent for KhidmatGaar, an AI service orchestrator for Pakistan's informal economy.
@@ -142,7 +148,7 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
     Main entry point for the Intent Agent.
     Returns structured intent with confidence score.
     """
-    if use_gemini:
+    if use_gemini and model is not None:
         try:
             prompt = INTENT_PROMPT.format(raw_input=raw_input)
             response = model.generate_content(
@@ -160,7 +166,9 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
             result["model"] = "gemini-1.5-pro"
             return result
         except Exception as e:
-            print(f"[IntentAgent] Gemini failed: {e} — using fast_parse fallback")
+            logger.warning("[IntentAgent] Gemini failed: %s — using fast_parse fallback", e)
+    elif use_gemini and model is None:
+        logger.info("[IntentAgent] GEMINI_API_KEY not set — using fast_parse fallback")
 
     result = fast_parse(raw_input)
     result["agent"] = "IntentAgent"

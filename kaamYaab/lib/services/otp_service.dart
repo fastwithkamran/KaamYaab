@@ -1,5 +1,5 @@
 import 'dart:math';
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// OTP (One-Time Password) service for phone verification.
 ///
@@ -20,11 +20,11 @@ class OtpService {
   Future<String?> sendOtp(String phone) async {
     final code = _generateCode();
     final expiry = DateTime.now()
-        .add(Duration(seconds: EnvConfig.otpExpirySeconds));
+        .add(Duration(seconds: RuntimeConfig.otpExpirySeconds));
 
     _otpStore[phone] = _OtpRecord(code: code, expiry: expiry);
 
-    if (EnvConfig.smsEnabled) {
+    if (RuntimeConfig.smsEnabled) {
       // TODO: Replace with real SMS call
       // await _sendViaTwilio(phone, code);
       return null; // Production: don't reveal OTP
