@@ -1,6 +1,6 @@
 /// Centralized runtime config loaded via `--dart-define` values.
-class EnvConfig {
-  const EnvConfig._();
+class RuntimeConfig {
+  const RuntimeConfig._();
 
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');

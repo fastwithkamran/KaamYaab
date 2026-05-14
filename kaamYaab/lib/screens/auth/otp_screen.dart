@@ -31,7 +31,7 @@ class _OtpScreenState extends State<OtpScreen> {
   bool _loading = false;
   bool _resending = false;
   String? _error;
-  int _countdown = EnvConfig.otpExpirySeconds;
+  int _countdown = RuntimeConfig.otpExpirySeconds;
   Timer? _timer;
   String _demoCode = '';
 
@@ -44,7 +44,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   void _startCountdown() {
     _timer?.cancel();
-    setState(() => _countdown = EnvConfig.otpExpirySeconds);
+    setState(() => _countdown = RuntimeConfig.otpExpirySeconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
       setState(() => _countdown--);

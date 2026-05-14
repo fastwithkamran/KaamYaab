@@ -7,7 +7,7 @@ class GeminiService {
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-  static String get _apiKey => EnvConfig.geminiApiKey;
+  static String get _apiKey => RuntimeConfig.geminiApiKey;
   static bool get _hasApiKey => _apiKey.trim().isNotEmpty;
 
   // â”€â”€â”€ Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
