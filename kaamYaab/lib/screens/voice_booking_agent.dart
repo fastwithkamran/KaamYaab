@@ -327,7 +327,7 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
       setState(() {
         _agentSteps.add(AgentStep(
           agentName: AgentIdentity.matching,
-          task: 'Ranking workers via 8-factor DNA',
+            task: 'Ranking workers via 10-factor matching',
           reasoning: 'Evaluating distance, rating, reliability, price, capacity...',
           toolCall: 'matcher.rank_providers()',
           status: AgentStepStatus.thinking,
@@ -832,4 +832,3 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
     );
   }
 }
-

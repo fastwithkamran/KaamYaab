@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       decision: 'Service: $serviceType | Area: $area | Urgency: $urgency | Confidence: ${(confidence * 100).toInt()}%',
     );
 
-    if (confidence < 0.7) {
+    if (confidence < 0.75) {
       setState(() => _isSearching = false);
       _showClarificationDialog(
           intentResult['clarification_question'] as String? ??
@@ -164,8 +164,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // â”€â”€ Step 3: Matching Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _addStep(AgentStep(
       agentName: AgentIdentity.matching,
-      task: 'Ranking providers with 8-factor DNA algorithm',
-      reasoning: 'Scoring on-time rate, review recency, completion rate, skill match, cancellation risk, price fairness, dispute history, surge acceptance...',
+        task: 'Ranking providers with 10-factor matching algorithm',
+        reasoning: 'Scoring distance, availability, rating, review recency, reliability, specialization, price fit, cancellation risk, capacity, and preference match...',
       toolCall: 'matching_agent.rank(service=$serviceType, area=$area, surge=${_surgeMultiplier}x)',
       status: AgentStepStatus.thinking,
       timestamp: DateTime.now(),

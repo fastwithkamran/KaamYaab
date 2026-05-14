@@ -2,7 +2,7 @@
 KhidmatGaar — Matching Agent
 Google Antigravity Orchestrator | Challenge 2
 
-8-factor DNA scoring algorithm for provider ranking.
+README-aligned 10-factor scoring algorithm for provider ranking.
 Produces transparent rationale for every ranking decision.
 """
 
@@ -13,14 +13,16 @@ from typing import List, Dict, Any
 
 # ── DNA Score Weights ────────────────────────────────────────────────────────
 WEIGHTS = {
-    "on_time_reliability":   0.25,
-    "review_recency":        0.20,
-    "job_completion_rate":   0.15,
-    "skill_specialization":  0.15,
-    "cancellation_risk":     0.10,
-    "price_fairness":        0.08,
-    "dispute_history":       0.05,
-    "surge_acceptance":      0.02,
+    "distance_score": 0.12,
+    "availability_score": 0.15,
+    "rating_score": 0.12,
+    "review_recency_score": 0.08,
+    "reliability_score": 0.14,
+    "specialization_score": 0.15,
+    "price_fit_score": 0.08,
+    "cancellation_risk": 0.08,
+    "capacity_score": 0.04,
+    "user_preference_match": 0.04,
 }
 
 COMPLEXITY_MAP = {
@@ -52,77 +54,65 @@ def compute_dna_score(provider: Dict, intent: Dict, surge_mult: float = 1.0) -> 
     rationale_parts = []
     warnings = []
 
-    # Factor 1: On-Time Reliability (25%)
-    on_time = p.get("on_time_rate", 0.8)
-    breakdown["on_time_reliability"] = round(on_time * WEIGHTS["on_time_reliability"] * 100, 2)
-    if on_time >= 0.95:
-        rationale_parts.append(f"{int(on_time*100)}% on-time arrival rate")
-    elif on_time < 0.75:
-        warnings.append(f"⚠ Low on-time rate: {int(on_time*100)}%")
-
-    # Factor 2: Review Recency (20%)
+    distance_km = intent.get("_distance_km", 0.0)
+    preferred_time = intent.get("preferred_time", "flexible")
+    budget_sensitivity = float(intent.get("budget_sensitivity", 0.5))
     review_count = p.get("review_count", 0)
-    recency_score = min(1.0, review_count / 300.0)
-    breakdown["review_recency"] = round(recency_score * WEIGHTS["review_recency"] * 100, 2)
-    if review_count >= 200:
-        rationale_parts.append(f"{review_count} verified reviews")
-
-    # Factor 3: Job Completion Rate (15%)
-    total = p.get("total_jobs", 1)
-    completed = p.get("completed_jobs", 0)
-    completion = completed / total if total > 0 else 0
-    breakdown["job_completion_rate"] = round(completion * WEIGHTS["job_completion_rate"] * 100, 2)
-    if completion >= 0.95:
-        rationale_parts.append(f"{int(completion*100)}% completion rate")
-
-    # Factor 4: Skill Specialization Match (15%)
-    skills = p.get("skills", [])
-    exp_level = p.get("experience_level", "basic")
-    skill_score = COMPLEXITY_MAP.get(exp_level, 0.6)
-    # Bonus for many skills
-    if len(skills) >= 4:
-        skill_score = min(1.0, skill_score + 0.1)
-    breakdown["skill_specialization"] = round(skill_score * WEIGHTS["skill_specialization"] * 100, 2)
-    if exp_level == "complex":
-        rationale_parts.append("complex-level specialist")
-
-    # Factor 5: Cancellation Risk (10%) — lower cancellation = higher score
     cancel_rate = p.get("cancellation_rate", 0.1)
-    no_cancel_score = 1.0 - cancel_rate
-    breakdown["cancellation_risk"] = round(no_cancel_score * WEIGHTS["cancellation_risk"] * 100, 2)
-    if cancel_rate > 0.12:
-        warnings.append(f"⚠ {int(cancel_rate*100)}% cancellation rate")
-    elif cancel_rate <= 0.03:
-        rationale_parts.append("very low cancellation risk")
-
-    # Factor 6: Price Fairness (8%)
-    fairness = p.get("price_fairness_score", 0.8)
-    breakdown["price_fairness"] = round(fairness * WEIGHTS["price_fairness"] * 100, 2)
-    if fairness >= 0.92:
-        rationale_parts.append("consistently fair pricing")
-
-    # Factor 7: Dispute History (5%) — fewer disputes = higher score
     disputes = p.get("dispute_count", 0)
-    disp_score = max(0.0, 1.0 - (disputes / 15.0))
-    breakdown["dispute_history"] = round(disp_score * WEIGHTS["dispute_history"] * 100, 2)
+    rating = p.get("rating", 4.0)
+    on_time = p.get("on_time_rate", 0.8)
+
+    distance_score = 100 if distance_km <= 5 else max(0, 100 - ((distance_km - 5) / 25.0) * 100)
+    availability_score = 95 if preferred_time == "flexible" else 55
+    rating_score = max(0, min(100, (rating / 5.0) * 100))
+    review_recency_score = min(100, (review_count / 200.0) * 100)
+    reliability_score = max(0, min(100, on_time * 100))
+    exp_level = str(p.get("experience_level", "")).lower()
+    if exp_level == "complex":
+        # Temporary normalization while older seeded records are phased out.
+        # Remove once all sources emit "expert" / "advanced" only.
+        exp_level = "expert"
+    if exp_level in {"expert", "advanced"}:
+        specialization_bonus = 20
+    elif exp_level == "intermediate":
+        specialization_bonus = 10
+    else:
+        specialization_bonus = 0
+    specialization_score = 70 + specialization_bonus
+    specialization_score += 10 if len(p.get("skills", [])) >= 4 else 0
+    specialization_score = min(100, specialization_score)
+    rate_norm = min(1.0, p.get("base_rate_pkr", 1000) / 2000.0)
+    price_fit_score = (1 - rate_norm) * 100 if budget_sensitivity >= 0.75 else (0.6 + (1 - abs(rate_norm - 0.5))) * 62.5
+    cancellation_score = 0 if cancel_rate >= 0.25 else max(0, min(100, (1 - cancel_rate) * 100))
+    total_jobs = p.get("total_jobs", 0)
+    capacity_score = max(60, 100 - min(1.0, total_jobs / 500.0) * 40)
+    user_pref_score = 50 + (15 if disputes == 0 else 0) + (10 if review_count > 120 else 0)
+    user_pref_score = min(100, user_pref_score)
+
+    breakdown["distance_score"] = round(distance_score, 2)
+    breakdown["availability_score"] = round(availability_score, 2)
+    breakdown["rating_score"] = round(rating_score, 2)
+    breakdown["review_recency_score"] = round(review_recency_score, 2)
+    breakdown["reliability_score"] = round(reliability_score, 2)
+    breakdown["specialization_score"] = round(specialization_score, 2)
+    breakdown["price_fit_score"] = round(price_fit_score, 2)
+    breakdown["cancellation_risk"] = round(cancellation_score, 2)
+    breakdown["capacity_score"] = round(capacity_score, 2)
+    breakdown["user_preference_match"] = round(user_pref_score, 2)
+
+    if on_time >= 0.95:
+        rationale_parts.append(f"{int(on_time * 100)}% on-time arrival rate")
+    if cancel_rate <= 0.03:
+        rationale_parts.append("very low cancellation risk")
     if disputes == 0:
         rationale_parts.append("zero dispute history")
-    elif disputes > 5:
-        warnings.append(f"⚠ {disputes} past disputes")
-
-    # Factor 8: Surge Acceptance (2%)
-    surge_acceptor = p.get("surge_acceptor", False)
-    surge_bonus = 1.0 if (surge_mult > 1.2 and surge_acceptor) else 0.0
-    breakdown["surge_acceptance"] = round(surge_bonus * WEIGHTS["surge_acceptance"] * 100, 2)
-    if surge_bonus > 0:
-        rationale_parts.append("surge-ready provider")
-
-    raw_total = sum(breakdown.values())
-
-    # Verification bonus
     if p.get("is_verified", False):
-        raw_total = min(100, raw_total + 2)
         rationale_parts.append("verified identity")
+    if cancel_rate > 0.12:
+        warnings.append(f"⚠ {int(cancel_rate * 100)}% cancellation rate")
+
+    raw_total = sum(breakdown[k] * WEIGHTS[k] for k in WEIGHTS)
 
     rationale = " · ".join(rationale_parts)
     if warnings:
@@ -140,38 +130,47 @@ def calculate_quote(provider: Dict, intent: Dict, dist_km: float, surge_mult: fl
     """Generate dynamic price quote with transparent breakdown."""
     base = provider.get("base_rate_pkr", 1000)
     urgency = intent.get("urgency", "medium")
+    preferred_date = intent.get("preferred_date", "flexible")
+    preferred_time = intent.get("preferred_time", "flexible")
+    complexity = intent.get("job_complexity", "basic")
     budget_sensitivity = intent.get("budget_sensitivity", 0.5)
+    distance_charge = max(0, (dist_km - 5) * 15)
+    if complexity == "complex":
+        complexity_rate = 0.4
+    elif complexity == "intermediate":
+        complexity_rate = 0.2
+    else:
+        complexity_rate = 0.0
+    complexity_surcharge = base * complexity_rate
 
-    # Urgency adjustment
-    urgency_adj = 0
-    if urgency == "emergency":
-        urgency_adj = base * 0.30
-    elif urgency == "high":
-        urgency_adj = base * 0.15
-
-    # Distance cost
-    dist_cost = round(dist_km * 50)
-
-    # Surge adjustment
-    surge_adj = round((base + urgency_adj) * (surge_mult - 1.0))
-
-    # Loyalty discount (simulate: 0 for new user)
-    loyalty_discount = 0
-
-    total = base + urgency_adj + dist_cost + surge_adj - loyalty_discount
+    if preferred_date == "today" or urgency == "emergency":
+        urgency_adj = base * 0.25
+    elif preferred_date == "tomorrow" and preferred_time == "morning":
+        urgency_adj = base * 0.10
+    else:
+        urgency_adj = 0
+    demand_rate = max(0, min(0.35, surge_mult - 1.0))
+    demand_surge = (base + distance_charge + complexity_surcharge + urgency_adj) * demand_rate
+    loyalty_discount = base * 0.05
+    budget_adjustment = base * 0.05 if budget_sensitivity >= 0.75 else 0
+    total = base + distance_charge + complexity_surcharge + urgency_adj + demand_surge - loyalty_discount - budget_adjustment
 
     return {
         "base_pkr": base,
         "urgency_adj_pkr": round(urgency_adj),
-        "distance_cost_pkr": dist_cost,
-        "surge_adj_pkr": surge_adj,
+        "distance_cost_pkr": round(distance_charge),
+        "complexity_surcharge_pkr": round(complexity_surcharge),
+        "surge_adj_pkr": round(demand_surge),
         "surge_multiplier": surge_mult,
-        "loyalty_discount_pkr": loyalty_discount,
+        "loyalty_discount_pkr": round(loyalty_discount),
+        "budget_adjustment_pkr": round(budget_adjustment),
         "total_pkr": round(total),
         "is_negotiable": budget_sensitivity > 0.6,
         "breakdown_text": (
-            f"Base Rs.{base} + Urgency Rs.{round(urgency_adj)} + "
-            f"Distance Rs.{dist_cost} + Surge Rs.{surge_adj}"
+            f"Base Rs.{base} + Distance Rs.{round(distance_charge)} + "
+            f"Complexity Rs.{round(complexity_surcharge)} + Urgency Rs.{round(urgency_adj)} + "
+            f"Demand Rs.{round(demand_surge)} - Loyalty Rs.{round(loyalty_discount)} - "
+            f"Budget Rs.{round(budget_adjustment)}"
         ),
     }
 
@@ -190,8 +189,24 @@ def run(
     """
     service_type = intent.get("service_type", "Unknown")
 
-    # Step 1: Filter by service category
-    filtered = [p for p in providers if p.get("service_category") == service_type]
+    # Step 1: Filter by service category and policy override rules.
+    filtered = []
+    service_lower = service_type.lower()
+    for p in providers:
+        category = str(p.get("service_category", "")).lower()
+        same_service = (
+            category == service_lower or
+            ("ac" in service_lower and "ac" in category) or
+            ("plumb" in service_lower and "plumb" in category) or
+            ("electric" in service_lower and "electric" in category) or
+            ("clean" in service_lower and "clean" in category) or
+            ("tutor" in service_lower and "tutor" in category)
+        )
+        if not same_service:
+            continue
+        if p.get("dispute_count", 0) >= 3:
+            continue
+        filtered.append(p)
 
     if not filtered:
         return {
@@ -207,12 +222,12 @@ def run(
         dist = haversine(user_lat, user_lng, p["lat"], p["lng"])
         eta = round(dist * 6)  # ~6 min/km in city
 
-        dna = compute_dna_score(p, intent, surge_mult)
+        enriched_intent = dict(intent)
+        enriched_intent["_distance_km"] = dist
+        dna = compute_dna_score(p, enriched_intent, surge_mult)
         quote = calculate_quote(p, intent, dist, surge_mult)
 
-        # Distance penalty: deduct 0.5 per km beyond 3km
-        dist_penalty = max(0, (dist - 3) * 0.5)
-        final_score = max(0, dna["dna_score_computed"] - dist_penalty)
+        final_score = max(0, dna["dna_score_computed"])
 
         scored.append({
             "provider": p,
@@ -246,11 +261,10 @@ def run(
 # ── Antigravity Tool Definition ──────────────────────────────────────────────
 TOOL_DEFINITION = {
     "name": "matching_agent",
-    "description": (
-        "Ranks service providers using an 8-factor DNA Score algorithm. "
-        "Factors: on-time reliability (25%), review recency (20%), job completion rate (15%), "
-        "skill specialization (15%), cancellation risk (10%), price fairness (8%), "
-        "dispute history (5%), surge acceptance (2%). "
+        "description": (
+        "Ranks service providers using a 10-factor composite matching algorithm. "
+        "Factors: distance, availability, rating, review recency, reliability, specialization, "
+        "price fit, cancellation risk, capacity, and user preference match. "
         "Returns top-N ranked matches with score breakdown and human-readable rationale."
     ),
     "parameters": {

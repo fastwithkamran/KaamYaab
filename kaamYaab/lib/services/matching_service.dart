@@ -3,8 +3,15 @@ import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../services/auth_service.dart';
 
-/// Core matching engine - computes DNA-based provider ranking.
+/// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
+  static const double _maxReviewCountForScore = 200.0;
+  static const double _maxModeledBaseRatePkr = 2000.0;
+  static const double _maxDemandSurgeRate = 0.35; // README cap: 35%
+  static const double _priceFitBalanceBase = 0.6;
+  static const double _priceFitCenterRate = 0.5;
+  static const double _priceFitBalanceScale = 62.5;
+
   static List<ServiceProvider>? _allProviders;
 
   /// Load providers from AuthService (SharedPreferences, Firestore-ready).
@@ -37,7 +44,7 @@ class MatchingService {
         priceFairnessScore: 0.85,
         disputeCount: 0,
         surgeAcceptor: true,
-        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'complex' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
+        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'expert' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
         profileImage: '',
         lastActiveDate: DateTime.now().toIso8601String().substring(0, 10),
         dnascore: ((u.rating / 5.0) * 850 + 50).toInt().clamp(0, 1000),
@@ -60,19 +67,17 @@ class MatchingService {
   }) async {
     final providers = await loadProviders();
 
-    // Step 1: Filter by service category and prevent double-booking
-    // Hackathon Simulation: Provider with ID 'double_booked_123' or randomly a provider
-    // is currently booked in the requested time slot.
+    // Step 1: Filter by service category and policy overrides.
     final filtered = providers.where((p) {
-      if (p.serviceCategory.toLowerCase() != request.serviceType.toLowerCase()) return false;
-      // Simulate Scheduling Intelligence (Double booking prevention)
-      if (request.preferredTime == '10:00' && p.id.endsWith('1')) return false; // Simulated busy provider
+      if (!_serviceMatches(p.serviceCategory, request.serviceType)) return false;
+      if (p.disputeCount >= 3) return false; // README override: dispute-heavy providers excluded
+      if (request.preferredTime == '10:00' && p.id.endsWith('1')) return false; // simulated slot lock
       return true;
     }).toList();
 
     if (filtered.isEmpty) return [];
 
-    // Step 2: Score each provider using 8-factor DNA algorithm
+    // Step 2: Score each provider using README 10-factor algorithm.
     final scored = <ProviderMatch>[];
     for (final p in filtered) {
       final dist = _haversine(userLat, userLng, p.lat, p.lng);
@@ -80,8 +85,20 @@ class MatchingService {
       scored.add(match);
     }
 
-    // Step 3: Sort by match score descending
-    scored.sort((a, b) => b.matchScore.compareTo(a.matchScore));
+    // Step 3: Sort by score and README tie-breakers.
+    scored.sort((a, b) {
+      final scoreCompare = b.matchScore.compareTo(a.matchScore);
+      if (scoreCompare != 0) return scoreCompare;
+
+      final onTimeCompare = b.provider.onTimeRate.compareTo(a.provider.onTimeRate);
+      if (onTimeCompare != 0) return onTimeCompare;
+
+      final cancelCompare =
+          a.provider.cancellationRate.compareTo(b.provider.cancellationRate);
+      if (cancelCompare != 0) return cancelCompare;
+
+      return b.provider.reviewCount.compareTo(a.provider.reviewCount);
+    });
 
     return scored.take(5).toList();
   }
@@ -92,52 +109,42 @@ class MatchingService {
     double distKm,
     double surge,
   ) {
-    // Factor 1: On-Time Reliability (25%)
-    final onTime = p.onTimeRate * 25.0;
+    final distanceScore = _distanceScore(distKm);
+    final availabilityScore = _availabilityScore(p, req.preferredTime);
+    final ratingScore = (p.rating / 5.0) * 100.0;
+    final reviewRecencyScore =
+        (p.reviewCount / _maxReviewCountForScore).clamp(0.0, 1.0) * 100.0;
+    final reliabilityScore = p.onTimeRate * 100.0;
+    final specializationScore = _specializationScore(p, req);
+    final priceFitScore = _priceFitScore(p, req.budgetSensitivity);
+    final cancellationRiskScore = _cancellationRiskScore(p);
+    final capacityScore = _capacityScore(p);
+    final userPreferenceScore = _userPreferenceScore(p, req);
 
-    // Factor 2: Review Recency (20%)
-    final recency = (p.reviewCount > 100 ? 1.0 : p.reviewCount / 100.0) * 20.0;
-
-    // Factor 3: Job Completion Rate (15%)
-    final completion = p.completionRate * 15.0;
-
-    // Factor 4: Skill Specialization (15%)
-    final skillMatch = _skillMatch(p, req.serviceType) * 15.0;
-
-    // Factor 5: Cancellation Risk (10%)
-    final cancelPenalty = (1.0 - p.cancellationRate) * 10.0;
-
-    // Factor 6: Price Fairness (8%)
-    final fairness = p.priceFairnessScore * 8.0;
-
-    // Factor 7: Dispute History (5%)
-    final dispPenalty = (1.0 - (p.disputeCount / 20.0).clamp(0, 1)) * 5.0;
-
-    // Factor 8: Surge Acceptance (2%)
-    final surgeBonus = (surge > 1.2 && p.surgeAcceptor) ? 2.0 : 0.0;
-
-    // Job Complexity Match (penalty if under-qualified)
-    double complexityPenalty = 0.0;
-    if (req.jobComplexity == 'complex' && p.experienceLevel == 'basic') complexityPenalty = 15.0;
-    if (req.jobComplexity == 'complex' && p.experienceLevel == 'intermediate') complexityPenalty = 5.0;
-    if (req.jobComplexity == 'intermediate' && p.experienceLevel == 'basic') complexityPenalty = 5.0;
-
-    // Distance penalty
-    final distPenalty = (distKm > 5 ? (distKm - 5) * 0.5 : 0.0);
-
-    final raw = onTime + recency + completion + skillMatch +
-                cancelPenalty + fairness + dispPenalty + surgeBonus - distPenalty - complexityPenalty;
-    final score = raw.clamp(0.0, 100.0);
+    final score = (
+      distanceScore * 0.12 +
+      availabilityScore * 0.15 +
+      ratingScore * 0.12 +
+      reviewRecencyScore * 0.08 +
+      reliabilityScore * 0.14 +
+      specializationScore * 0.15 +
+      priceFitScore * 0.08 +
+      cancellationRiskScore * 0.08 +
+      capacityScore * 0.04 +
+      userPreferenceScore * 0.04
+    ).clamp(0.0, 100.0);
 
     final breakdown = {
-      'on_time_reliability': onTime,
-      'review_recency': recency,
-      'job_completion': completion,
-      'skill_match': skillMatch,
-      'cancellation_risk': cancelPenalty,
-      'price_fairness': fairness,
-      'dispute_history': dispPenalty,
-      'surge_acceptance': surgeBonus,
+      'distance_score': distanceScore,
+      'availability_score': availabilityScore,
+      'rating_score': ratingScore,
+      'review_recency_score': reviewRecencyScore,
+      'reliability_score': reliabilityScore,
+      'specialization_score': specializationScore,
+      'price_fit_score': priceFitScore,
+      'cancellation_risk': cancellationRiskScore,
+      'capacity_score': capacityScore,
+      'user_preference_match': userPreferenceScore,
     };
 
     final quote = _calculateQuote(p, req, distKm, surge);
@@ -157,41 +164,27 @@ class MatchingService {
     );
   }
 
-  static double _skillMatch(ServiceProvider p, String service) {
-    if (p.skills.length >= 4) return 1.0;
-    if (p.skills.length == 3) return 0.85;
-    if (p.skills.length == 2) return 0.7;
-    return 0.5;
-  }
-
   static double _calculateQuote(
       ServiceProvider p, ServiceRequest req, double dist, double surge) {
-    double base = p.baseRatePkr;
-    
-    // 1. Urgency
-    final urgencyAdj = req.urgency == 'emergency'
-        ? base * 0.3
-        : req.urgency == 'high'
-            ? base * 0.15
-            : 0.0;
-            
-    // 2. Distance
-    final distCost = dist * 50;
-    
-    // 3. Complexity Premium
-    double complexityPremium = 0.0;
-    if (req.jobComplexity == 'complex') complexityPremium = base * 0.25;
-    else if (req.jobComplexity == 'intermediate') complexityPremium = base * 0.10;
-    
-    // 4. Surge
-    final surgeAdj = (base + urgencyAdj + complexityPremium) * (surge - 1.0);
-    
-    // 5. Loyalty Discount (Simulated for Hackathon: 5% off if user is repeat)
-    // We simulate repeat customer logic randomly or based on request
-    final isRepeat = true; // Simulated
-    final loyaltyDiscount = isRepeat ? (base * 0.05) : 0.0;
-    
-    return (base + urgencyAdj + distCost + complexityPremium + surgeAdj - loyaltyDiscount).roundToDouble();
+    final base = p.baseRatePkr;
+    final distanceCharge = dist > 5 ? (dist - 5) * 15 : 0.0;
+    final complexitySurcharge = _complexityRate(req.jobComplexity) * base;
+    final urgencyPremium = _urgencyPremiumRate(req) * base;
+    final demandSurgeRate = (surge - 1.0).clamp(0.0, _maxDemandSurgeRate);
+    final demandSurge =
+        (base + distanceCharge + complexitySurcharge + urgencyPremium) *
+            demandSurgeRate;
+    final loyaltyDiscount = base * 0.05;
+    final budgetAdjustment = req.budgetSensitivity >= 0.75 ? base * 0.05 : 0.0;
+
+    return (base +
+            distanceCharge +
+            complexitySurcharge +
+            urgencyPremium +
+            demandSurge -
+            loyaltyDiscount -
+            budgetAdjustment)
+        .roundToDouble();
   }
 
   static String _buildRationale(ServiceProvider p, double score, double dist, double surge) {
@@ -206,6 +199,116 @@ class MatchingService {
     if (p.cancellationRate > 0.1) parts.add('higher cancellation rate');
     if (p.disputeCount > 5) parts.add('multiple past disputes');
     return parts.isEmpty ? 'Good overall match.' : parts.join(' · ');
+  }
+
+  static bool _serviceMatches(String providerCategory, String serviceType) {
+    final provider = providerCategory.toLowerCase();
+    final service = serviceType.toLowerCase();
+    if (provider == service) return true;
+    if (service.contains('ac') && provider.contains('ac')) return true;
+    if (service.contains('plumb') && provider.contains('plumb')) return true;
+    if (service.contains('electric') && provider.contains('electric')) return true;
+    if (service.contains('clean') && provider.contains('clean')) return true;
+    if (service.contains('tutor') && provider.contains('tutor')) return true;
+    return false;
+  }
+
+  static double _distanceScore(double distKm) {
+    if (distKm <= 5) return 100;
+    if (distKm >= 30) return 0;
+    return (100 - ((distKm - 5) / 25.0) * 100).clamp(0.0, 100.0);
+  }
+
+  static double _availabilityScore(ServiceProvider p, String preferredTime) {
+    if (preferredTime == 'flexible') return 95;
+    final hasSlot = p.availableSlots.any((slot) => slot.contains(preferredTime));
+    return hasSlot ? 95 : 55;
+  }
+
+  static double _specializationScore(ServiceProvider p, ServiceRequest req) {
+    var score = 55.0;
+    if (_serviceMatches(p.serviceCategory, req.serviceType)) score += 20;
+    if (p.skills.length >= 4) score += 15;
+    if (_meetsComplexityRequirement(p, req.jobComplexity)) score += 10;
+    return score.clamp(0.0, 100.0);
+  }
+
+  static bool _meetsComplexityRequirement(ServiceProvider p, String complexity) {
+    final expRank = _experienceRank(p.experienceLevel);
+    if (complexity == 'complex') {
+      return expRank >= 2 || p.certifications.isNotEmpty;
+    }
+    if (complexity == 'intermediate') {
+      return expRank >= 1;
+    }
+    return true;
+  }
+
+  static int _experienceRank(String experienceLevel) {
+    switch (experienceLevel.toLowerCase()) {
+      case 'expert':
+      case 'advanced': // accepted alias for external/legacy datasets
+        return 2;
+      case 'intermediate':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
+    // Score formula:
+    // (_priceFitBalanceBase + (1 - abs(rate - _priceFitCenterRate))) * _priceFitBalanceScale
+    // With defaults this yields:
+    // - rate=0.5 => (0.6 + 1.0) * 62.5 = 100
+    // - rate=0.0 or 1.0 => (0.6 + 0.5) * 62.5 = 68.75
+    // Tuned so:
+    // - median-priced providers (~centerRate) score near 100 for flexible users
+    // - very high/very low rates still retain a meaningful mid-band score
+    // - output range stays close to 35..100 for non-budget-constrained flows
+    final normalizedRate =
+        (p.baseRatePkr / _maxModeledBaseRatePkr).clamp(0.0, 1.0);
+    if (budgetSensitivity >= 0.75) return (1 - normalizedRate) * 100;
+    return (_priceFitBalanceBase +
+            (1 - (normalizedRate - _priceFitCenterRate).abs())) *
+        _priceFitBalanceScale;
+  }
+
+  static double _cancellationRiskScore(ServiceProvider p) {
+    if (p.cancellationRate >= 0.25) return 0;
+    return ((1 - p.cancellationRate) * 100).clamp(0.0, 100.0);
+  }
+
+  static double _capacityScore(ServiceProvider p) {
+    final load = (p.totalJobs / 500.0).clamp(0.0, 1.0);
+    return (100 - (load * 40)).clamp(60.0, 100.0);
+  }
+
+  static double _userPreferenceScore(ServiceProvider p, ServiceRequest req) {
+    var score = 50.0;
+    if (req.budgetSensitivity < 0.4 && p.rating >= 4.5) score += 25;
+    if (p.disputeCount == 0) score += 15;
+    if (p.reviewCount > 120) score += 10;
+    return score.clamp(0.0, 100.0);
+  }
+
+  static double _complexityRate(String complexity) {
+    switch (complexity) {
+      case 'complex':
+        return 0.40;
+      case 'intermediate':
+        return 0.20;
+      default:
+        return 0.0;
+    }
+  }
+
+  static double _urgencyPremiumRate(ServiceRequest req) {
+    if (req.preferredDate == 'today' || req.urgency == 'emergency') return 0.25;
+    if (req.preferredDate == 'tomorrow' && req.preferredTime == 'morning') {
+      return 0.10;
+    }
+    return 0.0;
   }
 
   /// Haversine formula for distance between two lat/lng points in km.
