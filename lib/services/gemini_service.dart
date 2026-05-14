@@ -11,6 +11,7 @@ class GeminiService {
   static final String _apiKey = RuntimeConfig.geminiApiKey.trim();
   static bool get _hasApiKey => _apiKey.isNotEmpty;
   static const int _maxRetries = 3;
+  static const int _maxBackoffSeconds = 4;
 
   // â”€â”€â”€ Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static Future<Map<String, dynamic>> extractIntent(String rawInput) async {
@@ -294,7 +295,7 @@ Analyze and return JSON:
         return response;
       }
 
-      final delaySeconds = pow(2, retry).toInt();
+      final delaySeconds = min(_maxBackoffSeconds, pow(2, retry).toInt());
       await Future.delayed(Duration(seconds: max(1, delaySeconds)));
     }
     return lastResponse ??
