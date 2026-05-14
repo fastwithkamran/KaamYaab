@@ -3,11 +3,8 @@ import '../config/runtime_config.dart';
 
 /// OTP (One-Time Password) service for phone verification.
 ///
-/// In DEMO MODE (no SMS_API_KEY set): generates OTP locally and returns it
-/// so the UI can display it to the user for testing.
-///
-/// In PRODUCTION: integrate Twilio/Vonage/Firebase Phone Auth by replacing
-/// the [sendOtp] method body.
+/// Generates OTP locally and returns it so the UI can display it to the user
+/// for testing. No external SMS provider is used.
 class OtpService {
   static final OtpService _instance = OtpService._();
   factory OtpService() => _instance;
@@ -15,8 +12,7 @@ class OtpService {
 
   final Map<String, _OtpRecord> _otpStore = {};
 
-  /// Sends (or simulates) an OTP to [phone].
-  /// Returns the OTP code in demo mode, or null in production.
+  /// Sends an OTP to [phone] using in-app simulation.
   Future<String?> sendOtp(String phone) async {
     final code = _generateCode();
     final expiry = DateTime.now()
@@ -24,13 +20,6 @@ class OtpService {
 
     _otpStore[phone] = _OtpRecord(code: code, expiry: expiry);
 
-    if (RuntimeConfig.smsEnabled) {
-      // TODO: Replace with real SMS call
-      // await _sendViaTwilio(phone, code);
-      return null; // Production: don't reveal OTP
-    }
-
-    // DEMO MODE: return OTP so UI can display it
     await Future.delayed(const Duration(milliseconds: 800)); // Simulate network
     return code;
   }
