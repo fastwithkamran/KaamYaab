@@ -41,10 +41,10 @@ A complete **Flutter mobile app** for AI-orchestrated home services in Pakistan 
 
 ## 🔑 Deployment Credentials
 
-### ✅ Gemini API Key (LIVE)
+### ✅ Gemini API Key Configuration
 ```
 Model:   gemini-1.5-flash
-Key:     AIzaSyAw_tBxhumpAoyAUDfz6-AVe3MZ6786JFM
+Key:     [REMOVED - configure via GEMINI_API_KEY environment variable]
 File:    lib/services/gemini_service.dart
 ```
 
