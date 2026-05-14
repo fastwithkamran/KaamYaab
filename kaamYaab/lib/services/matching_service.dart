@@ -37,7 +37,7 @@ class MatchingService {
         priceFairnessScore: 0.85,
         disputeCount: 0,
         surgeAcceptor: true,
-        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'complex' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
+        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'advanced' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
         profileImage: '',
         lastActiveDate: DateTime.now().toIso8601String().substring(0, 10),
         dnascore: ((u.rating / 5.0) * 850 + 50).toInt().clamp(0, 1000),
@@ -240,8 +240,6 @@ class MatchingService {
     switch (experienceLevel.toLowerCase()) {
       case 'expert':
       case 'advanced':
-      // Backward compatibility with existing seeded worker data.
-      case 'complex':
         return 2;
       case 'intermediate':
         return 1;
@@ -252,9 +250,11 @@ class MatchingService {
 
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
     // Balanced mode constants:
-    // - balanceBase: minimum score floor for non-budget-constrained users.
-    // - centerRate: normalized "middle" price point (50% of max modeled rate).
-    // - balanceScale: converts blended normalized value to a 0..100-like range.
+    // Score formula: (balanceBase + (1 - abs(rate - centerRate))) * balanceScale
+    // Tuned so:
+    // - median-priced providers (~centerRate) score near 100 for flexible users
+    // - very high/very low rates still retain a meaningful mid-band score
+    // - output range stays close to 35..100 for non-budget-constrained flows
     const balanceBase = 0.6;
     const centerRate = 0.5;
     const balanceScale = 62.5;
