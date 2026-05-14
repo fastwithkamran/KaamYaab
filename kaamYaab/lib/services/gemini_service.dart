@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config/env_config.dart';
+import '../config/runtime_config.dart';
 
 /// Bridges Flutter app to the Gemini 1.5 Flash API for all AI agent operations.
 class GeminiService {
