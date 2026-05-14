@@ -136,6 +136,7 @@ class LocationService {
 
   LocationData _toLocationData(double lat, double lng) {
     final address = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+    // Reverse geocoding is intentionally disabled to avoid external Places/Maps API usage.
     return LocationData(
       latitude: lat,
       longitude: lng,

@@ -3,6 +3,9 @@ import 'package:geolocator/geolocator.dart';
 
 import '../theme/app_theme.dart';
 
+const _defaultLat = 31.5497;
+const _defaultLng = 74.3436;
+
 class LocationResult {
   final double latitude;
   final double longitude;
@@ -40,10 +43,10 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   void initState() {
     super.initState();
     _latCtrl = TextEditingController(
-      text: (widget.initialLatitude ?? 31.5497).toStringAsFixed(6),
+      text: (widget.initialLatitude ?? _defaultLat).toStringAsFixed(6),
     );
     _lngCtrl = TextEditingController(
-      text: (widget.initialLongitude ?? 74.3436).toStringAsFixed(6),
+      text: (widget.initialLongitude ?? _defaultLng).toStringAsFixed(6),
     );
   }
 
