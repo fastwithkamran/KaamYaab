@@ -810,7 +810,7 @@ To make Antigravity usage auditable during judging, provide all three artifacts 
 
 1. **Trace Artifact (`antigravity_traces.json`)**
    - Generate via:
-     - `python3 /home/runner/work/Hackathon_Project/Hackathon_Project/functions/tests/export_traces.py`
+     - `python3 functions/tests/export_traces.py`
    - This file includes:
      - `antigravity_metadata.platform = "Google Antigravity"`
      - Full step-by-step agent decisions, tool calls, and outputs
@@ -818,7 +818,7 @@ To make Antigravity usage auditable during judging, provide all three artifacts 
 
 2. **Stress-Test Evidence (`stress_test_report.json`)**
    - Generate via:
-     - `python3 /home/runner/work/Hackathon_Project/Hackathon_Project/functions/tests/stress_test.py`
+     - `python3 functions/tests/stress_test.py`
    - Shows pass/fail behavior across required edge cases and end-to-end booking simulation.
 
 3. **Live Demo Evidence**
