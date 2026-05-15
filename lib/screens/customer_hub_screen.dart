@@ -486,14 +486,6 @@ class _SupportTab extends StatelessWidget {
           color: const Color(0xFF25D366),
           onTap: () {},
         ),
-        _SupportTile(
-          emoji: '📧',
-          title: _t('Email Us', 'ای میل کریں'),
-          subtitle: 'support@kaamyaab.pk',
-          color: AppTheme.blueInfo,
-          onTap: () {},
-        ),
-
         const SizedBox(height: 24),
         _SectionTitle(title: _t('FAQ', 'عام سوالات')),
         _FaqTile(

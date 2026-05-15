@@ -140,147 +140,157 @@ class _OtpScreenState extends State<OtpScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                  padding: EdgeInsets.zero,
-                ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                          padding: EdgeInsets.zero,
+                        ),
 
-                const SizedBox(height: 40),
+                        const SizedBox(height: 40),
 
-                // Icon
-                Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.tealGlow,
+                        // Icon
+                        Center(
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              shape: BoxShape.circle,
+                              boxShadow: AppTheme.tealGlow,
+                            ),
+                            child: const Icon(Icons.sms_outlined, color: Colors.white, size: 36),
+                          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        Center(
+                          child: Column(children: [
+                            const Text('Verify Your Number',
+                                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 8),
+                            Text(
+                              'We sent a 6-digit code to\n$maskedPhone',
+                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                          ]),
+                        ).animate().fadeIn(delay: 200.ms),
+
+                        // Demo mode banner
+                        if (_demoCode.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [
+                                AppTheme.goldAccent.withValues(alpha: 0.15),
+                                AppTheme.goldAccent.withValues(alpha: 0.05),
+                              ]),
+                              borderRadius: AppTheme.radiusMd,
+                              border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(children: [
+                              const Text('⚡', style: TextStyle(fontSize: 20)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  const Text('Demo Mode — Your OTP',
+                                      style: TextStyle(color: AppTheme.goldAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 2),
+                                  Text(_demoCode,
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 22,
+                                          fontWeight: FontWeight.w800, letterSpacing: 6)),
+                                   const Text('(In-app OTP simulation active)',
+                                       style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                                ]),
+                              ),
+                            ]),
+                          ).animate().fadeIn(delay: 300.ms),
+                        ],
+
+                        const SizedBox(height: 36),
+
+                        // OTP digit inputs
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(6, (i) => _DigitBox(
+                            controller: _ctrls[i],
+                            focusNode: _nodes[i],
+                            onChanged: (v) => _onDigitEntered(i, v),
+                            hasError: _error != null,
+                          )),
+                        ).animate().fadeIn(delay: 400.ms),
+
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Text(_error!,
+                                style: const TextStyle(color: AppTheme.redError, fontSize: 13),
+                                textAlign: TextAlign.center),
+                          ).animate().shake(duration: 400.ms),
+                        ],
+
+                        const SizedBox(height: 28),
+
+                        // Verify button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _loading ? null : _verify,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.tealPrimary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
+                              elevation: 0,
+                            ),
+                            child: _loading
+                                ? const SizedBox(width: 22, height: 22,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Text('Verify & Continue',
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Countdown + resend
+                        Center(
+                          child: _countdown > 0
+                              ? Text('Resend code in ${_countdown}s',
+                                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 13))
+                              : TextButton(
+                                  onPressed: _resending ? null : _resend,
+                                  child: _resending
+                                      ? const SizedBox(width: 16, height: 16,
+                                          child: CircularProgressIndicator(color: AppTheme.tealPrimary, strokeWidth: 2))
+                                      : const Text('Resend Code',
+                                          style: TextStyle(color: AppTheme.tealPrimary,
+                                              fontWeight: FontWeight.w600, fontSize: 14)),
+                                ),
+                        ),
+
+                        const Spacer(),
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                    child: const Icon(Icons.sms_outlined, color: Colors.white, size: 36),
-                  ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-                ),
-
-                const SizedBox(height: 28),
-
-                Center(
-                  child: Column(children: [
-                    const Text('Verify Your Number',
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'We sent a 6-digit code to\n$maskedPhone',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ]),
-                ).animate().fadeIn(delay: 200.ms),
-
-                // Demo mode banner
-                if (_demoCode.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        AppTheme.goldAccent.withValues(alpha: 0.15),
-                        AppTheme.goldAccent.withValues(alpha: 0.05),
-                      ]),
-                      borderRadius: AppTheme.radiusMd,
-                      border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5)),
-                    ),
-                    child: Row(children: [
-                      const Text('⚡', style: TextStyle(fontSize: 20)),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('Demo Mode — Your OTP',
-                              style: TextStyle(color: AppTheme.goldAccent, fontSize: 12, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(_demoCode,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 22,
-                                  fontWeight: FontWeight.w800, letterSpacing: 6)),
-                           const Text('(In-app OTP simulation active)',
-                               style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                        ]),
-                      ),
-                    ]),
-                  ).animate().fadeIn(delay: 300.ms),
-                ],
-
-                const SizedBox(height: 36),
-
-                // OTP digit inputs
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (i) => _DigitBox(
-                    controller: _ctrls[i],
-                    focusNode: _nodes[i],
-                    onChanged: (v) => _onDigitEntered(i, v),
-                    hasError: _error != null,
-                  )),
-                ).animate().fadeIn(delay: 400.ms),
-
-                if (_error != null) ...[
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Text(_error!,
-                        style: const TextStyle(color: AppTheme.redError, fontSize: 13),
-                        textAlign: TextAlign.center),
-                  ).animate().shake(duration: 400.ms),
-                ],
-
-                const SizedBox(height: 28),
-
-                // Verify button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _verify,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.tealPrimary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
-                      elevation: 0,
-                    ),
-                    child: _loading
-                        ? const SizedBox(width: 22, height: 22,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Verify & Continue',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Countdown + resend
-                Center(
-                  child: _countdown > 0
-                      ? Text('Resend code in ${_countdown}s',
-                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 13))
-                      : TextButton(
-                          onPressed: _resending ? null : _resend,
-                          child: _resending
-                              ? const SizedBox(width: 16, height: 16,
-                                  child: CircularProgressIndicator(color: AppTheme.tealPrimary, strokeWidth: 2))
-                              : const Text('Resend Code',
-                                  style: TextStyle(color: AppTheme.tealPrimary,
-                                      fontWeight: FontWeight.w600, fontSize: 14)),
-                        ),
-                ),
-
-                const SizedBox(height: 40),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
