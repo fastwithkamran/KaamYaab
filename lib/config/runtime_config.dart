@@ -9,5 +9,5 @@ class RuntimeConfig {
       String.fromEnvironment('SUPER_ADMIN_PHONE', defaultValue: '03000000000');
 
   static const int otpExpirySeconds =
-      int.fromEnvironment('OTP_EXPIRY_SECONDS', defaultValue: 120);
+      int.fromEnvironment('OTP_EXPIRY_SECONDS', defaultValue: 150);
 }
