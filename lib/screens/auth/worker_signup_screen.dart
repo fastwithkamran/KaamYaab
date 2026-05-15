@@ -165,7 +165,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
     final sendResult = await OtpService().sendOtp(_phoneCtrl.text.trim());
     if (!mounted) return;
     setState(() => _loading = false);
-    if (!sendResult.success && sendResult.demoCode == null) {
+    if (sendResult.hasFatalError) {
       _showError(sendResult.errorMessage ?? 'Could not send OTP.');
       return;
     }
