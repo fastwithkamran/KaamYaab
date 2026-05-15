@@ -146,7 +146,6 @@ class OtpService {
           if (e.code == 'session-expired') {
             return OtpResult.expired;
           }
-          if (e.code == 'invalid-verification-code') return OtpResult.invalid;
           return OtpResult.invalid;
         } catch (_) {
           return OtpResult.invalid;
@@ -276,15 +275,6 @@ class OtpSendResult {
           demoCode: fallbackCode,
           errorMessage: message,
         );
-
-  OtpSendResult copyWithFallback(String code) {
-    return OtpSendResult._(
-      success: success,
-      isMock: true,
-      demoCode: code,
-      errorMessage: errorMessage,
-    );
-  }
 
   bool get hasFatalError => !success && demoCode == null;
 }
