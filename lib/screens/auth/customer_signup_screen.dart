@@ -122,9 +122,13 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                   AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
                     prefixIcon: Icons.phone_outlined, accentColor: AppTheme.tealPrimary,
                     keyboardType: TextInputType.phone,
+                    inputFormatters: pakistanPhoneInputFormatters,
+                    maxLength: 11,
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Phone is required';
-                      if (v.length < 10) return 'Enter a valid phone number';
+                      if (!pakistanPhoneRegex.hasMatch(v)) {
+                        return 'Enter a valid 11-digit number starting with 03';
+                      }
                       return null;
                     }),
                   const SizedBox(height: 16),
