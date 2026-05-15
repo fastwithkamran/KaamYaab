@@ -143,9 +143,10 @@ class OtpService {
           _firebaseStore.remove(normalized);
           return OtpResult.verified;
         } on FirebaseAuthException catch (e) {
-          if (e.code == 'session-expired' || e.code == 'invalid-verification-code') {
+          if (e.code == 'session-expired') {
             return OtpResult.expired;
           }
+          if (e.code == 'invalid-verification-code') return OtpResult.invalid;
           return OtpResult.invalid;
         } catch (_) {
           return OtpResult.invalid;
@@ -200,7 +201,7 @@ class OtpService {
   }
 
   bool _isValidE164Digits(String digits) =>
-      digits.length >= 10 && digits.length <= 15;
+      digits.length >= _minE164Digits && digits.length <= _maxE164Digits;
 
   String _firebaseErrorToMessage(FirebaseAuthException e) {
     switch (e.code) {
@@ -209,7 +210,7 @@ class OtpService {
       case 'too-many-requests':
         return 'Too many OTP attempts. Please wait and try again.';
       case 'quota-exceeded':
-        return 'SMS quota exceeded on Firebase project. Try later.';
+        return 'SMS quota exceeded on Firebase project. Please try again later.';
       default:
         return 'Could not send OTP right now. Please try again.';
     }
@@ -289,3 +290,5 @@ class OtpSendResult {
 }
 
 enum OtpResult { verified, invalid, expired, noRecord }
+  static const int _minE164Digits = 10;
+  static const int _maxE164Digits = 15;
