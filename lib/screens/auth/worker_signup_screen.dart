@@ -250,11 +250,11 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
                   AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
                       prefixIcon: Icons.phone_outlined, accentColor: AppTheme.purpleAgent,
                       keyboardType: TextInputType.phone,
-                      inputFormatters: pakPhoneInputFormatters,
+                      inputFormatters: pakistanPhoneInputFormatters,
                       maxLength: 11,
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Phone is required';
-                        if (!pakPhoneRegex.hasMatch(v)) {
+                        if (!pakistanPhoneRegex.hasMatch(v)) {
                           return 'Enter a valid 11-digit number starting with 03';
                         }
                         return null;

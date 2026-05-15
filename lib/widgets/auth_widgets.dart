@@ -5,9 +5,9 @@ import '../theme/app_theme.dart';
 
 /// Shared reusable input widgets used across all auth screens.
 
-final RegExp pakPhoneRegex = RegExp(r'^03\d{9}$');
+final RegExp pakistanPhoneRegex = RegExp(r'^03\d{9}$');
 
-final List<TextInputFormatter> pakPhoneInputFormatters = [
+final List<TextInputFormatter> pakistanPhoneInputFormatters = [
   FilteringTextInputFormatter.digitsOnly,
   LengthLimitingTextInputFormatter(11),
 ];
