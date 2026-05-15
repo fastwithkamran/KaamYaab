@@ -9,4 +9,10 @@ class CnicUtils {
   ];
 
   static bool isValid(String value) => _cnicRegex.hasMatch(value);
+
+  static String? validator(String? value) {
+    if (value == null || value.isEmpty) return 'CNIC is required';
+    if (!isValid(value)) return 'Enter 13 digits without dashes';
+    return null;
+  }
 }

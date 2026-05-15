@@ -133,13 +133,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                     prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
                     keyboardType: TextInputType.number,
                     inputFormatters: CnicUtils.inputFormatters,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'CNIC is required';
-                      if (!CnicUtils.isValid(v)) {
-                        return 'Enter 13 digits without dashes';
-                      }
-                      return null;
-                    }),
+                    validator: CnicUtils.validator),
                   const SizedBox(height: 16),
 
                   AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
