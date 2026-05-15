@@ -11,6 +11,10 @@ import '../config/runtime_config.dart';
 /// when Firebase OTP is unavailable (for example on web in this prototype).
 class OtpService {
   static final OtpService _instance = OtpService._();
+  static const int _minE164Digits = 10;
+  static const int _maxE164Digits = 15;
+  static const int _localPhoneDigits = 11;
+
   factory OtpService() => _instance;
   OtpService._();
 
@@ -84,21 +88,24 @@ class OtpService {
       );
 
       if (!sent.success) {
-        final code = await _sendMockOtp(normalized);
-        return OtpSendResult.error(
+        return _fallbackResult(
           sent.errorMessage ?? 'Could not send OTP.',
-          fallbackCode: code,
+          normalized,
         );
       }
 
       return sent;
     } catch (_) {
-      final code = await _sendMockOtp(normalized);
-      return OtpSendResult.error(
+      return _fallbackResult(
         'Could not send OTP right now.',
-        fallbackCode: code,
+        normalized,
       );
     }
+  }
+
+  Future<OtpSendResult> _fallbackResult(String message, String normalized) async {
+    final code = await _sendMockOtp(normalized);
+    return OtpSendResult.error(message, fallbackCode: code);
   }
 
   Future<String> _sendMockOtp(String phone) async {
@@ -189,7 +196,7 @@ class OtpService {
     }
 
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0') && digits.length == 11) {
+    if (digits.startsWith('0') && digits.length == _localPhoneDigits) {
       return '+${RuntimeConfig.defaultCountryDialCode}${digits.substring(1)}';
     }
     if (digits.startsWith(RuntimeConfig.defaultCountryDialCode) &&
@@ -209,7 +216,7 @@ class OtpService {
       case 'too-many-requests':
         return 'Too many OTP attempts. Please wait and try again.';
       case 'quota-exceeded':
-        return 'SMS quota exceeded on Firebase project. Please try again later.';
+        return 'Service temporarily unavailable. Please try again later.';
       default:
         return 'Could not send OTP right now. Please try again.';
     }
@@ -280,5 +287,3 @@ class OtpSendResult {
 }
 
 enum OtpResult { verified, invalid, expired, noRecord }
-  static const int _minE164Digits = 10;
-  static const int _maxE164Digits = 15;
