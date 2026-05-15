@@ -64,6 +64,7 @@ class AuthGlassInput extends StatelessWidget {
           validator: validator,
           style: const TextStyle(color: Colors.white, fontSize: 15),
           decoration: InputDecoration(
+            // Hide maxLength counter to keep auth inputs visually clean.
             counterText: '',
             hintText: hint,
             hintStyle:
