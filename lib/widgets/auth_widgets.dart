@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 
 /// Shared reusable input widgets used across all auth screens.
+
+final RegExp pakPhoneRegex = RegExp(r'^03\d{9}$');
+
+final List<TextInputFormatter> pakPhoneInputFormatters = [
+  FilteringTextInputFormatter.digitsOnly,
+  LengthLimitingTextInputFormatter(11),
+];
 
 // ── Glass-style text input ─────────────────────────────────────────────────
 class AuthGlassInput extends StatelessWidget {
@@ -14,6 +22,8 @@ class AuthGlassInput extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
   final int? maxLines;
   final String? Function(String?)? validator;
 
@@ -27,6 +37,8 @@ class AuthGlassInput extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.keyboardType,
+    this.inputFormatters,
+    this.maxLength,
     this.maxLines = 1,
     this.validator,
   });
@@ -46,10 +58,13 @@ class AuthGlassInput extends StatelessWidget {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          maxLength: maxLength,
           maxLines: obscureText ? 1 : maxLines,
           validator: validator,
           style: const TextStyle(color: Colors.white, fontSize: 15),
           decoration: InputDecoration(
+            counterText: '',
             hintText: hint,
             hintStyle:
                 TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.5)),
