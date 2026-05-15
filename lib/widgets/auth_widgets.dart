@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 
@@ -14,6 +15,7 @@ class AuthGlassInput extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final int? maxLines;
   final String? Function(String?)? validator;
 
@@ -27,6 +29,7 @@ class AuthGlassInput extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.keyboardType,
+    this.inputFormatters,
     this.maxLines = 1,
     this.validator,
   });
@@ -46,6 +49,7 @@ class AuthGlassInput extends StatelessWidget {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           maxLines: obscureText ? 1 : maxLines,
           validator: validator,
           style: const TextStyle(color: Colors.white, fontSize: 15),

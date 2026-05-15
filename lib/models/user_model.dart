@@ -4,7 +4,7 @@ class AppUser {
   final String uid;
   final String name;
   final String phone;
-  final String email;
+  final String cnic;
   final String city;
   final String area;
   final UserRole role;
@@ -26,7 +26,7 @@ class AppUser {
     required this.uid,
     required this.name,
     required this.phone,
-    required this.email,
+    required this.cnic,
     required this.city,
     required this.area,
     required this.role,
@@ -63,7 +63,7 @@ class AppUser {
       uid: json['uid'] as String,
       name: json['name'] as String,
       phone: json['phone'] as String,
-      email: json['email'] as String? ?? '',
+      cnic: json['cnic'] as String? ?? '',
       city: json['city'] as String,
       area: json['area'] as String? ?? '',
       role: json['role'] == 'worker' ? UserRole.worker : UserRole.customer,
@@ -88,7 +88,7 @@ class AppUser {
         'uid': uid,
         'name': name,
         'phone': phone,
-        'email': email,
+        'cnic': cnic,
         'city': city,
         'area': area,
         'role': role == UserRole.worker ? 'worker' : 'customer',
@@ -115,7 +115,7 @@ class AppUser {
       uid: uid,
       name: name,
       phone: phone,
-      email: email,
+      cnic: cnic,
       city: city,
       area: area,
       role: role,
