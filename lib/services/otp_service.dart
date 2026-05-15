@@ -16,10 +16,18 @@ class OtpService {
 
   final Map<String, _OtpRecord> _otpStore = {};
   final Map<String, _FirebaseOtpSession> _firebaseStore = {};
+  final Set<String> _autoVerifiedPhones = {};
 
   /// Sends an OTP to [phone].
   Future<OtpSendResult> sendOtp(String phone) async {
     final normalized = _normalizePhone(phone);
+    if (normalized == null) {
+      return const OtpSendResult.error(
+        'Invalid phone number format. Please check and try again.',
+      );
+    }
+
+    _autoVerifiedPhones.remove(normalized);
     if (!_canUseFirebaseOtp) {
       final code = await _sendMockOtp(normalized);
       return OtpSendResult.successMock(code);
@@ -31,7 +39,12 @@ class OtpService {
         phoneNumber: normalized,
         timeout: Duration(seconds: RuntimeConfig.otpExpirySeconds),
         verificationCompleted: (credential) async {
-          // Intentionally no-op: this flow verifies explicitly via user-entered OTP.
+          // Firebase can auto-verify on some Android devices. Mark as verified
+          // so manual OTP entry can complete immediately.
+          _autoVerifiedPhones.add(normalized);
+          if (!completer.isCompleted) {
+            completer.complete(const OtpSendResult.successReal());
+          }
         },
         verificationFailed: (e) {
           if (!completer.isCompleted) {
@@ -82,7 +95,7 @@ class OtpService {
     } catch (_) {
       final code = await _sendMockOtp(normalized);
       return const OtpSendResult.error(
-        'Could not send OTP right now. Using demo OTP fallback.',
+        'Could not send OTP right now.',
       ).copyWithFallback(code);
     }
   }
@@ -101,6 +114,13 @@ class OtpService {
   /// Verifies [code] entered by user against stored OTP for [phone].
   Future<OtpResult> verify(String phone, String code) async {
     final normalized = _normalizePhone(phone);
+    if (normalized == null) return OtpResult.noRecord;
+
+    if (_autoVerifiedPhones.remove(normalized)) {
+      _firebaseStore.remove(normalized);
+      _otpStore.remove(normalized);
+      return OtpResult.verified;
+    }
 
     if (_canUseFirebaseOtp) {
       final session = _firebaseStore[normalized];
@@ -114,6 +134,9 @@ class OtpService {
             verificationId: session.verificationId,
             smsCode: code,
           );
+          // Firebase client SDK verifies the SMS code by signing in with
+          // the credential, then we immediately sign out because app auth
+          // remains managed by local AuthService.
           await FirebaseAuth.instance.signInWithCredential(credential);
           await FirebaseAuth.instance.signOut();
           _firebaseStore.remove(normalized);
@@ -141,8 +164,10 @@ class OtpService {
   /// Clears any stored OTP for [phone] (e.g., on cancel).
   void clear(String phone) {
     final normalized = _normalizePhone(phone);
+    if (normalized == null) return;
     _otpStore.remove(normalized);
     _firebaseStore.remove(normalized);
+    _autoVerifiedPhones.remove(normalized);
   }
 
   String _generateCode() {
@@ -153,21 +178,27 @@ class OtpService {
   bool get _canUseFirebaseOtp =>
       !kIsWeb && Firebase.apps.isNotEmpty;
 
-  String _normalizePhone(String phone) {
+  String? _normalizePhone(String phone) {
     final raw = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
     if (raw.startsWith('+')) {
       final digits = raw.substring(1).replaceAll(RegExp(r'[^0-9]'), '');
-      return '+$digits';
+      return _isValidE164Digits(digits) ? '+$digits' : null;
     }
 
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.startsWith('0') && digits.length == 11) {
       return '+${RuntimeConfig.defaultCountryDialCode}${digits.substring(1)}';
     }
-    if (digits.startsWith(RuntimeConfig.defaultCountryDialCode)) return '+$digits';
+    if (digits.startsWith(RuntimeConfig.defaultCountryDialCode) &&
+        _isValidE164Digits(digits)) {
+      return '+$digits';
+    }
     if (digits.length >= 10 && digits.length <= 15) return '+$digits';
-    return '+$digits';
+    return null;
   }
+
+  bool _isValidE164Digits(String digits) =>
+      digits.length >= 10 && digits.length <= 15;
 
   String _firebaseErrorToMessage(FirebaseAuthException e) {
     switch (e.code) {
