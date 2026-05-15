@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/otp_service.dart';
 import '../../models/user_model.dart';
+import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
 
@@ -19,6 +20,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _cnicCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
   final _areaCtrl = TextEditingController();
@@ -36,7 +38,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose(); _phoneCtrl.dispose();
-    _passCtrl.dispose(); _confirmPassCtrl.dispose(); _areaCtrl.dispose();
+    _cnicCtrl.dispose(); _passCtrl.dispose(); _confirmPassCtrl.dispose(); _areaCtrl.dispose();
     super.dispose();
   }
 
@@ -66,7 +68,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
 
     final user = AppUser(
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
-      email: '', city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
+      cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
       role: UserRole.customer, createdAt: DateTime.now(),
     );
 
@@ -129,6 +131,13 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                       }
                       return null;
                     }),
+                  const SizedBox(height: 16),
+
+                  AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                    prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: CnicUtils.inputFormatters,
+                    validator: CnicUtils.validator),
                   const SizedBox(height: 16),
 
                   AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
