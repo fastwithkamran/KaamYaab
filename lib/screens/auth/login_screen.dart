@@ -121,11 +121,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icons.phone_outlined,
                     accentColor: _accentColor,
                     keyboardType: TextInputType.phone,
-                    inputFormatters: pakistanPhoneInputFormatters,
+                    inputFormatters: kPakistanPhoneInputFormatters,
                     maxLength: 11,
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Phone is required';
-                      if (!pakistanPhoneRegex.hasMatch(v)) {
+                      if (!kPakistanPhoneRegex.hasMatch(v)) {
                         return 'Enter a valid 11-digit number starting with 03';
                       }
                       return null;
