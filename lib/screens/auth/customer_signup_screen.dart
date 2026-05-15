@@ -48,7 +48,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
     final sendResult = await OtpService().sendOtp(_phoneCtrl.text.trim());
     if (!mounted) return;
     setState(() => _loading = false);
-    if (!sendResult.success && sendResult.demoCode == null) {
+    if (sendResult.hasFatalError) {
       setState(() => _error = sendResult.errorMessage ?? 'Could not send OTP.');
       return;
     }

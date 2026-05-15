@@ -10,4 +10,10 @@ class RuntimeConfig {
 
   static const int otpExpirySeconds =
       int.fromEnvironment('OTP_EXPIRY_SECONDS', defaultValue: 120);
+
+  static const int otpSendTimeoutSeconds =
+      int.fromEnvironment('OTP_SEND_TIMEOUT_SECONDS', defaultValue: 35);
+
+  static const String defaultCountryDialCode =
+      String.fromEnvironment('DEFAULT_COUNTRY_DIAL_CODE', defaultValue: '92');
 }

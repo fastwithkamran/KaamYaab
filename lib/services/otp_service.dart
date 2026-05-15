@@ -30,7 +30,9 @@ class OtpService {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: normalized,
         timeout: Duration(seconds: RuntimeConfig.otpExpirySeconds),
-        verificationCompleted: (credential) async {},
+        verificationCompleted: (credential) async {
+          // Intentionally no-op: this flow verifies explicitly via user-entered OTP.
+        },
         verificationFailed: (e) {
           if (!completer.isCompleted) {
             completer.complete(
@@ -62,7 +64,7 @@ class OtpService {
       );
 
       final sent = await completer.future.timeout(
-        const Duration(seconds: 35),
+        Duration(seconds: RuntimeConfig.otpSendTimeoutSeconds),
         onTimeout: () => const OtpSendResult.error(
           'Could not send OTP right now. Please try again.',
         ),
@@ -160,9 +162,9 @@ class OtpService {
 
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.startsWith('0') && digits.length == 11) {
-      return '+92${digits.substring(1)}';
+      return '+${RuntimeConfig.defaultCountryDialCode}${digits.substring(1)}';
     }
-    if (digits.startsWith('92')) return '+$digits';
+    if (digits.startsWith(RuntimeConfig.defaultCountryDialCode)) return '+$digits';
     if (digits.length >= 10 && digits.length <= 15) return '+$digits';
     return '+$digits';
   }
@@ -249,6 +251,8 @@ class OtpSendResult {
       errorMessage: errorMessage,
     );
   }
+
+  bool get hasFatalError => !success && demoCode == null;
 }
 
 enum OtpResult { verified, invalid, expired, noRecord }

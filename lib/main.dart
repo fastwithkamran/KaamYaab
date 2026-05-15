@@ -19,7 +19,9 @@ void main() async {
 
   try {
     await Firebase.initializeApp();
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('Firebase init skipped: $e');
+  }
 
   // Init auth service (loads persisted session)
   await AuthService().init();
