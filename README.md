@@ -27,6 +27,7 @@
 19. [Baseline Comparison](#19-baseline-comparison)
 20. [Privacy Note](#20-privacy-note)
 21. [Limitations](#21-limitations)
+22. [Judge Verification: Proving Antigravity Usage](#22-judge-verification-proving-antigravity-usage)
 
 ---
 
@@ -800,6 +801,35 @@ This repository intentionally avoids paid service dependencies. All flows are de
 - **Provider app not in scope:** This prototype focuses on the customer-facing flow. A dedicated provider-side app for availability management and job acceptance is a future deliverable.
 - **Demand forecasting accuracy:** The 7-day demand forecast is based on historical booking patterns from the mock dataset. Real accuracy depends on volume of production data.
 - **Multi-city coverage:** The prototype covers Islamabad, Rawalpindi, Karachi, and Lahore. Expansion to smaller cities requires additional provider onboarding and local demand calibration.
+
+---
+
+## 22. Judge Verification: Proving Antigravity Usage
+
+To make Antigravity usage auditable during judging, provide all three artifacts below:
+
+1. **Trace Artifact (`antigravity_traces.json`)**
+   - Generate via:
+     - `python3 functions/tests/export_traces.py`
+   - This file includes:
+     - `antigravity_metadata.platform = "Google Antigravity"`
+     - Full step-by-step agent decisions, tool calls, and outputs
+     - Multi-agent invocation chain (Intent, Surge, Matching, Pricing, Scheduling, Booking, Dispute)
+
+2. **Stress-Test Evidence (`stress_test_report.json`)**
+   - Generate via:
+     - `python3 functions/tests/stress_test.py`
+   - Shows pass/fail behavior across required edge cases and end-to-end booking simulation.
+
+3. **Live Demo Evidence**
+   - In-app: show **Live Agent Reasoning** panel while submitting a request.
+   - During booking: show **7-step Booking Pipeline** completion with timestamps and final confirmation.
+
+### Judge Checklist (Fast)
+- Confirm `antigravity_traces.json` exists and includes Antigravity metadata.
+- Confirm at least one trace reaches `booking_confirmed` with full chain.
+- Confirm stress report includes end-to-end scenario and edge-case handling.
+- Confirm live UI reasoning panel matches the same agent stages shown in traces.
 
 ---
 

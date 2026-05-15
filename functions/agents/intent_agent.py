@@ -11,7 +11,10 @@ import logging
 import os
 import re
 import time
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:  # pragma: no cover - environment-dependent optional dependency
+    genai = None
 
 logger = logging.getLogger(__name__)
 MAX_GEMINI_RETRIES = 3
@@ -19,9 +22,11 @@ MAX_BACKOFF_SECONDS = 4
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 model = None
-if _gemini_api_key:
+if _gemini_api_key and genai is not None:
     genai.configure(api_key=_gemini_api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
+elif _gemini_api_key and genai is None:
+    logger.info("[IntentAgent] google.generativeai is not installed — using fast_parse fallback")
 
 INTENT_PROMPT = """
 You are the Intent Agent for KhidmatGaar, an AI service orchestrator for Pakistan's informal economy.
