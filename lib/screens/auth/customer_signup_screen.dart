@@ -19,6 +19,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _cnicCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
   final _areaCtrl = TextEditingController();
@@ -36,7 +37,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose(); _phoneCtrl.dispose();
-    _passCtrl.dispose(); _confirmPassCtrl.dispose(); _areaCtrl.dispose();
+    _cnicCtrl.dispose(); _passCtrl.dispose(); _confirmPassCtrl.dispose(); _areaCtrl.dispose();
     super.dispose();
   }
 
@@ -66,7 +67,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
 
     final user = AppUser(
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
-      email: '', city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
+      cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
       role: UserRole.customer, createdAt: DateTime.now(),
     );
 
@@ -123,6 +124,22 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Phone is required';
                       if (v.length < 10) return 'Enter a valid phone number';
+                      return null;
+                    }),
+                  const SizedBox(height: 16),
+
+                  AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                    prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: const [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(13),
+                    ],
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'CNIC is required';
+                      if (!RegExp(r'^\d{13}$').hasMatch(v)) {
+                        return 'Enter 13 digits without dashes';
+                      }
                       return null;
                     }),
                   const SizedBox(height: 16),
