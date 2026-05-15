@@ -37,7 +37,7 @@ class OtpService {
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: normalized,
-        timeout: Duration(seconds: RuntimeConfig.otpExpirySeconds),
+        timeout: Duration(seconds: RuntimeConfig.otpAutoRetrievalTimeoutSeconds),
         verificationCompleted: (credential) async {
           // Firebase can auto-verify on some Android devices. Mark as verified
           // so manual OTP entry can complete immediately.
@@ -94,9 +94,10 @@ class OtpService {
       return sent;
     } catch (_) {
       final code = await _sendMockOtp(normalized);
-      return const OtpSendResult.error(
+      return OtpSendResult.error(
         'Could not send OTP right now.',
-      ).copyWithFallback(code);
+        fallbackCode: code,
+      );
     }
   }
 
@@ -142,7 +143,9 @@ class OtpService {
           _firebaseStore.remove(normalized);
           return OtpResult.verified;
         } on FirebaseAuthException catch (e) {
-          if (e.code == 'session-expired') return OtpResult.expired;
+          if (e.code == 'session-expired' || e.code == 'invalid-verification-code') {
+            return OtpResult.expired;
+          }
           return OtpResult.invalid;
         } catch (_) {
           return OtpResult.invalid;
@@ -193,7 +196,6 @@ class OtpService {
         _isValidE164Digits(digits)) {
       return '+$digits';
     }
-    if (digits.length >= 10 && digits.length <= 15) return '+$digits';
     return null;
   }
 
