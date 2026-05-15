@@ -27,6 +27,7 @@
 19. [Baseline Comparison](#19-baseline-comparison)
 20. [Privacy Note](#20-privacy-note)
 21. [Limitations](#21-limitations)
+22. [Judge Verification: Proving Antigravity Usage](#22-judge-verification-proving-antigravity-usage)
 
 ---
 
@@ -74,8 +75,9 @@ This system automates the **entire service lifecycle** — from a natural-langua
           ┌───────────────────┼──────────────────────┐
           ▼                   ▼                      ▼
   ┌───────────────┐  ┌────────────────┐  ┌──────────────────────┐
-  │ Google Maps / │  │ Provider DB /  │  │ SMS / WhatsApp       │
-  │ Places API    │  │ Mock Dataset   │  │ Notification API     │
+  │ Haversine     │  │ Provider DB /  │  │ In-App Notification  │
+  │ Distance Calc │  │ Mock Dataset   │  │ (Toast / Modal sim)  │
+  │ (no Maps API) │  │ (static JSON)  │  │ (in-app only)        │
   └───────────────┘  └────────────────┘  └──────────────────────┘
 ```
 
@@ -87,25 +89,32 @@ This system automates the **entire service lifecycle** — from a natural-langua
 | **Matching Agent** | Multi-factor provider ranking, tie-breaking, fallback discovery |
 | **Scheduling Agent** | Slot availability, conflict detection, travel-time buffers, waitlists |
 | **Pricing Agent** | Dynamic quote generation, discount application, transparent breakdown |
-| **Booking Agent** | Confirmation, assignment, calendar update, SMS/WhatsApp dispatch, receipt |
+| **Booking Agent** | Confirmation, assignment, calendar update, in-app notification simulation, receipt |
 | **Quality & Dispute Agent** | En-route simulation, feedback collection, rating update, dispute resolution |
 
 ---
 
 ## 3. Tech Stack and APIs
 
-| Layer | Technology / Service |
-|---|---|
-| **Orchestration** | Google Antigravity (mandatory) |
-| **Mobile App** | React Native (mandatory) / Flutter |
-| **Web App** | React + Next.js (optional) |
-| **NLU / LLM** | Google Gemini (via Antigravity) + optional external LLM for translation assist |
-| **Provider Discovery** | Google Maps Platform (Places API, Distance Matrix API) + mock dataset |
-| **Notifications** | Twilio SMS API / WhatsApp Business API (simulated in prototype) |
-| **Database** | Firebase Firestore / Supabase (provider records, bookings, reviews) |
-| **Spreadsheet Logging** | Google Sheets API (booking audit log, dispute log) |
-| **Auth** | Firebase Auth / phone OTP |
-| **Hosting** | Google Cloud Run |
+> **Cost policy:** This prototype is designed to run entirely within the free tiers of every service used. No paid API calls are made. All components listed below are either free-tier or fully mocked for demo purposes.
+
+| Layer | Technology / Service | Cost |
+|---|---|---|
+| **Orchestration** | Google Antigravity (hackathon-provided) | Free |
+| **Mobile App** | React Native (mandatory) / Flutter | Free |
+| **Web App** | React + Next.js (optional) | Free |
+| **NLU / LLM** | Google Gemini 1.5 Flash — free tier (15 req/min, 1M tokens/day) | Free |
+| **Provider Discovery** | Static mock dataset (JSON) + local Haversine distance calculation — no Maps API calls | Free |
+| **Distance / Travel Time** | Haversine formula on provider `GeoPoint` coordinates stored in mock data — no external maps API | Free |
+| **Notifications** | Fully simulated in-app (toast / bottom-sheet modal) — no third-party notification API | Free |
+| **Database** | Firebase Firestore — Spark free plan (50K reads/day, 20K writes/day) | Free |
+| **Spreadsheet Logging** | Google Sheets API — included free with GCP | Free |
+| **Auth** | Firebase Auth — free tier | Free |
+| **Hosting** | Google Cloud Run — 2M requests/month free tier | Free |
+| **GCP Budget** | Not required for this prototype | $0 |
+
+### Why no Google Maps API?
+For the prototype, all 50–200 providers have pre-seeded `GeoPoint` coordinates. Distance between user and provider is calculated client-side using the Haversine formula (accurate to ~0.5%). This removes the need for external maps API calls entirely, costs nothing, and works offline.
 
 ---
 
@@ -126,7 +135,8 @@ Step 2  CONFIRMATION GATE
         ▼
 Step 3  PROVIDER DISCOVERY
         │  Intent Agent hands off to Matching Agent
-        │  Matching Agent calls Maps Distance Matrix + Provider DB
+        │  Matching Agent queries static mock Provider DB
+        │  Haversine distance calculated locally for each candidate
         │  Builds candidate list (up to 20 providers)
         ▼
 Step 4  MULTI-FACTOR RANKING
@@ -150,7 +160,7 @@ Step 7  DYNAMIC PRICING
         ▼
 Step 8  BOOKING EXECUTION
         │  Booking Agent confirms slot, locks provider calendar
-        │  Dispatches SMS/WhatsApp to user and provider
+        │  Dispatches in-app notifications to user and provider
         │  Writes booking record to DB + audit sheet
         ▼
 Step 9  SERVICE EXECUTION LOOP
@@ -397,7 +407,7 @@ The Intent Agent extracts and returns:
 
 | # | Factor | Weight | Description |
 |---|---|---|---|
-| 1 | **Distance / Travel Time** | 12% | Estimated travel time via Maps Distance Matrix; penalizes >30 min |
+| 1 | **Distance / Travel Time** | 12% | Estimated from Haversine distance with `distance_km / 30` hours; penalizes >30 min |
 | 2 | **Availability** | 15% | Slot open in requested window with travel-time buffer |
 | 3 | **Rating** | 12% | Weighted average, decays older reviews |
 | 4 | **Review Recency** | 8% | Recency-weighted sentiment of last 10 reviews |
@@ -448,7 +458,7 @@ The Matching Agent verifies that the shortlisted provider's `certifications` and
 ### 9.1 Slot Validation Rules
 
 - No overlapping bookings for the same provider
-- Minimum **30-minute travel buffer** inserted between consecutive jobs (pulled from Maps Distance Matrix)
+- Minimum **30-minute travel buffer** inserted between consecutive jobs (using local Haversine travel-time estimates)
 - Provider must not exceed `max_daily_jobs` cap
 - Scheduled end time includes a **15-minute buffer** for handover
 
@@ -525,15 +535,15 @@ The system also shows the provider their expected net payout, platform fee deduc
 2. Booking Agent acquires DB transaction lock on provider's calendar slot
 3. Booking record created with status: confirmed
 4. Provider calendar updated (slot blocked)
-5. SMS + WhatsApp confirmation dispatched to user (booking ID, provider name, time, price)
-6. SMS + WhatsApp dispatched to provider (job details, location pin, user contact)
+5. In-app notification dispatched to user (booking ID, provider name, time, price)
+6. In-app notification dispatched to provider (job details, location pin, user contact)
 7. PDF/text receipt generated and sent to user
 8. Booking entry written to Google Sheets audit log
 9. Reminder scheduled (24h before and 1h before)
 10. Antigravity Booking Agent emits confirmation trace
 ```
 
-### 11.2 Confirmation Message (Simulated)
+### 11.2 Confirmation Notification (Simulated In-App)
 
 ```
 [SAAS Platform] Booking Confirmed!
@@ -621,14 +631,14 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 | Failure Mode | Fallback Strategy |
 |---|---|
 | **No provider available** | Expand search radius (+5 km increments up to 3×); offer waitlist; suggest next available date |
-| **Maps / Places API failure** | Fall back to straight-line distance using stored `GeoPoint`; flag reduced accuracy in trace |
+| **Distance computation issue** | Fall back to local Haversine distance using stored `GeoPoint`; flag reduced accuracy in trace |
 | **Low-confidence language parse** | Trigger slot-by-slot clarification dialog; never fail silently |
 | **Payment confirmation failure** | Hold booking in `pending_payment` state for 10 min; release slot if unresolved |
 | **Provider no-show** | Auto-reroute within 15 min; compensate user; escalate dispute |
 | **Double-booking race condition** | DB transaction lock ensures atomicity; losing request receives immediate next-best offer |
 | **User preference conflicts** | Surface conflict explicitly: *"Your preferred provider is unavailable — would you like the next best match or to wait?"* |
 | **Antigravity agent timeout** | Retry with exponential backoff ×3; if all fail, surface graceful error with manual booking option |
-| **Notification delivery failure** | Retry via alternate channel (SMS if WhatsApp fails); log delivery status in booking record |
+| **Notification delivery failure** | Retry as in-app toast/bottom-sheet and log delivery status in booking record |
 
 ---
 
@@ -687,8 +697,8 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 ## 17. Assumptions
 
 - Provider data is seeded from a mock dataset of 50–200 providers covering Islamabad, Rawalpindi, Karachi, and Lahore.
-- Google Maps Distance Matrix API is called in real-time for travel time; straight-line fallback is used if the API is unavailable.
-- SMS/WhatsApp notifications are simulated via Twilio sandbox in the prototype; production deployment would require full Twilio/WhatsApp Business API approval.
+- Distance between user and provider is calculated using the **Haversine formula** on pre-seeded `GeoPoint` coordinates. No external maps API is called. Travel time is estimated as `distance_km / 30 km/h` (average urban speed).
+- Notifications are **fully simulated** as in-app toasts and modals. No third-party notification API is used in the prototype.
 - Payments are simulated (no real payment gateway integrated in the prototype). A payment confirmation webhook stub is used.
 - Provider GPS location during en-route simulation is mocked with a linear interpolation between provider base and job address.
 - The prototype assumes mobile users have a stable internet connection; offline mode is not supported in v1.
@@ -696,24 +706,31 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 - The system assumes the user's device can provide GPS location for accurate distance calculation; manual area entry is the fallback.
 - Provider onboarding (ID verification, background check) is outside the scope of this prototype and is represented as a `verified: true/false` flag.
 - Antigravity agent timeout threshold is set at 8 seconds per reasoning step.
+- All LLM calls use **Gemini 1.5 Flash** (free tier, 15 requests/min, 1M tokens/day) — no paid Gemini tier is used.
+- Firebase Firestore is used on the **Spark free plan**. The prototype's demo load (< 500 bookings) stays well within the 50K reads/day and 20K writes/day limits.
+- Google Cloud Run free tier (2M requests/month) covers all prototype traffic. The $5 GCP credit is held as a safety buffer only.
 
 ---
 
 ## 18. Cost and Latency Analysis
 
-### 18.1 Per-Request Cost Estimate (Production)
+### 18.1 Prototype Cost — $0 (Demo / Hackathon)
 
-| Operation | API / Service | Estimated Cost per Request |
+| Operation | How It's Handled | Cost |
 |---|---|---|
-| Intent extraction + NLU | Google Antigravity / Gemini | ~$0.002 |
-| Distance Matrix (10 providers) | Google Maps Distance Matrix | ~$0.005 |
-| Places API lookup | Google Places | ~$0.002 |
-| Provider DB query | Firestore reads (20 docs) | ~$0.0001 |
-| SMS notification (×2) | Twilio | ~$0.015 |
-| WhatsApp notification (×2) | WhatsApp Business API | ~$0.010 |
-| Dispute resolution (if triggered) | Antigravity + extra LLM calls | ~$0.008 |
-| **Total (happy path)** | | **~$0.034 per booking** |
-| **Total (with dispute)** | | **~$0.042 per booking** |
+| Intent extraction + NLU | Gemini 1.5 Flash — free tier | $0 |
+| Distance calculation | Haversine formula — runs locally, no API | $0 |
+| Provider lookup | Static JSON mock dataset — no API | $0 |
+| Provider DB query | Firebase Firestore Spark free plan | $0 |
+| Notifications | In-app simulation (toast / modal) | $0 |
+| Booking audit log | Google Sheets API — free with GCP | $0 |
+| Hosting | Google Cloud Run free tier | $0 |
+| **Total prototype cost** | | **$0** |
+| **GCP credit ($5)** | Held as safety buffer, not expected to be used | $5 reserved |
+
+### 18.2 Production Cost Estimate
+
+This repository intentionally avoids paid service dependencies. All flows are designed for free-tier or local-only operation (Gemini 1.5 Flash free tier, static provider JSON, local Haversine distance, and in-app notifications).
 
 ### 18.2 Latency Breakdown (P50 / P95)
 
@@ -730,7 +747,7 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 
 - Antigravity agents are stateless and horizontally scalable via Cloud Run
 - Firestore scales automatically; no manual sharding required for < 10,000 concurrent users
-- Google Maps Distance Matrix batches up to 10 origins × 10 destinations per request; candidate lists above 20 providers split into two calls
+- Haversine distance calculation is O(n) over the provider list and runs in < 5 ms for 200 providers — no external API bottleneck
 
 ---
 
@@ -743,7 +760,7 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 | Multi-factor provider ranking | ❌ | Partial (distance only) | ✅ 10-factor composite score |
 | Real-time scheduling conflict check | ❌ | ❌ | ✅ |
 | Dynamic, transparent pricing | ❌ | ❌ | ✅ Itemized breakdown |
-| Automated booking + notifications | ❌ | Partial | ✅ SMS + WhatsApp + receipt |
+| Automated booking + notifications | ❌ | Partial | ✅ In-app notification simulation (production: SMS + WhatsApp) |
 | Post-service feedback loop | ❌ | Partial | ✅ Rating + reputation update |
 | Dispute resolution | ❌ (informal) | ❌ | ✅ Automated + escalation ladder |
 | Provider-side optimization | ❌ | ❌ | ✅ Demand forecast + fair allocation |
@@ -759,10 +776,10 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 - **User data collected:** Phone number, service request text, location (GPS or manual entry), booking history, ratings given.
 - **Provider data collected:** Phone number, business name, location, availability, performance metrics, earnings.
 - **Data storage:** All records stored in Firebase Firestore with role-based access control. User data and provider data are stored in separate collections with no cross-collection public access.
-- **Location data:** GPS coordinates are used only for distance calculation and are not shared with third parties beyond the Google Maps API call. Coordinates are not stored in plain text after the booking is confirmed; only the human-readable address is retained.
-- **Notification data:** Phone numbers passed to Twilio/WhatsApp API for notification delivery only; not stored by the notification provider beyond their standard retention policy.
+- **Location data:** GPS coordinates are used only for local distance calculation and are not shared with third-party Maps APIs. Coordinates are not stored in plain text after the booking is confirmed; only the human-readable address is retained.
+- **Notification data:** Notifications are simulated entirely in-app and no phone numbers are passed to any external notification service.
 - **Data retention:** Booking records retained for 12 months; dispute records retained for 24 months for compliance. User accounts and provider profiles retained until deletion is requested.
-- **Third-party APIs:** Google Maps, Twilio, and WhatsApp Business APIs each have their own privacy policies. Users are informed of this at onboarding.
+- **Third-party APIs:** Firebase and Google Cloud services each have their own privacy policies. Users are informed of this at onboarding.
 - **No advertising:** User data and provider data are not used for advertising or sold to third parties.
 - **Right to deletion:** Users and providers may request full data deletion via the app; records are purged within 30 days, subject to dispute-related legal retention requirements.
 - **Prototype note:** The prototype uses anonymized or synthetic data. No real user PII is collected during hackathon demonstration.
@@ -774,14 +791,45 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 - **No real payment processing:** Payments are simulated. Production would require PCI-compliant payment gateway integration (e.g., JazzCash, EasyPaisa, Stripe).
 - **Mock provider dataset:** The 50–200 provider dataset is synthetic. Real deployment requires a provider onboarding pipeline with identity verification.
 - **GPS simulation:** En-route provider tracking uses linear interpolation, not live GPS. Real deployment would require a provider-side mobile SDK with background location permission.
+- **Haversine distance accuracy:** The prototype uses Haversine straight-line distance with an estimated travel speed of 30 km/h. This approximates travel time but does not account for traffic, road layout, or one-way streets.
+- **No external notification gateways:** Notifications are simulated as in-app toasts/modals to keep the prototype fully free-tier and local-first.
 - **Antigravity availability:** The system's core reasoning capability is dependent on Google Antigravity's uptime and API quota. No non-Antigravity fallback orchestrator exists in v1.
+- **Gemini free tier rate limits:** Gemini 1.5 Flash free tier allows 15 requests/minute. Under concurrent load (e.g., multiple simultaneous bookings), requests may be queued. A retry-with-backoff strategy is implemented.
 - **Urdu NLU accuracy:** While Gemini handles multilingual input well, highly dialectal or heavily slang-laden input may still produce low-confidence parses requiring manual confirmation.
 - **Review sentiment analysis:** Review recency scoring currently uses star ratings only. Full sentiment analysis of free-text reviews is planned for v2.
 - **No offline mode:** The app requires internet connectivity throughout the booking flow.
 - **Provider app not in scope:** This prototype focuses on the customer-facing flow. A dedicated provider-side app for availability management and job acceptance is a future deliverable.
 - **Demand forecasting accuracy:** The 7-day demand forecast is based on historical booking patterns from the mock dataset. Real accuracy depends on volume of production data.
-- **WhatsApp Business API approval:** Production use of WhatsApp notifications requires Meta's business verification process, which can take weeks. The prototype uses Twilio sandbox.
 - **Multi-city coverage:** The prototype covers Islamabad, Rawalpindi, Karachi, and Lahore. Expansion to smaller cities requires additional provider onboarding and local demand calibration.
+
+---
+
+## 22. Judge Verification: Proving Antigravity Usage
+
+To make Antigravity usage auditable during judging, provide all three artifacts below:
+
+1. **Trace Artifact (`antigravity_traces.json`)**
+   - Generate via:
+     - `python3 functions/tests/export_traces.py`
+   - This file includes:
+     - `antigravity_metadata.platform = "Google Antigravity"`
+     - Full step-by-step agent decisions, tool calls, and outputs
+     - Multi-agent invocation chain (Intent, Surge, Matching, Pricing, Scheduling, Booking, Dispute)
+
+2. **Stress-Test Evidence (`stress_test_report.json`)**
+   - Generate via:
+     - `python3 functions/tests/stress_test.py`
+   - Shows pass/fail behavior across required edge cases and end-to-end booking simulation.
+
+3. **Live Demo Evidence**
+   - In-app: show **Live Agent Reasoning** panel while submitting a request.
+   - During booking: show **7-step Booking Pipeline** completion with timestamps and final confirmation.
+
+### Judge Checklist (Fast)
+- Confirm `antigravity_traces.json` exists and includes Antigravity metadata.
+- Confirm at least one trace reaches `booking_confirmed` with full chain.
+- Confirm stress report includes end-to-end scenario and edge-case handling.
+- Confirm live UI reasoning panel matches the same agent stages shown in traces.
 
 ---
 

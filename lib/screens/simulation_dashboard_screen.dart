@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../services/in_app_notification_service.dart';
 import '../services/language_service.dart';
 
 class SimulationDashboardScreen extends StatefulWidget {
@@ -13,63 +14,55 @@ class SimulationDashboardScreen extends StatefulWidget {
 class _SimulationDashboardScreenState extends State<SimulationDashboardScreen> {
   final _lang = LanguageService();
 
-  void _showSimulationSnackBar(String title, String message, IconData icon, Color color) {
+  void _showSimulationNotification(
+    String title,
+    String message,
+    IconData icon,
+    InAppNotificationType type,
+  ) {
     HapticFeedback.heavyImpact();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-              Text(message, style: const TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      ]),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
-      duration: const Duration(seconds: 4),
-    ));
+    InAppNotificationService.showMessage(
+      context,
+      title: title,
+      message: message,
+      icon: icon,
+      type: type,
+    );
   }
 
   void _simulateSms() {
-    _showSimulationSnackBar(
-      'SMS / WhatsApp Simulation',
+    _showSimulationNotification(
+      'In-App Booking Notification',
       'Booking Confirmed! Provider is assigned to your job.',
       Icons.message_rounded,
-      AppTheme.tealDark,
+      InAppNotificationType.toast,
     );
   }
 
   void _simulateEnRoute() {
-    _showSimulationSnackBar(
+    _showSimulationNotification(
       'Service-Quality Loop',
       'Provider is en route! ETA: 15 mins.',
       Icons.directions_car_rounded,
-      AppTheme.blueInfo,
+      InAppNotificationType.bottomSheet,
     );
   }
 
   void _simulateCompletion() {
-    _showSimulationSnackBar(
+    _showSimulationNotification(
       'Service-Quality Loop',
       'Job Completed! Please leave a photo evidence and a rating.',
       Icons.check_circle_rounded,
-      AppTheme.greenSuccess,
+      InAppNotificationType.toast,
     );
   }
 
   void _simulateDispute() {
-    _showSimulationSnackBar(
+    _showSimulationNotification(
       'Dispute & Escalation Workflow',
       'Dispute filed: Price disagreement. System issued partial refund based on Provider DNA.',
       Icons.gavel_rounded,
-      AppTheme.redAlert,
+      InAppNotificationType.bottomSheet,
     );
   }
 
@@ -91,13 +84,13 @@ class _SimulationDashboardScreenState extends State<SimulationDashboardScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Use these buttons during the hackathon pitch to demonstrate background workflows like SMS routing, live updates, and dispute handling.',
+            'Use these buttons during the hackathon pitch to demonstrate in-app notifications, live updates, and dispute handling.',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 32),
           _buildActionCard(
             title: '1. Booking Simulation',
-            subtitle: 'Triggers WhatsApp/SMS confirmation, calendar sync, and database update.',
+            subtitle: 'Triggers in-app booking confirmation, calendar sync, and database update.',
             icon: Icons.send_to_mobile_rounded,
             color: AppTheme.tealPrimary,
             onTap: _simulateSms,

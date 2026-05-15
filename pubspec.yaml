@@ -24,9 +24,7 @@ dependencies:
   firebase_auth: ^4.19.4
   firebase_messaging: ^14.9.3
 
-  # Google Maps
-  google_maps_flutter: ^2.6.1
-  geocoding: ^3.0.0
+  # Location
   geolocator: ^11.1.0
 
   # Animations & UI
