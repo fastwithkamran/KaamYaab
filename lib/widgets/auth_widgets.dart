@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 
 /// Shared reusable input widgets used across all auth screens.
 
-final RegExp kPakistanPhoneRegex = const RegExp(r'^03\d{9}$');
+final RegExp kPakistanPhoneRegex = RegExp(r'^03\d{9}$');
 
 final List<TextInputFormatter> kPakistanPhoneInputFormatters = [
   FilteringTextInputFormatter.digitsOnly,
@@ -60,7 +60,7 @@ class AuthGlassInput extends StatelessWidget {
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
           maxLength: maxLength,
-          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+          buildCounter: (_, {required _currentLength, required _isFocused, maxLength: _maxLength}) => null,
           maxLines: obscureText ? 1 : maxLines,
           validator: validator,
           style: const TextStyle(color: Colors.white, fontSize: 15),
