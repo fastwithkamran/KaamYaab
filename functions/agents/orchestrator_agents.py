@@ -9,14 +9,20 @@ import os
 import uuid
 import datetime
 from typing import Dict, List, Any, Optional
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:  # pragma: no cover - environment-dependent optional dependency
+    genai = None
 
 logger = logging.getLogger(__name__)
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
-if _gemini_api_key:
+if _gemini_api_key and genai is not None:
     genai.configure(api_key=_gemini_api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
+elif _gemini_api_key and genai is None:
+    model = None
+    logger.info("[OrchestratorAgents] google.generativeai is not installed — running without Gemini model")
 else:
     model = None
     logger.info("[OrchestratorAgents] GEMINI_API_KEY not set — running without Gemini model")

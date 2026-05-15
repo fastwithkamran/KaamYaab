@@ -124,7 +124,7 @@ def build_trace(scenario: dict) -> dict:
             "service_type": intent_result["service_type"],
             "user_location": {"lat": user_lat, "lng": user_lng},
             "surge_multiplier": surge_result["surge_multiplier"],
-            "providers_evaluated": match_result["total_evaluated"],
+            "providers_evaluated": match_result.get("total_evaluated", 0),
         },
         outputs={
             "status": match_result["status"],
