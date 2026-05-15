@@ -44,6 +44,10 @@ def haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return R * c
 
 
+def estimate_travel_time_hours(distance_km: float) -> float:
+    return distance_km / 30.0
+
+
 def compute_dna_score(provider: Dict, intent: Dict, surge_mult: float = 1.0) -> Dict:
     """
     Compute the 8-factor DNA Score for a provider given intent context.
@@ -220,7 +224,7 @@ def run(
     scored = []
     for p in filtered:
         dist = haversine(user_lat, user_lng, p["lat"], p["lng"])
-        eta = round(dist * 6)  # ~6 min/km in city
+        eta = round(estimate_travel_time_hours(dist) * 60)
 
         enriched_intent = dict(intent)
         enriched_intent["_distance_km"] = dist

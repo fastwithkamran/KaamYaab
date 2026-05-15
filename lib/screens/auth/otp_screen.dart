@@ -205,8 +205,8 @@ class _OtpScreenState extends State<OtpScreen> {
                               style: const TextStyle(
                                   color: Colors.white, fontSize: 22,
                                   fontWeight: FontWeight.w800, letterSpacing: 6)),
-                          const Text('(Real SMS needs Twilio API key)',
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                           const Text('(In-app OTP simulation active)',
+                               style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                         ]),
                       ),
                     ]),

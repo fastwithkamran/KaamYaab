@@ -113,7 +113,7 @@ class BookingStep {
     const BookingStep(
       stepNumber: 2,
       title: 'Confirmation',
-      description: 'Sending WhatsApp & SMS confirmation',
+      description: 'Sending in-app confirmation notification',
       status: 'pending',
     ),
     const BookingStep(

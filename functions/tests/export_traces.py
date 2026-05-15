@@ -306,7 +306,7 @@ def _finalize_trace(trace_id, start, end, steps, scenario, final_output):
         "final_output": final_output,
         "antigravity_metadata": {
             "platform": "Google Antigravity",
-            "llm": "gemini-1.5-pro",
+            "llm": "gemini-1.5-flash",
             "trace_version": "1.0",
             "challenge": "Challenge 2 — AI Service Orchestrator",
             "hackathon": "AI Seekho Hackathon 26",
