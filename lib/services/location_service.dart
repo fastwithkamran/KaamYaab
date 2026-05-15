@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../utils/distance_utils.dart';
 
 /// Result of a GPS location lookup.
 class LocationData {
@@ -24,15 +24,18 @@ class LocationData {
 
   /// Distance in km from this location to [other].
   double distanceTo(LocationData other) {
-    return Geolocator.distanceBetween(
-          latitude, longitude,
-          other.latitude, other.longitude,
-        ) / 1000.0;
+    return haversineDistanceKm(
+      (lat: latitude, lng: longitude),
+      (lat: other.latitude, lng: other.longitude),
+    );
   }
 
   /// Distance in km to raw coordinates.
   double distanceToCoords(double lat, double lng) {
-    return Geolocator.distanceBetween(latitude, longitude, lat, lng) / 1000.0;
+    return haversineDistanceKm(
+      (lat: latitude, lng: longitude),
+      (lat: lat, lng: lng),
+    );
   }
 
   String get shortAddress => area.isNotEmpty ? '$area, $city' : city;
@@ -87,7 +90,7 @@ class LocationService {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Get current GPS location with reverse geocoding.
+  /// Get current GPS location.
   /// Returns cached result if < 5 minutes old.
   Future<LocationResult> getCurrentLocation({bool forceRefresh = false}) async {
     // Return cache if fresh enough
@@ -120,7 +123,7 @@ class LocationService {
         timeLimit: const Duration(seconds: 15),
       );
 
-      final data = await _reverseGeocode(position.latitude, position.longitude);
+      final data = _toLocationData(position.latitude, position.longitude);
       _cached = data;
       _cacheTime = DateTime.now();
       return LocationResult.success(data);
@@ -131,35 +134,15 @@ class LocationService {
     }
   }
 
-  /// Reverse geocode coordinates to a human-readable address.
-  Future<LocationData> _reverseGeocode(double lat, double lng) async {
-    String address = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-    String city = '';
-    String area = '';
-
-    try {
-      final placemarks = await placemarkFromCoordinates(lat, lng)
-          .timeout(const Duration(seconds: 8));
-
-      if (placemarks.isNotEmpty) {
-        final p = placemarks.first;
-        city = p.locality ?? p.administrativeArea ?? '';
-        area = p.subLocality ?? p.thoroughfare ?? '';
-        final parts = [area, city, p.country]
-            .where((s) => s != null && s.isNotEmpty)
-            .join(', ');
-        address = parts.isNotEmpty ? parts : address;
-      }
-    } catch (_) {
-      // Geocoding failed — use raw coordinates
-    }
-
+  LocationData _toLocationData(double lat, double lng) {
+    final address = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
+    // Reverse geocoding is intentionally disabled to avoid external Places/Maps API usage.
     return LocationData(
       latitude: lat,
       longitude: lng,
       address: address,
-      city: city,
-      area: area,
+      city: '',
+      area: '',
       fetchedAt: DateTime.now(),
     );
   }

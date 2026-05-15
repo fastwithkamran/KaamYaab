@@ -6,6 +6,7 @@ import '../models/provider_model.dart';
 import '../models/booking_model.dart';
 import '../models/service_request_model.dart';
 import '../services/gemini_service.dart';
+import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
 
 class BookingFlowScreen extends StatefulWidget {
@@ -161,6 +162,26 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         }).toList();
       });
 
+      if (i == 1) {
+        await InAppNotificationService.showMessage(
+          context,
+          title: 'Booking Confirmation',
+          message: _stepNote(i),
+          icon: Icons.notifications_active_rounded,
+          type: InAppNotificationType.toast,
+        );
+      }
+
+      if (i == 4) {
+        await InAppNotificationService.showMessage(
+          context,
+          title: 'En-Route Update',
+          message: _stepNote(i),
+          icon: Icons.directions_car_rounded,
+          type: InAppNotificationType.bottomSheet,
+        );
+      }
+
       HapticFeedback.lightImpact();
     }
 
@@ -184,7 +205,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     final p = widget.match.provider;
     switch (step) {
       case 0: return '${p.name}\'s slot at ${widget.match.recommendedSlot} locked for ${widget.request.area}';
-      case 1: return 'WhatsApp + SMS sent to ${p.phone}';
+      case 1: return 'In-app booking notification sent to ${p.phone}';
       case 2: return 'Receipt #KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)} generated';
       case 3: return 'Reminders set: T-24h, T-1h, T-15min';
       case 4: return '${p.name} is en-route â€” ETA ${widget.match.etaMinutes} minutes';
