@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/otp_service.dart';
 import '../../models/user_model.dart';
+import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
 
@@ -131,13 +132,10 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                   AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
                     prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
                     keyboardType: TextInputType.number,
-                    inputFormatters: const [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(13),
-                    ],
+                    inputFormatters: CnicUtils.inputFormatters,
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'CNIC is required';
-                      if (!RegExp(r'^\d{13}$').hasMatch(v)) {
+                      if (!CnicUtils.isValid(v)) {
                         return 'Enter 13 digits without dashes';
                       }
                       return null;
