@@ -91,120 +91,130 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                    padding: EdgeInsets.zero,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('🏠  Create Customer Account',
-                    style: TextStyle(color: AppTheme.tealPrimary, fontSize: 26, fontWeight: FontWeight.w800),
-                  ).animate().fadeIn(duration: 400.ms),
-                  const SizedBox(height: 6),
-                  const Text('Find and book trusted workers near you.',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                  ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-                  const SizedBox(height: 32),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(height: 24),
+                          const Text('🏠  Create Customer Account',
+                            style: TextStyle(color: AppTheme.tealPrimary, fontSize: 26, fontWeight: FontWeight.w800),
+                          ).animate().fadeIn(duration: 400.ms),
+                          const SizedBox(height: 6),
+                          const Text('Find and book trusted workers near you.',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+                          const SizedBox(height: 32),
 
-                  AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Ali Hassan',
-                    prefixIcon: Icons.person_outline, accentColor: AppTheme.tealPrimary,
-                    validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Ali Hassan',
+                            prefixIcon: Icons.person_outline, accentColor: AppTheme.tealPrimary,
+                            validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
-                    prefixIcon: Icons.phone_outlined, accentColor: AppTheme.tealPrimary,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: pakistanPhoneInputFormatters,
-                    maxLength: 11,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Phone is required';
-                      if (!pakistanPhoneRegex.hasMatch(v)) {
-                        return 'Enter a valid 11-digit number starting with 03';
-                      }
-                      return null;
-                    }),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
+                            prefixIcon: Icons.phone_outlined, accentColor: AppTheme.tealPrimary,
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: pakistanPhoneInputFormatters,
+                            maxLength: 11,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Phone is required';
+                              if (!pakistanPhoneRegex.hasMatch(v)) {
+                                return 'Enter a valid 11-digit number starting with 03';
+                              }
+                              return null;
+                            }),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
-                    prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: CnicUtils.inputFormatters,
-                    validator: CnicUtils.validator),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                            prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: CnicUtils.inputFormatters,
+                            validator: CnicUtils.validator),
+                          const SizedBox(height: 16),
 
-                  AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
-                    items: _cities, accentColor: AppTheme.tealPrimary,
-                    prefixIcon: Icons.location_city_outlined,
-                    onChanged: (v) => setState(() => _selectedCity = v),
-                    validator: (v) => v == null ? 'Please select your city' : null),
-                  const SizedBox(height: 16),
+                          AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
+                            items: _cities, accentColor: AppTheme.tealPrimary,
+                            prefixIcon: Icons.location_city_outlined,
+                            onChanged: (v) => setState(() => _selectedCity = v),
+                            validator: (v) => v == null ? 'Please select your city' : null),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _areaCtrl, label: 'Locality / Area',
-                    hint: 'e.g. DHA, Gulshan, Model Town',
-                    prefixIcon: Icons.location_on_outlined, accentColor: AppTheme.tealPrimary,
-                    validator: (v) => v == null || v.isEmpty ? 'Area is required' : null),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _areaCtrl, label: 'Locality / Area',
+                            hint: 'e.g. DHA, Gulshan, Model Town',
+                            prefixIcon: Icons.location_on_outlined, accentColor: AppTheme.tealPrimary,
+                            validator: (v) => v == null || v.isEmpty ? 'Area is required' : null),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
-                    prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
-                    obscureText: _obscurePass,
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
-                          color: AppTheme.textMuted, size: 20),
-                      onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                          AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
+                            prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
+                            obscureText: _obscurePass,
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
+                                  color: AppTheme.textMuted, size: 20),
+                              onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Password is required';
+                              if (v.length < 6) return 'At least 6 characters';
+                              return null;
+                            }),
+                          const SizedBox(height: 16),
+
+                          AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
+                            prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
+                            obscureText: _obscurePass,
+                            validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
+
+                          if (_error != null) ...[
+                            const SizedBox(height: 16),
+                            AuthErrorBox(message: _error!),
+                          ],
+                          const SizedBox(height: 28),
+
+                          SizedBox(
+                            width: double.infinity, height: 54,
+                            child: ElevatedButton(
+                              onPressed: _loading ? null : _sendOtpAndContinue,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.tealPrimary, foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd), elevation: 0),
+                              child: _loading
+                                  ? const SizedBox(width: 22, height: 22,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : const Text('Send Verification Code',
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Already have an account? Sign In',
+                                  style: TextStyle(color: AppTheme.tealLight, fontSize: 13)),
+                            ),
+                          ),
+                          const Spacer(),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
                     ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Password is required';
-                      if (v.length < 6) return 'At least 6 characters';
-                      return null;
-                    }),
-                  const SizedBox(height: 16),
-
-                  AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
-                    prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
-                    obscureText: _obscurePass,
-                    validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
-
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    AuthErrorBox(message: _error!),
-                  ],
-                  const SizedBox(height: 28),
-
-                  SizedBox(
-                    width: double.infinity, height: 54,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _sendOtpAndContinue,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.tealPrimary, foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd), elevation: 0),
-                      child: _loading
-                          ? const SizedBox(width: 22, height: 22,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Send Verification Code',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Already have an account? Sign In',
-                          style: TextStyle(color: AppTheme.tealLight, fontSize: 13)),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

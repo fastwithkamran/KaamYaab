@@ -44,143 +44,154 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: Column(
-            children: [
-              // ── Language Toggle ──────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: AppTheme.radiusMd,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _LangBtn(
-                          label: 'English', flag: '🇬🇧',
-                          selected: !_isUrdu,
-                          onTap: () => _switchLanguage(false),
-                        ),
-                        _LangBtn(
-                          label: 'اردو', flag: '🇵🇰',
-                          selected: _isUrdu,
-                          onTap: () => _switchLanguage(true),
-                        ),
-                      ]),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(duration: 400.ms),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // ── Language Toggle ──────────────────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: AppTheme.radiusMd,
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                                ),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  _LangBtn(
+                                    label: 'English', flag: '🇬🇧',
+                                    selected: !_isUrdu,
+                                    onTap: () => _switchLanguage(false),
+                                  ),
+                                  _LangBtn(
+                                    label: 'اردو', flag: '🇵🇰',
+                                    selected: _isUrdu,
+                                    onTap: () => _switchLanguage(true),
+                                  ),
+                                ]),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(duration: 400.ms),
 
-              const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-              // ── Logo / Header ─────────────────────────────────────────────
-              Column(children: [
-                ShaderMask(
-                  shaderCallback: (b) => AppTheme.primaryGradient.createShader(b),
-                  child: Text(
-                    _t('KaamYaab', 'کامیاب'),
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 46,
-                      fontWeight: FontWeight.w800, letterSpacing: -1,
+                        // ── Logo / Header ─────────────────────────────────────────────
+                        Column(children: [
+                          ShaderMask(
+                            shaderCallback: (b) => AppTheme.primaryGradient.createShader(b),
+                            child: Text(
+                              _t('KaamYaab', 'کامیاب'),
+                              style: const TextStyle(
+                                color: Colors.white, fontSize: 46,
+                                fontWeight: FontWeight.w800, letterSpacing: -1,
+                              ),
+                            ),
+                          ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
+                          const SizedBox(height: 8),
+                          Text(
+                            _t(
+                              "Pakistan's Smartest Home Services App",
+                              "پاکستان کی سب سے ذہین گھریلو خدمت",
+                            ),
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
+                        ]),
+
+                        const SizedBox(height: 44),
+
+                        // ── Who are you question ──────────────────────────────────────
+                        Text(
+                          _t("Who are you?", "آپ کون ہیں؟"),
+                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                        ).animate().fadeIn(delay: 300.ms, duration: 500.ms),
+                        const SizedBox(height: 8),
+                        Text(
+                          _t("Select your role to continue", "جاری رکھنے کے لیے اپنا کردار منتخب کریں"),
+                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
+
+                        const SizedBox(height: 32),
+
+                        // ── Role Cards ─────────────────────────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(children: [
+                            // Customer
+                            _RoleCard(
+                              emoji: '🏠',
+                              title: _t("I need a service", "مجھے خدمت چاہیے"),
+                              subtitle: _t(
+                                "Find plumbers, electricians &\nmore near you",
+                                "اپنے قریب پلمبر، بجلی کار\nاور مزید تلاش کریں",
+                              ),
+                              isSelected: _selectedRole == UserRole.customer,
+                              gradient: LinearGradient(colors: [
+                                AppTheme.tealPrimary.withValues(alpha: 0.15),
+                                AppTheme.blueInfo.withValues(alpha: 0.08),
+                              ], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                              borderColor: _selectedRole == UserRole.customer
+                                  ? AppTheme.tealPrimary
+                                  : AppTheme.tealPrimary.withValues(alpha: 0.3),
+                              onTap: () => _select(UserRole.customer),
+                            ).animate().fadeIn(delay: 500.ms, duration: 500.ms).slideX(begin: -0.2),
+
+                            const SizedBox(height: 16),
+
+                            // Worker
+                            _RoleCard(
+                              emoji: '🔧',
+                              title: _t("I offer a service", "میں خدمت دیتا ہوں"),
+                              subtitle: _t(
+                                "Register as a worker and\nget more customers",
+                                "کارکن کے طور پر رجسٹر ہوں\nاور زیادہ گاہک پائیں",
+                              ),
+                              isSelected: _selectedRole == UserRole.worker,
+                              gradient: LinearGradient(colors: [
+                                AppTheme.purpleAgent.withValues(alpha: 0.15),
+                                AppTheme.goldAccent.withValues(alpha: 0.08),
+                              ], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                              borderColor: _selectedRole == UserRole.worker
+                                  ? AppTheme.purpleAgent
+                                  : AppTheme.purpleAgent.withValues(alpha: 0.3),
+                              onTap: () => _select(UserRole.worker),
+                            ).animate().fadeIn(delay: 650.ms, duration: 500.ms).slideX(begin: 0.2),
+                          ]),
+                        ),
+
+                        const Spacer(),
+
+                        // ── Feature Pills ──────────────────────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 10, runSpacing: 8,
+                            children: [
+                              _FeaturePill(_t('🤖 AI Matching', '🤖 ذہین تلاش')),
+                              _FeaturePill(_t('✅ Verified Workers', '✅ تصدیق شدہ کارکن')),
+                              _FeaturePill(_t('💬 Fair Pricing', '💬 منصفانہ قیمت')),
+                              _FeaturePill(_t('⭐ Rated & Reviewed', '⭐ جائزہ شدہ')),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 800.ms, duration: 500.ms),
+
+                        const SizedBox(height: 32),
+                      ],
                     ),
                   ),
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
-                const SizedBox(height: 8),
-                Text(
-                  _t(
-                    "Pakistan's Smartest Home Services App",
-                    "پاکستان کی سب سے ذہین گھریلو خدمت",
-                  ),
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
-              ]),
-
-              const SizedBox(height: 44),
-
-              // ── Who are you question ──────────────────────────────────────
-              Text(
-                _t("Who are you?", "آپ کون ہیں؟"),
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
-              ).animate().fadeIn(delay: 300.ms, duration: 500.ms),
-              const SizedBox(height: 8),
-              Text(
-                _t("Select your role to continue", "جاری رکھنے کے لیے اپنا کردار منتخب کریں"),
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
-
-              const SizedBox(height: 32),
-
-              // ── Role Cards ─────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(children: [
-                  // Customer
-                  _RoleCard(
-                    emoji: '🏠',
-                    title: _t("I need a service", "مجھے خدمت چاہیے"),
-                    subtitle: _t(
-                      "Find plumbers, electricians &\nmore near you",
-                      "اپنے قریب پلمبر، بجلی کار\nاور مزید تلاش کریں",
-                    ),
-                    isSelected: _selectedRole == UserRole.customer,
-                    gradient: LinearGradient(colors: [
-                      AppTheme.tealPrimary.withValues(alpha: 0.15),
-                      AppTheme.blueInfo.withValues(alpha: 0.08),
-                    ], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    borderColor: _selectedRole == UserRole.customer
-                        ? AppTheme.tealPrimary
-                        : AppTheme.tealPrimary.withValues(alpha: 0.3),
-                    onTap: () => _select(UserRole.customer),
-                  ).animate().fadeIn(delay: 500.ms, duration: 500.ms).slideX(begin: -0.2),
-
-                  const SizedBox(height: 16),
-
-                  // Worker
-                  _RoleCard(
-                    emoji: '🔧',
-                    title: _t("I offer a service", "میں خدمت دیتا ہوں"),
-                    subtitle: _t(
-                      "Register as a worker and\nget more customers",
-                      "کارکن کے طور پر رجسٹر ہوں\nاور زیادہ گاہک پائیں",
-                    ),
-                    isSelected: _selectedRole == UserRole.worker,
-                    gradient: LinearGradient(colors: [
-                      AppTheme.purpleAgent.withValues(alpha: 0.15),
-                      AppTheme.goldAccent.withValues(alpha: 0.08),
-                    ], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    borderColor: _selectedRole == UserRole.worker
-                        ? AppTheme.purpleAgent
-                        : AppTheme.purpleAgent.withValues(alpha: 0.3),
-                    onTap: () => _select(UserRole.worker),
-                  ).animate().fadeIn(delay: 650.ms, duration: 500.ms).slideX(begin: 0.2),
-                ]),
-              ),
-
-              const Spacer(),
-
-              // ── Feature Pills ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10, runSpacing: 8,
-                  children: [
-                    _FeaturePill(_t('🤖 AI Matching', '🤖 ذہین تلاش')),
-                    _FeaturePill(_t('✅ Verified Workers', '✅ تصدیق شدہ کارکن')),
-                    _FeaturePill(_t('💬 Fair Pricing', '💬 منصفانہ قیمت')),
-                    _FeaturePill(_t('⭐ Rated & Reviewed', '⭐ جائزہ شدہ')),
-                  ],
                 ),
-              ).animate().fadeIn(delay: 800.ms, duration: 500.ms),
-
-              const SizedBox(height: 32),
-            ],
+              );
+            },
           ),
         ),
       ),
