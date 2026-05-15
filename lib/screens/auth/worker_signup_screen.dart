@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/otp_service.dart';
 import '../../models/user_model.dart';
+import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
 
@@ -50,6 +51,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _cnicCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
   final _rateCtrl = TextEditingController();
@@ -78,7 +80,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose(); _phoneCtrl.dispose(); _passCtrl.dispose();
-    _confirmPassCtrl.dispose(); _rateCtrl.dispose(); _bioCtrl.dispose();
+    _cnicCtrl.dispose(); _confirmPassCtrl.dispose(); _rateCtrl.dispose(); _bioCtrl.dispose();
     super.dispose();
   }
 
@@ -184,7 +186,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
 
     final user = AppUser(
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
-      email: '', city: _selectedCity ?? '', area: '',
+      cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: '',
       role: UserRole.worker, createdAt: DateTime.now(),
       serviceCategory: _selectedCategory, subRole: _selectedSubRole,
       skills: _selectedSkills,
@@ -213,213 +215,234 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                    padding: EdgeInsets.zero,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text('🔧  Register as a Worker',
-                      style: TextStyle(color: AppTheme.purpleAgent, fontSize: 26, fontWeight: FontWeight.w800),
-                  ).animate().fadeIn(duration: 400.ms),
-                  const SizedBox(height: 6),
-                  const Text('Create your profile and start getting jobs.',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                  ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
+                          ),
+                          const SizedBox(height: 20),
+                          const Text('🔧  Register as a Worker',
+                              style: TextStyle(color: AppTheme.purpleAgent, fontSize: 26, fontWeight: FontWeight.w800),
+                          ).animate().fadeIn(duration: 400.ms),
+                          const SizedBox(height: 6),
+                          const Text('Create your profile and start getting jobs.',
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
 
-                  const SizedBox(height: 28),
+                          const SizedBox(height: 28),
 
-                  // ── Profile photo ──────────────────────────────────────────
-                  AuthSectionHeader(title: 'Profile Photo (Required)', color: AppTheme.purpleAgent),
-                  const SizedBox(height: 14),
-                  _buildPhotoUploader(),
+                          // ── Profile photo ──────────────────────────────────────────
+                          AuthSectionHeader(title: 'Profile Photo (Required)', color: AppTheme.purpleAgent),
+                          const SizedBox(height: 14),
+                          _buildPhotoUploader(),
 
-                  const SizedBox(height: 24),
-                  AuthSectionHeader(title: 'Personal Information', color: AppTheme.purpleAgent),
-                  const SizedBox(height: 14),
+                          const SizedBox(height: 24),
+                          AuthSectionHeader(title: 'Personal Information', color: AppTheme.purpleAgent),
+                          const SizedBox(height: 14),
 
-                  AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Muhammad Usman',
-                      prefixIcon: Icons.person_outline, accentColor: AppTheme.purpleAgent,
-                      validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Muhammad Usman',
+                              prefixIcon: Icons.person_outline, accentColor: AppTheme.purpleAgent,
+                              validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
-                      prefixIcon: Icons.phone_outlined, accentColor: AppTheme.purpleAgent,
-                      keyboardType: TextInputType.phone,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Phone is required';
-                        if (v.length < 10) return 'Enter a valid phone number';
-                        return null;
-                      }),
-                  const SizedBox(height: 16),
+                          AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
+                              prefixIcon: Icons.phone_outlined, accentColor: AppTheme.purpleAgent,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: pakistanPhoneInputFormatters,
+                              maxLength: 11,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Phone is required';
+                                if (!pakistanPhoneRegex.hasMatch(v)) {
+                                  return 'Enter a valid 11-digit number starting with 03';
+                                }
+                                return null;
+                              }),
+                          const SizedBox(height: 16),
 
-                  AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
-                      items: _cities, accentColor: AppTheme.purpleAgent,
-                      prefixIcon: Icons.location_city_outlined,
-                      onChanged: (v) => setState(() => _selectedCity = v),
-                      validator: (v) => v == null ? 'Please select your city' : null),
+                          AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                              prefixIcon: Icons.badge_outlined, accentColor: AppTheme.purpleAgent,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: CnicUtils.inputFormatters,
+                              validator: CnicUtils.validator),
+                          const SizedBox(height: 16),
 
-                  const SizedBox(height: 28),
-                  AuthSectionHeader(title: 'Your Service & Role', color: AppTheme.purpleAgent),
-                  const SizedBox(height: 14),
+                          AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
+                              items: _cities, accentColor: AppTheme.purpleAgent,
+                              prefixIcon: Icons.location_city_outlined,
+                              onChanged: (v) => setState(() => _selectedCity = v),
+                              validator: (v) => v == null ? 'Please select your city' : null),
 
-                  // Category
-                  AuthDropdownField(label: 'Service Category', hint: 'What service do you offer?',
-                      value: _selectedCategory, items: _categories,
-                      accentColor: AppTheme.purpleAgent, prefixIcon: Icons.build_outlined,
-                      onChanged: (v) => setState(() {
-                        _selectedCategory = v;
-                        _selectedSubRole = null;
-                        _selectedSkills = [];
-                      }),
-                      validator: (v) => v == null ? 'Please select a category' : null),
-                  const SizedBox(height: 16),
+                          const SizedBox(height: 28),
+                          AuthSectionHeader(title: 'Your Service & Role', color: AppTheme.purpleAgent),
+                          const SizedBox(height: 14),
 
-                  // Sub-role
-                  if (_selectedCategory != null) ...[
-                    AuthDropdownField(
-                      label: 'Your Specialty (Sub-role)',
-                      hint: 'Select your specific specialty',
-                      value: _selectedSubRole,
-                      items: _subRoles[_selectedCategory!] ?? [],
-                      accentColor: AppTheme.purpleAgent,
-                      prefixIcon: Icons.star_outline,
-                      onChanged: (v) => setState(() => _selectedSubRole = v),
-                      validator: (v) => v == null ? 'Please select your specialty' : null,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                          // Category
+                          AuthDropdownField(label: 'Service Category', hint: 'What service do you offer?',
+                              value: _selectedCategory, items: _categories,
+                              accentColor: AppTheme.purpleAgent, prefixIcon: Icons.build_outlined,
+                              onChanged: (v) => setState(() {
+                                _selectedCategory = v;
+                                _selectedSubRole = null;
+                                _selectedSkills = [];
+                              }),
+                              validator: (v) => v == null ? 'Please select a category' : null),
+                          const SizedBox(height: 16),
 
-                  // Skills chips
-                  if (_selectedCategory != null) ...[
-                    const Text('Skills (select all that apply)',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8, runSpacing: 8,
-                      children: (_categorySkills[_selectedCategory!] ?? []).map((skill) {
-                        final sel = _selectedSkills.contains(skill);
-                        return FilterChip(
-                          label: Text(skill), selected: sel,
-                          onSelected: (v) {
-                            HapticFeedback.selectionClick();
-                            setState(() => sel ? _selectedSkills.remove(skill) : _selectedSkills.add(skill));
-                          },
-                          selectedColor: AppTheme.purpleAgent.withValues(alpha: 0.25),
-                          checkmarkColor: AppTheme.purpleAgent,
-                          backgroundColor: Colors.white.withValues(alpha: 0.06),
-                          labelStyle: TextStyle(
-                            color: sel ? AppTheme.purpleAgent : AppTheme.textSecondary,
-                            fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400),
-                          side: BorderSide(color: sel ? AppTheme.purpleAgent : Colors.white.withValues(alpha: 0.15)),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                          // Sub-role
+                          if (_selectedCategory != null) ...[
+                            AuthDropdownField(
+                              label: 'Your Specialty (Sub-role)',
+                              hint: 'Select your specific specialty',
+                              value: _selectedSubRole,
+                              items: _subRoles[_selectedCategory!] ?? [],
+                              accentColor: AppTheme.purpleAgent,
+                              prefixIcon: Icons.star_outline,
+                              onChanged: (v) => setState(() => _selectedSubRole = v),
+                              validator: (v) => v == null ? 'Please select your specialty' : null,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                  // Experience stepper
-                  const Text('Years of Experience',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06), borderRadius: AppTheme.radiusMd,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
-                    child: Row(children: [
-                      const Icon(Icons.work_outline, color: AppTheme.purpleAgent, size: 20),
-                      const SizedBox(width: 12),
-                      Text('$_experience year${_experience == 1 ? '' : 's'}',
-                          style: const TextStyle(color: Colors.white, fontSize: 15)),
-                      const Spacer(),
-                      _StepBtn(icon: Icons.remove, color: AppTheme.purpleAgent,
-                          onTap: () => setState(() { if (_experience > 1) _experience--; })),
-                      const SizedBox(width: 12),
-                      _StepBtn(icon: Icons.add, color: AppTheme.purpleAgent,
-                          onTap: () => setState(() => _experience++)),
-                    ]),
-                  ),
-                  const SizedBox(height: 16),
+                          // Skills chips
+                          if (_selectedCategory != null) ...[
+                            const Text('Skills (select all that apply)',
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8, runSpacing: 8,
+                              children: (_categorySkills[_selectedCategory!] ?? []).map((skill) {
+                                final sel = _selectedSkills.contains(skill);
+                                return FilterChip(
+                                  label: Text(skill), selected: sel,
+                                  onSelected: (v) {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => sel ? _selectedSkills.remove(skill) : _selectedSkills.add(skill));
+                                  },
+                                  selectedColor: AppTheme.purpleAgent.withValues(alpha: 0.25),
+                                  checkmarkColor: AppTheme.purpleAgent,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.06),
+                                  labelStyle: TextStyle(
+                                    color: sel ? AppTheme.purpleAgent : AppTheme.textSecondary,
+                                    fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400),
+                                  side: BorderSide(color: sel ? AppTheme.purpleAgent : Colors.white.withValues(alpha: 0.15)),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                  AuthGlassInput(controller: _rateCtrl, label: 'Hourly Rate (PKR)', hint: 'e.g. 500',
-                      prefixIcon: Icons.payments_outlined, accentColor: AppTheme.purpleAgent,
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Hourly rate is required';
-                        if (double.tryParse(v) == null) return 'Enter a valid number';
-                        return null;
-                      }),
-                  const SizedBox(height: 16),
+                          // Experience stepper
+                          const Text('Years of Experience',
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.06), borderRadius: AppTheme.radiusMd,
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
+                            child: Row(children: [
+                              const Icon(Icons.work_outline, color: AppTheme.purpleAgent, size: 20),
+                              const SizedBox(width: 12),
+                              Text('$_experience year${_experience == 1 ? '' : 's'}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 15)),
+                              const Spacer(),
+                              _StepBtn(icon: Icons.remove, color: AppTheme.purpleAgent,
+                                  onTap: () => setState(() { if (_experience > 1) _experience--; })),
+                              const SizedBox(width: 12),
+                              _StepBtn(icon: Icons.add, color: AppTheme.purpleAgent,
+                                  onTap: () => setState(() => _experience++)),
+                            ]),
+                          ),
+                          const SizedBox(height: 16),
 
-                  AuthGlassInput(controller: _bioCtrl, label: 'About You (optional)',
-                      hint: 'Tell customers about yourself and your work quality...',
-                      prefixIcon: Icons.info_outline, accentColor: AppTheme.purpleAgent, maxLines: 3),
+                          AuthGlassInput(controller: _rateCtrl, label: 'Hourly Rate (PKR)', hint: 'e.g. 500',
+                              prefixIcon: Icons.payments_outlined, accentColor: AppTheme.purpleAgent,
+                              keyboardType: TextInputType.number,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Hourly rate is required';
+                                if (double.tryParse(v) == null) return 'Enter a valid number';
+                                return null;
+                              }),
+                          const SizedBox(height: 16),
 
-                  const SizedBox(height: 28),
-                  AuthSectionHeader(title: 'Account Security', color: AppTheme.purpleAgent),
-                  const SizedBox(height: 14),
+                          AuthGlassInput(controller: _bioCtrl, label: 'About You (optional)',
+                              hint: 'Tell customers about yourself and your work quality...',
+                              prefixIcon: Icons.info_outline, accentColor: AppTheme.purpleAgent, maxLines: 3),
 
-                  AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
-                      prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
-                      obscureText: _obscurePass,
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
-                            color: AppTheme.textMuted, size: 20),
-                        onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                          const SizedBox(height: 28),
+                          AuthSectionHeader(title: 'Account Security', color: AppTheme.purpleAgent),
+                          const SizedBox(height: 14),
+
+                          AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
+                              prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
+                              obscureText: _obscurePass,
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
+                                    color: AppTheme.textMuted, size: 20),
+                                onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Password is required';
+                                if (v.length < 6) return 'At least 6 characters';
+                                return null;
+                              }),
+                          const SizedBox(height: 16),
+
+                          AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
+                              prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
+                              obscureText: _obscurePass,
+                              validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
+
+                          if (_error != null) ...[
+                            const SizedBox(height: 16),
+                            AuthErrorBox(message: _error!),
+                          ],
+                          const SizedBox(height: 28),
+
+                          SizedBox(
+                            width: double.infinity, height: 54,
+                            child: ElevatedButton(
+                              onPressed: _loading ? null : _sendOtpAndContinue,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.purpleAgent, foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd), elevation: 0),
+                              child: _loading
+                                  ? const SizedBox(width: 22, height: 22,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : const Text('Send Verification Code',
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Already registered? Sign In',
+                                  style: TextStyle(color: AppTheme.purpleLight, fontSize: 13)),
+                            ),
+                          ),
+                          const Spacer(),
+                          const SizedBox(height: 40),
+                        ],
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Password is required';
-                        if (v.length < 6) return 'At least 6 characters';
-                        return null;
-                      }),
-                  const SizedBox(height: 16),
-
-                  AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
-                      prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
-                      obscureText: _obscurePass,
-                      validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
-
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    AuthErrorBox(message: _error!),
-                  ],
-                  const SizedBox(height: 28),
-
-                  SizedBox(
-                    width: double.infinity, height: 54,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _sendOtpAndContinue,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.purpleAgent, foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd), elevation: 0),
-                      child: _loading
-                          ? const SizedBox(width: 22, height: 22,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Send Verification Code',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Already registered? Sign In',
-                          style: TextStyle(color: AppTheme.purpleLight, fontSize: 13)),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
