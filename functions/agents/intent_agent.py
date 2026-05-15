@@ -10,15 +10,23 @@ import json
 import logging
 import os
 import re
-import google.generativeai as genai
+import time
+try:
+    import google.generativeai as genai
+except ImportError:  # pragma: no cover - environment-dependent optional dependency
+    genai = None
 
 logger = logging.getLogger(__name__)
+MAX_GEMINI_RETRIES = 3
+MAX_BACKOFF_SECONDS = 4
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 model = None
-if _gemini_api_key:
+if _gemini_api_key and genai is not None:
     genai.configure(api_key=_gemini_api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-1.5-flash")
+elif _gemini_api_key and genai is None:
+    logger.info("[IntentAgent] google.generativeai is not installed — using fast_parse fallback")
 
 INTENT_PROMPT = """
 You are the Intent Agent for KhidmatGaar, an AI service orchestrator for Pakistan's informal economy.
@@ -160,19 +168,15 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
     if use_gemini and model is not None:
         try:
             prompt = INTENT_PROMPT.format(raw_input=raw_input)
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=512,
-                )
+            response = _generate_with_retry(
+                prompt
             )
             text = response.text.strip()
             # Strip markdown fences if present
             text = re.sub(r'```json\s*|\s*```', '', text).strip()
             result = json.loads(text)
             result["agent"] = "IntentAgent"
-            result["model"] = "gemini-1.5-pro"
+            result["model"] = "gemini-1.5-flash"
             return result
         except Exception as e:
             logger.warning("[IntentAgent] Gemini failed: %s — using fast_parse fallback", e)
@@ -183,6 +187,27 @@ def run(raw_input: str, use_gemini: bool = True) -> dict:
     result["agent"] = "IntentAgent"
     result["model"] = "rule_based_fallback"
     return result
+
+
+def _generate_with_retry(prompt: str):
+    last_error = None
+    for retry in range(0, MAX_GEMINI_RETRIES + 1):
+        try:
+            return model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=512,
+                )
+            )
+        except Exception as e:
+            last_error = e
+            msg = str(e).lower()
+            is_rate_limited = "429" in msg or "rate" in msg or "quota" in msg
+            if retry == MAX_GEMINI_RETRIES or not is_rate_limited:
+                break
+            time.sleep(min(MAX_BACKOFF_SECONDS, 2 ** retry))
+    raise last_error
 
 
 # ── Antigravity Tool Definition ──────────────────────────────────────────────

@@ -9,14 +9,19 @@ import os
 import uuid
 import datetime
 from typing import Dict, List, Any, Optional
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:  # pragma: no cover - environment-dependent optional dependency
+    genai = None
 
 logger = logging.getLogger(__name__)
 
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
-if _gemini_api_key:
+if _gemini_api_key and genai is not None:
     genai.configure(api_key=_gemini_api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-1.5-flash")
+elif _gemini_api_key and genai is None:
+    logger.info("[OrchestratorAgents] google.generativeai is not installed — running without Gemini model")
 else:
     model = None
     logger.info("[OrchestratorAgents] GEMINI_API_KEY not set — running without Gemini model")
@@ -295,7 +300,7 @@ def booking_agent_run(
 
     step_defs = [
         (1, "Slot Lock",           f"Provider calendar slot {scheduling_result.get('slot')} locked. Booking ID: {scheduling_result.get('booking_id')}"),
-        (2, "Confirmation",        f"WhatsApp + SMS sent to user and {provider['name']} (+{provider['phone'][-7:]})"),
+        (2, "Confirmation",        f"In-app booking notification sent to user and {provider['name']} (+{provider['phone'][-7:]})"),
         (3, "Receipt Generated",   f"Receipt #{receipt_no} — Rs. {quote['total_pkr']} — {intent.get('service_type')} service"),
         (4, "Reminders Scheduled", "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging"),
         (5, "En-Route Update",     f"Provider en-route notification will trigger at departure. ETA calculated dynamically."),

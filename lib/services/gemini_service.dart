@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../config/runtime_config.dart';
 
@@ -9,6 +10,8 @@ class GeminiService {
 
   static final String _apiKey = RuntimeConfig.geminiApiKey.trim();
   static bool get _hasApiKey => _apiKey.isNotEmpty;
+  static const int _maxRetries = 3;
+  static const int _maxBackoffSeconds = 4;
 
   // â”€â”€â”€ Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static Future<Map<String, dynamic>> extractIntent(String rawInput) async {
@@ -42,16 +45,12 @@ Only return the JSON. No explanation.
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {'parts': [{'text': prompt}]}
-          ],
-          'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512}
-        }),
-      );
+      final response = await _postWithRetry({
+        'contents': [
+          {'parts': [{'text': prompt}]}
+        ],
+        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512}
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -109,16 +108,12 @@ Return JSON:
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {'parts': [{'text': prompt}]}
-          ],
-          'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 256}
-        }),
-      );
+      final response = await _postWithRetry({
+        'contents': [
+          {'parts': [{'text': prompt}]}
+        ],
+        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 256}
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -166,16 +161,12 @@ Analyze and return JSON:
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {'parts': [{'text': prompt}]}
-          ],
-          'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512}
-        }),
-      );
+      final response = await _postWithRetry({
+        'contents': [
+          {'parts': [{'text': prompt}]}
+        ],
+        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512}
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -283,5 +274,31 @@ Analyze and return JSON:
       'reasoning': 'Case reviewed. A partial refund of Rs. ${(overcharge * 0.5).toStringAsFixed(0)} is issued as a goodwill gesture. Provider has received a formal warning.',
       'escalate_to_human': false,
     };
+  }
+
+  static Future<http.Response> _postWithRetry(Map<String, dynamic> payload) async {
+    http.Response? lastResponse;
+    for (var retry = 0; retry <= _maxRetries; retry++) {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?key=$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+      lastResponse = response;
+      if (response.statusCode < 400) {
+        return response;
+      }
+
+      final isRateLimited = response.statusCode == 429;
+      final isRetryableServerError = response.statusCode >= 500;
+      if (retry == _maxRetries || (!isRateLimited && !isRetryableServerError)) {
+        return response;
+      }
+
+      final delaySeconds = min(_maxBackoffSeconds, pow(2, retry).toInt());
+      await Future.delayed(Duration(seconds: max(1, delaySeconds)));
+    }
+    return lastResponse ??
+        http.Response('{"error":"request_failed"}', 500);
   }
 }

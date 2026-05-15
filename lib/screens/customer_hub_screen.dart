@@ -394,7 +394,7 @@ class _SettingsTabState extends State<_SettingsTab> {
         _SettingRow(
           icon: Icons.bug_report_rounded,
           title: _t('Hackathon Simulator', 'ہیکاتھون سمیلیٹر'),
-          subtitle: _t('Test SMS, En-Route, Disputes', 'ٹیسٹ ایس ایم ایس، تنازعات'),
+          subtitle: _t('Test in-app notifications, En-Route, Disputes', 'ان-ایپ نوٹیفکیشن، راستے کی اپڈیٹس، تنازعات'),
           trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SimulationDashboardScreen())),
         ),
@@ -481,19 +481,11 @@ class _SupportTab extends StatelessWidget {
         ),
         _SupportTile(
           emoji: '💬',
-          title: _t('WhatsApp Chat', 'واٹس ایپ چیٹ'),
-          subtitle: _t('Message us for quick help', 'فوری مدد کے لیے پیغام بھیجیں'),
+          title: _t('In-App Chat', 'ان-ایپ چیٹ'),
+          subtitle: _t('Message us in app for quick help', 'فوری مدد کے لیے ایپ میں پیغام بھیجیں'),
           color: const Color(0xFF25D366),
           onTap: () {},
         ),
-        _SupportTile(
-          emoji: '📧',
-          title: _t('Email Us', 'ای میل کریں'),
-          subtitle: 'support@kaamyaab.pk',
-          color: AppTheme.blueInfo,
-          onTap: () {},
-        ),
-
         const SizedBox(height: 24),
         _SectionTitle(title: _t('FAQ', 'عام سوالات')),
         _FaqTile(

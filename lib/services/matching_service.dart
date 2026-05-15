@@ -1,7 +1,8 @@
-import 'dart:math';
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
-import '../services/auth_service.dart';
+import '../utils/distance_utils.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
@@ -14,41 +15,15 @@ class MatchingService {
 
   static List<ServiceProvider>? _allProviders;
 
-  /// Load providers from AuthService (SharedPreferences, Firestore-ready).
-  /// Returns real registered workers only - no mock data.
+  /// Load providers from local static JSON dataset.
   static Future<List<ServiceProvider>> loadProviders() async {
     if (_allProviders != null) return _allProviders!;
     try {
-      final workers = await AuthService().getAllWorkers();
-      _allProviders = workers.map<ServiceProvider>((u) => ServiceProvider(
-        id: u.uid,
-        name: u.name,
-        phone: u.phone,
-        serviceCategory: u.serviceCategory ?? 'General',
-        area: u.area,
-        city: u.city,
-        lat: 33.7215,
-        lng: 73.0433,
-        rating: u.rating,
-        reviewCount: u.totalJobs,
-        totalJobs: u.totalJobs,
-        completedJobs: u.totalJobs,
-        baseRatePkr: (u.baseRatePkr ?? 500).toDouble(),
-        skills: u.skills ?? [],
-        certifications: const [],
-        availability: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-        availableSlots: const ['09:00', '11:00', '14:00', '16:00'],
-        isVerified: true,
-        onTimeRate: 0.92,
-        cancellationRate: 0.05,
-        priceFairnessScore: 0.85,
-        disputeCount: 0,
-        surgeAcceptor: true,
-        experienceLevel: (u.experienceYears ?? 0) >= 7 ? 'expert' : (u.experienceYears ?? 0) >= 3 ? 'intermediate' : 'basic',
-        profileImage: '',
-        lastActiveDate: DateTime.now().toIso8601String().substring(0, 10),
-        dnascore: ((u.rating / 5.0) * 850 + 50).toInt().clamp(0, 1000),
-      )).toList();
+      final raw = await rootBundle.loadString('assets/data/providers_mock.json');
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final list = (decoded['providers'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      _allProviders = list.map(ServiceProvider.fromJson).toList();
     } catch (_) {
       _allProviders = [];
     }
@@ -80,7 +55,10 @@ class MatchingService {
     // Step 2: Score each provider using README 10-factor algorithm.
     final scored = <ProviderMatch>[];
     for (final p in filtered) {
-      final dist = _haversine(userLat, userLng, p.lat, p.lng);
+      final dist = haversineDistanceKm(
+        (lat: userLat, lng: userLng),
+        (lat: p.lat, lng: p.lng),
+      );
       final match = _computeMatch(p, request, dist, surgeMult);
       scored.add(match);
     }
@@ -149,7 +127,7 @@ class MatchingService {
 
     final quote = _calculateQuote(p, req, distKm, surge);
     final slot = p.availableSlots.isNotEmpty ? p.availableSlots.first : '10:00';
-    final eta = (distKm * 6).round();
+    final eta = (estimateTravelTimeHours(distKm) * 60).round();
     final rationale = _buildRationale(p, score, distKm, surge);
 
     return ProviderMatch(
@@ -311,16 +289,4 @@ class MatchingService {
     return 0.0;
   }
 
-  /// Haversine formula for distance between two lat/lng points in km.
-  static double _haversine(double lat1, double lng1, double lat2, double lng2) {
-    const r = 6371.0;
-    final dLat = _toRad(lat2 - lat1);
-    final dLng = _toRad(lng2 - lng1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_toRad(lat1)) * cos(_toRad(lat2)) * sin(dLng / 2) * sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return r * c;
-  }
-
-  static double _toRad(double deg) => deg * pi / 180;
 }

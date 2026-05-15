@@ -124,7 +124,7 @@ def build_trace(scenario: dict) -> dict:
             "service_type": intent_result["service_type"],
             "user_location": {"lat": user_lat, "lng": user_lng},
             "surge_multiplier": surge_result["surge_multiplier"],
-            "providers_evaluated": match_result["total_evaluated"],
+            "providers_evaluated": match_result.get("total_evaluated", 0),
         },
         outputs={
             "status": match_result["status"],
@@ -306,7 +306,7 @@ def _finalize_trace(trace_id, start, end, steps, scenario, final_output):
         "final_output": final_output,
         "antigravity_metadata": {
             "platform": "Google Antigravity",
-            "llm": "gemini-1.5-pro",
+            "llm": "gemini-1.5-flash",
             "trace_version": "1.0",
             "challenge": "Challenge 2 — AI Service Orchestrator",
             "hackathon": "AI Seekho Hackathon 26",
