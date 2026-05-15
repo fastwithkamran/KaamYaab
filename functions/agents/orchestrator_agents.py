@@ -21,7 +21,6 @@ if _gemini_api_key and genai is not None:
     genai.configure(api_key=_gemini_api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
 elif _gemini_api_key and genai is None:
-    model = None
     logger.info("[OrchestratorAgents] google.generativeai is not installed — running without Gemini model")
 else:
     model = None
