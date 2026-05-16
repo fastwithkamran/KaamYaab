@@ -8,6 +8,8 @@ import '../../models/user_model.dart';
 import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
+import '../map_picker_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -26,6 +28,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   final _areaCtrl = TextEditingController();
 
   String? _selectedCity;
+  LatLng? _selectedLocation;
   bool _loading = false;
   bool _obscurePass = true;
   String? _error;
@@ -70,6 +73,8 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
       cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
       role: UserRole.customer, createdAt: DateTime.now(),
+      latitude: _selectedLocation?.latitude,
+      longitude: _selectedLocation?.longitude,
     );
 
     final result = await AuthService().register(user, _passCtrl.text);
@@ -156,6 +161,51 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                             hint: 'e.g. DHA, Gulshan, Model Town',
                             prefixIcon: Icons.location_on_outlined, accentColor: AppTheme.tealPrimary,
                             validator: (v) => v == null || v.isEmpty ? 'Area is required' : null),
+                          const SizedBox(height: 16),
+
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceDark.withValues(alpha: 0.5),
+                              borderRadius: AppTheme.radiusMd,
+                              border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.map_outlined, color: AppTheme.tealPrimary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Exact Location', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                                      Text(
+                                        _selectedLocation != null ? 'Location selected' : 'Tap to pin on map',
+                                        style: TextStyle(color: _selectedLocation != null ? AppTheme.greenSuccess : AppTheme.textMuted, fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    final LatLng? result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => MapPickerScreen(initialPosition: _selectedLocation)),
+                                    );
+                                    if (result != null) {
+                                      setState(() => _selectedLocation = result);
+                                    }
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: AppTheme.tealPrimary.withValues(alpha: 0.1),
+                                    foregroundColor: AppTheme.tealPrimary,
+                                  ),
+                                  child: const Text('Pick'),
+                                )
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 16),
 
                           AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',

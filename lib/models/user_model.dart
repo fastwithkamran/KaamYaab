@@ -22,6 +22,11 @@ class AppUser {
   final String? bio;
   final String? profileImageBase64; // Base64 encoded profile photo
 
+  // Map locations & availability
+  final double? latitude;
+  final double? longitude;
+  final List<String>? availabilityRules;
+
   const AppUser({
     required this.uid,
     required this.name,
@@ -41,6 +46,9 @@ class AppUser {
     this.totalJobs = 0,
     this.bio,
     this.profileImageBase64,
+    this.latitude,
+    this.longitude,
+    this.availabilityRules,
   });
 
   bool get isWorker => role == UserRole.worker;
@@ -81,6 +89,11 @@ class AppUser {
       totalJobs: json['total_jobs'] as int? ?? 0,
       bio: json['bio'] as String?,
       profileImageBase64: json['profile_image'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      availabilityRules: json['availability_rules'] != null
+          ? List<String>.from(json['availability_rules'] as List)
+          : null,
     );
   }
 
@@ -103,6 +116,9 @@ class AppUser {
         'total_jobs': totalJobs,
         'bio': bio,
         'profile_image': profileImageBase64,
+        'latitude': latitude,
+        'longitude': longitude,
+        'availability_rules': availabilityRules,
       };
 
   AppUser copyWith({
@@ -110,6 +126,9 @@ class AppUser {
     double? rating,
     int? totalJobs,
     String? profileImageBase64,
+    List<String>? availabilityRules,
+    double? latitude,
+    double? longitude,
   }) {
     return AppUser(
       uid: uid,
@@ -130,6 +149,9 @@ class AppUser {
       totalJobs: totalJobs ?? this.totalJobs,
       bio: bio,
       profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
+      availabilityRules: availabilityRules ?? this.availabilityRules,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }

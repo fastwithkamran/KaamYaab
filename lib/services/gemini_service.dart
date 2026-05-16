@@ -179,7 +179,49 @@ Analyze and return JSON:
     return _mockDisputeAnalysis(disputeType, quotedPrice, chargedPrice, providerDnaScore);
   }
 
-  // â”€â”€â”€ Mock Fallbacks (for demo without API key) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Worker Settings Agent ──────────────────────────────────────────────────
+  static Future<List<String>> processWorkerSettings(String input, List<String> currentRules) async {
+    if (!_hasApiKey) {
+      // Mock logic for demo without API key
+      final updated = List<String>.from(currentRules);
+      updated.add(input);
+      return updated;
+    }
+
+    final prompt = '''
+You are the KaamYaab Worker Agent. A worker has told you their new availability setting.
+Input: "$input"
+Current Rules: ${currentRules.join(', ')}
+
+Please extract the new availability rules, and update the current rules list.
+Return the updated list as a JSON array of strings representing the distinct rules in simple, concise English. For example: ["Sundays off", "Available 10 AM to 5 PM"].
+Only return the JSON array.
+''';
+
+    try {
+      final response = await _postWithRetry({
+        'contents': [
+          {'parts': [{'text': prompt}]}
+        ],
+        'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 256}
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
+        final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
+        final List<dynamic> parsed = jsonDecode(cleaned);
+        return parsed.map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
+
+    // Fallback: just add it
+    final updated = List<String>.from(currentRules);
+    updated.add(input);
+    return updated;
+  }
+
+  // ── Mock Fallbacks (for demo without API key) ───────────────────────────
   static Map<String, dynamic> _mockIntentParse(String rawInput) {
     final lower = rawInput.toLowerCase();
     String service = 'Unknown';
