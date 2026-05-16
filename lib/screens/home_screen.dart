@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _scrollCtrl.animateTo(0,
         duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
 
-    // â”€â”€ Step 1: Intent Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 1: Intent Agent ──────────────────────────────────────────────────
     _addStep(AgentStep(
       agentName: AgentIdentity.intent,
       task: 'Parsing multilingual request',
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       status: 'pending',
     );
 
-    // â”€â”€ Step 2: Surge Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 2: Surge Agent ──────────────────────────────────────────────────
     _addStep(AgentStep(
       agentName: AgentIdentity.surge,
       task: 'Checking demand in $area',
@@ -152,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _updateLastStep(
       status: AgentStepStatus.done,
       decision: hasSurge
-          ? 'âš  Surge detected: ${_surgeMultiplier}x â€” $_surgeRequests active requests, limited providers'
+          ? '⚠️ Surge detected: ${_surgeMultiplier}x — $_surgeRequests active requests, limited providers'
           : 'No surge. Normal pricing applies.',
     );
 
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() => _showSurge = true);
     }
 
-    // â”€â”€ Step 3: Matching Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 3: Matching Agent ─────────────────────────────────────────────
     _addStep(AgentStep(
       agentName: AgentIdentity.matching,
         task: 'Ranking providers with 10-factor matching algorithm',
@@ -185,15 +185,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       status: results.isEmpty ? AgentStepStatus.failed : AgentStepStatus.done,
       decision: results.isEmpty
           ? 'No providers available. Expanding search radius...'
-          : 'Top match: ${results.first.provider.name} â€” DNA ${results.first.provider.dnascore} â€” ${results.first.matchScore.toStringAsFixed(0)}% match',
+          : 'Top match: ${results.first.provider.name} — DNA ${results.first.provider.dnascore} — ${results.first.matchScore.toStringAsFixed(0)}% match',
     );
 
-    // â”€â”€ Step 4: Pricing Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 4: Pricing Agent ─────────────────────────────────────────────
     if (results.isNotEmpty) {
       _addStep(AgentStep(
         agentName: AgentIdentity.pricing,
         task: 'Generating dynamic price quotes',
-        reasoning: 'Applying base rate + urgency adjustment + distance cost + surge multiplier âˆ’ loyalty discount...',
+        reasoning: 'Applying base rate + urgency adjustment + distance cost + surge multiplier − loyalty discount...',
         toolCall: 'pricing_agent.quote(providers=${results.length}, surge=${_surgeMultiplier}x)',
         status: AgentStepStatus.thinking,
         timestamp: DateTime.now(),
@@ -248,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         backgroundColor: AppTheme.cardDark,
         shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         title: const Row(children: [
-          Text('ðŸ§  ', style: TextStyle(fontSize: 20)),
+          Text('🧠 ', style: TextStyle(fontSize: 20)),
           Text('Need Clarification',
               style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
         ]),
@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _openBooking(ProviderMatch match) {
+  void _openBooking(ProviderMatch match, double finalPrice, String? note) {
     HapticFeedback.mediumImpact();
     Navigator.push(
       context,
@@ -273,6 +273,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           match: match,
           request: _currentRequest!,
           surgeMultiplier: _surgeMultiplier,
+          negotiatedPrice: finalPrice,
+          negotiationNote: note,
         ),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
@@ -499,44 +501,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Live Bookings Ticker
-                      Row(
-                        children: [
-                          Container(
-                            width: 8, height: 8,
-                            decoration: const BoxDecoration(color: AppTheme.redAlert, shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _lang.isUrdu ? 'لائیو بکنگز' : 'Live Bookings',
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
-                          borderRadius: AppTheme.radiusMd,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.flash_on_rounded, color: AppTheme.goldAccent, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _lang.isUrdu ? 'کسی نے ابھی G-13 میں پلمبر بک کیا۔' : 'Someone just booked a Plumber in G-13',
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Text('Just now', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                          ],
-                        ),
-                      ),
+
                     ],
                   ),
                 ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
@@ -554,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       activeRequests: _surgeRequests,
                       availableProviders: 3,
                       onBookNow: () {
-                        if (_matches.isNotEmpty) _openBooking(_matches.first);
+                        if (_matches.isNotEmpty) _openBooking(_matches.first, _matches.first.quotePkr, null);
                       },
                       onDismiss: () => setState(() => _showSurge = false),
                     ),
@@ -623,9 +588,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         match: match,
                         rank: i + 1,
                         isExpanded: _expandedCard == i,
+                        serviceType: _currentRequest?.serviceType ?? 'Unknown',
+                        surgeMultiplier: _surgeMultiplier,
                         onTap: () => setState(
                             () => _expandedCard = _expandedCard == i ? -1 : i),
-                        onBook: () => _openBooking(match),
+                        onBook: (finalPrice, note) => _openBooking(match, finalPrice, note),
                       ),
                     );
                   },
@@ -649,7 +616,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.15)),
                           ),
                           child: const Center(
-                            child: Text('ðŸ”', style: TextStyle(fontSize: 36)),
+                            child: Icon(Icons.search_rounded, size: 36, color: AppTheme.tealPrimary),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -664,7 +631,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Urdu, Roman Urdu ya English mein\nlikhein â€” AI samjhega',
+                          'Urdu, Roman Urdu ya English mein\nlikhein — AI samjhega',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: AppTheme.textMuted,
@@ -686,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// â”€â”€ Quick Service Chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Quick Service Chip ──────────────────────────────────────────────────────────
 class _QuickChip extends StatefulWidget {
   final String label;
   final int index;
@@ -695,11 +662,11 @@ class _QuickChip extends StatefulWidget {
   const _QuickChip({required this.label, required this.index, required this.onTap});
 
   static const _icons = {
-    'AC Repair': 'â„ï¸',
-    'Plumbing': 'ðŸ”§',
-    'Electrical': 'âš¡',
-    'Tutoring': 'ðŸ“š',
-    'Cleaning': 'ðŸ§¹',
+    'AC Repair': 'AC',
+    'Plumbing': '🔧',
+    'Electrical': '⚡',
+    'Tutoring': '📚',
+    'Cleaning': '🧹',
   };
 
   @override
@@ -736,7 +703,7 @@ class _QuickChipState extends State<_QuickChip> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_QuickChip._icons[widget.label] ?? 'ðŸ”¨',
+            Text(_QuickChip._icons[widget.label] ?? '🔨',
                 style: const TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
             Text(

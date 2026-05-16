@@ -259,6 +259,58 @@
       "available_slots": ["09:00","10:00","14:00","15:00"],
       "review_count": 132, "profile_image": "danish.jpg", "is_verified": true,
       "last_active_date": "2026-05-12"
+    },
+    {
+      "id": "p021", "name": "Rizwan Ahmed", "phone": "+92-333-1234567",
+      "service_category": "Plumbing", "skills": ["Pipe Fitting", "Water Heater", "Bathroom Fitting"],
+      "lat": 24.8607, "lng": 67.0011, "area": "Saddar", "city": "Karachi",
+      "dna_score": 910, "rating": 4.8, "total_jobs": 320, "completed_jobs": 315,
+      "on_time_rate": 0.96, "cancellation_rate": 0.02, "price_fairness_score": 0.94,
+      "dispute_count": 0, "surge_acceptor": true, "base_rate_pkr": 1000,
+      "experience_level": "complex", "certifications": ["Master Plumber"],
+      "availability": ["Mon","Tue","Wed","Thu","Fri","Sat"],
+      "available_slots": ["09:00","11:00","14:00","16:00"],
+      "review_count": 280, "profile_image": "rizwan.jpg", "is_verified": true,
+      "last_active_date": "2026-05-16"
+    },
+    {
+      "id": "p022", "name": "Fahad Mustafa", "phone": "+92-321-7654321",
+      "service_category": "Electrician", "skills": ["Wiring", "Inverter", "UPS Setup"],
+      "lat": 31.4810, "lng": 74.3980, "area": "DHA Phase 5", "city": "Lahore",
+      "dna_score": 880, "rating": 4.7, "total_jobs": 240, "completed_jobs": 230,
+      "on_time_rate": 0.92, "cancellation_rate": 0.04, "price_fairness_score": 0.89,
+      "dispute_count": 1, "surge_acceptor": true, "base_rate_pkr": 1500,
+      "experience_level": "intermediate", "certifications": ["Certified Electrician"],
+      "availability": ["Mon","Wed","Fri","Sat","Sun"],
+      "available_slots": ["10:00","13:00","15:00"],
+      "review_count": 190, "profile_image": "fahad.jpg", "is_verified": true,
+      "last_active_date": "2026-05-15"
+    },
+    {
+      "id": "p023", "name": "Sajid Khan", "phone": "+92-345-8765432",
+      "service_category": "AC Repair", "skills": ["AC Installation", "Gas Refilling", "Split AC"],
+      "lat": 24.8138, "lng": 67.0322, "area": "Clifton", "city": "Karachi",
+      "dna_score": 930, "rating": 4.9, "total_jobs": 410, "completed_jobs": 405,
+      "on_time_rate": 0.97, "cancellation_rate": 0.01, "price_fairness_score": 0.95,
+      "dispute_count": 0, "surge_acceptor": true, "base_rate_pkr": 1200,
+      "experience_level": "complex", "certifications": ["HVAC Certified"],
+      "availability": ["Tue","Wed","Thu","Fri","Sat"],
+      "available_slots": ["09:00","12:00","16:00"],
+      "review_count": 350, "profile_image": "sajid.jpg", "is_verified": true,
+      "last_active_date": "2026-05-16"
+    },
+    {
+      "id": "p024", "name": "Waqas Butt", "phone": "+92-300-9988776",
+      "service_category": "Cleaning", "skills": ["Deep Cleaning", "Sofa Cleaning", "Carpet Cleaning"],
+      "lat": 31.5102, "lng": 74.3441, "area": "Gulberg", "city": "Lahore",
+      "dna_score": 840, "rating": 4.5, "total_jobs": 150, "completed_jobs": 140,
+      "on_time_rate": 0.88, "cancellation_rate": 0.05, "price_fairness_score": 0.85,
+      "dispute_count": 2, "surge_acceptor": false, "base_rate_pkr": 2000,
+      "experience_level": "basic", "certifications": [],
+      "availability": ["Mon","Tue","Thu","Sat","Sun"],
+      "available_slots": ["10:00","14:00","17:00"],
+      "review_count": 110, "profile_image": "waqas.jpg", "is_verified": true,
+      "last_active_date": "2026-05-14"
     }
   ]
 }

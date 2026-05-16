@@ -1,5 +1,5 @@
 """
-KhidmatGaar — Comprehensive Stress Test Suite
+KaamYaab — Comprehensive Stress Test Suite
 Google Antigravity Orchestrator | Challenge 2
 
 Tests all 6 edge cases required by the hackathon:
@@ -450,14 +450,14 @@ def print_summary():
         "summary": {"total": total, "passed": passed, "warned": warned, "failed": failed},
         "results": results,
     }
-    report_path = os.path.join(os.path.dirname(__file__), "../../stress_test_report.json")
+    report_path = os.path.join(os.path.dirname(__file__), "../../submission_evidence/stress_test_report.json")
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-    print(f"\n  📄 Report saved: stress_test_report.json")
+    print(f"\n  📄 Report saved: submission_evidence/stress_test_report.json")
 
 
 if __name__ == "__main__":
-    print("🚀 KhidmatGaar — Stress Test Suite")
+    print("🚀 KaamYaab — Stress Test Suite")
     print(f"   Running {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     test_multilingual_intent()
