@@ -8,6 +8,7 @@ import '../models/service_request_model.dart';
 import '../services/gemini_service.dart';
 import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
+import '../services/booking_history_service.dart';
 
 class BookingFlowScreen extends StatefulWidget {
   final ProviderMatch match;
@@ -44,6 +45,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   // ignore: unused_field
   String _feedback = ''; // collected post-booking
   bool _feedbackSubmitted = false;
+  bool _bookingPersisted = false;
 
   // GPS — auto-detect customer location for better worker dispatch
   // ignore: unused_field
@@ -193,6 +195,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       });
       _successCtrl.forward();
       HapticFeedback.heavyImpact();
+      await _persistBookingHistory();
     }
   }
 
@@ -254,6 +257,53 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
       ),
     );
+  }
+
+  Future<void> _persistBookingHistory() async {
+    if (_bookingPersisted || _quote == null) return;
+    final date = DateTime.now();
+    final scheduledDate =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final receipt = _extractReceiptNumber();
+
+    try {
+      await BookingHistoryService().saveCompletedBooking(
+        requestId: widget.request.id,
+        providerId: widget.match.provider.id,
+        providerName: widget.match.provider.name,
+        serviceType: widget.request.serviceType,
+        userArea: widget.request.area,
+        scheduledDate: scheduledDate,
+        scheduledTime: widget.match.recommendedSlot,
+        quotedPricePkr: _quote!.totalPkr,
+        finalPricePkr: _finalPrice,
+        status: 'completed',
+        receiptNumber: receipt,
+        surgeMultiplier: widget.surgeMultiplier,
+        negotiatedNote: _negotiationNote,
+      );
+      _bookingPersisted = true;
+    } catch (_) {
+      // Non-blocking in demo mode when Firebase is unavailable.
+    }
+  }
+
+  String _extractReceiptNumber() {
+    String? note;
+    for (final step in _steps) {
+      if (step.stepNumber == 3 && (step.agentNote?.contains('Receipt #') ?? false)) {
+        note = step.agentNote;
+        break;
+      }
+    }
+    if (note == null) {
+      return 'KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    }
+    final idx = note.indexOf('Receipt #');
+    if (idx == -1) {
+      return 'KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    }
+    return note.substring(idx + 'Receipt #'.length).trim();
   }
 
   @override
