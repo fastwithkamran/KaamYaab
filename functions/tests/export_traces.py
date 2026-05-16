@@ -1,5 +1,5 @@
 """
-KhidmatGaar — Antigravity Trace Exporter
+KaamYaab — Antigravity Trace Exporter
 Google Antigravity Orchestrator | Challenge 2
 
 Generates a complete, human-readable Antigravity reasoning trace
@@ -352,7 +352,7 @@ SCENARIOS = [
 
 
 if __name__ == "__main__":
-    print("🧬 KhidmatGaar — Antigravity Trace Exporter")
+    print("🧬 KaamYaab — Antigravity Trace Exporter")
     print(f"   Generating traces for {len(SCENARIOS)} scenarios...")
     print("=" * 60)
 
@@ -365,11 +365,11 @@ if __name__ == "__main__":
               f"Agents: {', '.join(trace['agents_invoked'])}")
 
     # Save to JSON
-    out_path = os.path.join(os.path.dirname(__file__), "../../antigravity_traces.json")
+    out_path = os.path.join(os.path.dirname(__file__), "../../submission_evidence/antigravity_traces.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(all_traces, f, indent=2, ensure_ascii=False)
 
-    print(f"\n✅ All traces exported → antigravity_traces.json")
+    print(f"\n✅ All traces exported → submission_evidence/antigravity_traces.json")
     print(f"   Total scenarios: {len(all_traces)}")
     print(f"   Total agent steps: {sum(len(t['steps']) for t in all_traces)}")
-    print(f"\n   📎 Attach 'antigravity_traces.json' to your hackathon submission!")
+    print(f"\n   📎 Attach 'submission_evidence/antigravity_traces.json' to your hackathon submission!")

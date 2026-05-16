@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // â”€â”€â”€ Core Palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Core Palette ───────────────────────────────────────────────────────────
   static const Color backgroundDark  = Color(0xFF0A0F1E);
   static const Color surfaceDark     = Color(0xFF111827);
   static const Color cardDark        = Color(0xFF1C2537);
@@ -21,12 +21,12 @@ class AppTheme {
   // Alias — redError is used across auth screens
   static const Color redError        = redAlert;
 
-  // â”€â”€â”€ Text Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Text Colors ────────────────────────────────────────────────────────────
   static const Color textPrimary     = Color(0xFFF1F5F9);
   static const Color textSecondary   = Color(0xFF94A3B8);
   static const Color textMuted       = Color(0xFF475569);
 
-  // â”€â”€â”€ Gradients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Gradients ──────────────────────────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [tealDark, tealPrimary],
     begin: Alignment.topLeft,
@@ -69,7 +69,7 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
-  // â”€â”€â”€ Shadows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Shadows ────────────────────────────────────────────────────────────────
   static List<BoxShadow> tealGlow = [
     BoxShadow(
       color: tealPrimary.withValues(alpha: 0.25),
@@ -115,13 +115,13 @@ class AppTheme {
     ),
   ];
 
-  // â”€â”€â”€ Border Radius â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Border Radius ──────────────────────────────────────────────────────────
   static const BorderRadius radiusSm = BorderRadius.all(Radius.circular(8));
   static const BorderRadius radiusMd = BorderRadius.all(Radius.circular(16));
   static const BorderRadius radiusLg = BorderRadius.all(Radius.circular(24));
   static const BorderRadius radiusXl = BorderRadius.all(Radius.circular(32));
 
-  // â”€â”€â”€ Dark Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Dark Theme ─────────────────────────────────────────────────────────────
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -204,7 +204,7 @@ class AppTheme {
     );
   }
 
-  // â”€â”€â”€ Helper Methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Helper Methods ──────────────────────────────────────────────────────────
   static Color dnaScoreColor(int score) {
     if (score >= 800) return greenSuccess;
     if (score >= 600) return tealPrimary;

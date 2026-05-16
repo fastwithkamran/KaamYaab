@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/language_service.dart';
 import '../services/auth_service.dart';
+import '../services/booking_history_service.dart';
 import 'simulation_dashboard_screen.dart';
 
 class CustomerHubScreen extends StatefulWidget {
@@ -130,79 +131,127 @@ class _CustomerHubScreenState extends State<CustomerHubScreen>
 }
 
 // ── Booking History Tab ──────────────────────────────────────────────────────
-class _BookingHistoryTab extends StatelessWidget {
+class _BookingHistoryTab extends StatefulWidget {
   final LanguageService lang;
   const _BookingHistoryTab({required this.lang});
 
-  String _t(String en, String ur) => lang.t(en, ur);
+  @override
+  State<_BookingHistoryTab> createState() => _BookingHistoryTabState();
+}
 
-  // Placeholder bookings — replace with Firestore stream
-  static const _mockBookings = <Map<String, dynamic>>[];
+class _BookingHistoryTabState extends State<_BookingHistoryTab> {
+  late final Stream<List<Map<String, dynamic>>> _bookingsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _bookingsStream = BookingHistoryService().watchCurrentUserBookings();
+  }
+
+  String _t(String en, String ur) => widget.lang.t(en, ur);
+
+  DateTime? _toDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    try {
+      final converted = (value as dynamic).toDate();
+      if (converted is DateTime) return converted;
+    } catch (_) {}
+    return null;
+  }
+
+  String _formatDate(dynamic value) {
+    final dt = _toDate(value);
+    if (dt == null) return '';
+    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_mockBookings.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.tealPrimary.withValues(alpha: 0.08),
-                border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.15)),
-              ),
-              child: const Center(
-                child: Text('📋', style: TextStyle(fontSize: 36)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _t('No bookings yet', 'ابھی کوئی بکنگ نہیں'),
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _t(
-                'Your booking history will appear here\nonce you place your first order.',
-                'جب آپ پہلی بار بکنگ کریں گے تو\nیہاں ظاہر ہو گا۔',
-              ),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.search_rounded, size: 16),
-              label: Text(_t('Find a Worker', 'کارکن تلاش کریں')),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.tealPrimary,
-                side: const BorderSide(color: AppTheme.tealPrimary),
-                shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-          ],
-        ).animate().fadeIn(delay: 200.ms),
-      );
-    }
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _bookingsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppTheme.tealPrimary),
+          );
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _mockBookings.length,
-      itemBuilder: (_, i) {
-        final b = _mockBookings[i];
-        return _BookingTile(booking: b, lang: lang);
+        final bookings = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (bookings.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.08),
+                    border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.15)),
+                  ),
+                  child: const Center(
+                    child: Text('📋', style: TextStyle(fontSize: 36)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _t('No bookings yet', 'ابھی کوئی بکنگ نہیں'),
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _t(
+                    'Your booking history will appear here\nonce you place your first order.',
+                    'جب آپ پہلی بار بکنگ کریں گے تو\nیہاں ظاہر ہو گا۔',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.search_rounded, size: 16),
+                  label: Text(_t('Find a Worker', 'کارکن تلاش کریں')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.tealPrimary,
+                    side: const BorderSide(color: AppTheme.tealPrimary),
+                    shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ).animate().fadeIn(delay: 200.ms),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: bookings.length,
+          itemBuilder: (_, i) {
+            final b = bookings[i];
+            return _BookingTile(
+              booking: {
+                ...b,
+                'service': b['service_type'] ?? b['service'] ?? 'Service',
+                'worker': b['provider_name'] ?? b['worker'] ?? '',
+                'status': b['status'] ?? 'completed',
+                'date': _formatDate(b['created_at'] ?? b['date']),
+              },
+              lang: widget.lang,
+            );
+          },
+        );
       },
     );
   }

@@ -1,19 +1,114 @@
+import 'dart:async';
 import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import '../config/runtime_config.dart';
 
 /// OTP (One-Time Password) service for phone verification.
 ///
-/// Generates OTP locally and returns it so the UI can display it to the user
-/// for testing. No external SMS provider is used.
+/// Uses Firebase Phone Auth when available. Falls back to in-app simulation
+/// when Firebase OTP is unavailable (for example on web in this prototype).
 class OtpService {
   static final OtpService _instance = OtpService._();
+  static const int _minE164Digits = 10;
+  static const int _maxE164Digits = 15;
+  static const int _localPhoneDigits = 11;
+
   factory OtpService() => _instance;
   OtpService._();
 
   final Map<String, _OtpRecord> _otpStore = {};
+  final Map<String, _FirebaseOtpSession> _firebaseStore = {};
+  final Set<String> _autoVerifiedPhones = {};
 
-  /// Sends an OTP to [phone] using in-app simulation.
-  Future<String?> sendOtp(String phone) async {
+  /// Sends an OTP to [phone].
+  Future<OtpSendResult> sendOtp(String phone) async {
+    final normalized = _normalizePhone(phone);
+    if (normalized == null) {
+      return const OtpSendResult.error(
+        'Invalid phone number format. Please check and try again.',
+      );
+    }
+
+    _autoVerifiedPhones.remove(normalized);
+    if (!_canUseFirebaseOtp) {
+      final code = await _sendMockOtp(normalized);
+      return OtpSendResult.successMock(code);
+    }
+
+    final completer = Completer<OtpSendResult>();
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: normalized,
+        timeout: Duration(seconds: RuntimeConfig.otpAutoRetrievalTimeoutSeconds),
+        verificationCompleted: (credential) async {
+          // Firebase can auto-verify on some Android devices. Mark as verified
+          // so manual OTP entry can complete immediately.
+          _autoVerifiedPhones.add(normalized);
+          if (!completer.isCompleted) {
+            completer.complete(const OtpSendResult.successReal());
+          }
+        },
+        verificationFailed: (e) {
+          if (!completer.isCompleted) {
+            completer.complete(
+              OtpSendResult.error(
+                _firebaseErrorToMessage(e),
+                fallbackCode: null,
+              ),
+            );
+          }
+        },
+        codeSent: (verificationId, resendToken) {
+          _firebaseStore[normalized] = _FirebaseOtpSession(
+            verificationId: verificationId,
+            expiry: DateTime.now()
+                .add(Duration(seconds: RuntimeConfig.otpExpirySeconds)),
+            resendToken: resendToken,
+          );
+          if (!completer.isCompleted) {
+            completer.complete(const OtpSendResult.successReal());
+          }
+        },
+        codeAutoRetrievalTimeout: (verificationId) {
+          final current = _firebaseStore[normalized];
+          if (current != null) {
+            _firebaseStore[normalized] =
+                current.copyWith(verificationId: verificationId);
+          }
+        },
+      );
+
+      final sent = await completer.future.timeout(
+        Duration(seconds: RuntimeConfig.otpSendTimeoutSeconds),
+        onTimeout: () => const OtpSendResult.error(
+          'Could not send OTP right now. Please try again.',
+        ),
+      );
+
+      if (!sent.success) {
+        return _fallbackResult(
+          sent.errorMessage ?? 'Could not send OTP.',
+          normalized,
+        );
+      }
+
+      return sent;
+    } catch (_) {
+      return _fallbackResult(
+        'Could not send OTP right now.',
+        normalized,
+      );
+    }
+  }
+
+  Future<OtpSendResult> _fallbackResult(String message, String normalized) async {
+    final code = await _sendMockOtp(normalized);
+    return OtpSendResult.error(message, fallbackCode: code);
+  }
+
+  Future<String> _sendMockOtp(String phone) async {
     final code = _generateCode();
     final expiry = DateTime.now()
         .add(Duration(seconds: RuntimeConfig.otpExpirySeconds));
@@ -25,24 +120,106 @@ class OtpService {
   }
 
   /// Verifies [code] entered by user against stored OTP for [phone].
-  OtpResult verify(String phone, String code) {
-    final record = _otpStore[phone];
+  Future<OtpResult> verify(String phone, String code) async {
+    final normalized = _normalizePhone(phone);
+    if (normalized == null) return OtpResult.noRecord;
+
+    if (_autoVerifiedPhones.remove(normalized)) {
+      _firebaseStore.remove(normalized);
+      _otpStore.remove(normalized);
+      return OtpResult.verified;
+    }
+
+    if (_canUseFirebaseOtp) {
+      final session = _firebaseStore[normalized];
+      if (session != null) {
+        if (DateTime.now().isAfter(session.expiry)) {
+          _firebaseStore.remove(normalized);
+          return OtpResult.expired;
+        }
+        try {
+          final credential = PhoneAuthProvider.credential(
+            verificationId: session.verificationId,
+            smsCode: code,
+          );
+          // Firebase client SDK verifies the SMS code by signing in with
+          // the credential, then we immediately sign out because app auth
+          // remains managed by local AuthService.
+          await FirebaseAuth.instance.signInWithCredential(credential);
+          await FirebaseAuth.instance.signOut();
+          _firebaseStore.remove(normalized);
+          return OtpResult.verified;
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'session-expired') {
+            return OtpResult.expired;
+          }
+          return OtpResult.invalid;
+        } catch (_) {
+          return OtpResult.invalid;
+        }
+      }
+    }
+
+    final record = _otpStore[normalized];
     if (record == null) return OtpResult.noRecord;
     if (DateTime.now().isAfter(record.expiry)) {
-      _otpStore.remove(phone);
+      _otpStore.remove(normalized);
       return OtpResult.expired;
     }
     if (record.code != code) return OtpResult.invalid;
-    _otpStore.remove(phone);
+    _otpStore.remove(normalized);
     return OtpResult.verified;
   }
 
   /// Clears any stored OTP for [phone] (e.g., on cancel).
-  void clear(String phone) => _otpStore.remove(phone);
+  void clear(String phone) {
+    final normalized = _normalizePhone(phone);
+    if (normalized == null) return;
+    _otpStore.remove(normalized);
+    _firebaseStore.remove(normalized);
+    _autoVerifiedPhones.remove(normalized);
+  }
 
   String _generateCode() {
     final rng = Random.secure();
     return (100000 + rng.nextInt(900000)).toString();
+  }
+
+  bool get _canUseFirebaseOtp =>
+      !kIsWeb && Firebase.apps.isNotEmpty;
+
+  String? _normalizePhone(String phone) {
+    final raw = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
+    if (raw.startsWith('+')) {
+      final digits = raw.substring(1).replaceAll(RegExp(r'[^0-9]'), '');
+      return _isValidE164Digits(digits) ? '+$digits' : null;
+    }
+
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0') && digits.length == _localPhoneDigits) {
+      return '+${RuntimeConfig.defaultCountryDialCode}${digits.substring(1)}';
+    }
+    if (digits.startsWith(RuntimeConfig.defaultCountryDialCode) &&
+        _isValidE164Digits(digits)) {
+      return '+$digits';
+    }
+    return null;
+  }
+
+  bool _isValidE164Digits(String digits) =>
+      digits.length >= _minE164Digits && digits.length <= _maxE164Digits;
+
+  String _firebaseErrorToMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-phone-number':
+        return 'Invalid phone number format. Please check and try again.';
+      case 'too-many-requests':
+        return 'Too many OTP attempts. Please wait and try again.';
+      case 'quota-exceeded':
+        return 'Service temporarily unavailable. Please try again later.';
+      default:
+        return 'Could not send OTP right now. Please try again.';
+    }
   }
 }
 
@@ -50,6 +227,63 @@ class _OtpRecord {
   final String code;
   final DateTime expiry;
   const _OtpRecord({required this.code, required this.expiry});
+}
+
+class _FirebaseOtpSession {
+  final String verificationId;
+  final DateTime expiry;
+  final int? resendToken;
+
+  const _FirebaseOtpSession({
+    required this.verificationId,
+    required this.expiry,
+    required this.resendToken,
+  });
+
+  _FirebaseOtpSession copyWith({
+    String? verificationId,
+    DateTime? expiry,
+    int? resendToken,
+  }) {
+    return _FirebaseOtpSession(
+      verificationId: verificationId ?? this.verificationId,
+      expiry: expiry ?? this.expiry,
+      resendToken: resendToken ?? this.resendToken,
+    );
+  }
+}
+
+class OtpSendResult {
+  final bool success;
+  final bool isMock;
+  final String? demoCode;
+  final String? errorMessage;
+
+  const OtpSendResult._({
+    required this.success,
+    required this.isMock,
+    this.demoCode,
+    this.errorMessage,
+  });
+
+  const OtpSendResult.successReal()
+      : this._(success: true, isMock: false, demoCode: null);
+
+  factory OtpSendResult.successMock(String code) => OtpSendResult._(
+        success: true,
+        isMock: true,
+        demoCode: code,
+      );
+
+  const OtpSendResult.error(String message, {String? fallbackCode})
+      : this._(
+          success: false,
+          isMock: fallbackCode != null,
+          demoCode: fallbackCode,
+          errorMessage: message,
+        );
+
+  bool get hasFatalError => !success && demoCode == null;
 }
 
 enum OtpResult { verified, invalid, expired, noRecord }

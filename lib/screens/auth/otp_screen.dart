@@ -63,9 +63,7 @@ class _OtpScreenState extends State<OtpScreen> {
     HapticFeedback.mediumImpact();
     setState(() { _loading = true; _error = null; });
 
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    final result = OtpService().verify(widget.phone, _enteredCode);
+    final result = await OtpService().verify(widget.phone, _enteredCode);
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -93,13 +91,18 @@ class _OtpScreenState extends State<OtpScreen> {
     for (final c in _ctrls) { c.clear(); }
     _nodes[0].requestFocus();
 
-    final code = await OtpService().sendOtp(widget.phone);
+    final sendResult = await OtpService().sendOtp(widget.phone);
     if (!mounted) return;
     setState(() {
       _resending = false;
-      if (code != null) _demoCode = code;
+      _demoCode = sendResult.demoCode ?? '';
+      if (!sendResult.success && sendResult.demoCode == null) {
+        _error = sendResult.errorMessage ?? 'Could not resend OTP.';
+      }
     });
-    _startCountdown();
+    if (sendResult.success || sendResult.demoCode != null) {
+      _startCountdown();
+    }
   }
 
   void _shakeInputs() {
