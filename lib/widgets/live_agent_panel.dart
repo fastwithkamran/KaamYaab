@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../models/agent_model.dart';
 
-/// The crown jewel â€” shows Antigravity multi-agent reasoning in real-time.
+/// The crown jewel — shows Antigravity multi-agent reasoning in real-time.
 class LiveAgentPanel extends StatefulWidget {
   final List<AgentStep> steps;
   final bool isVisible;
@@ -48,7 +48,7 @@ class _LiveAgentPanelState extends State<LiveAgentPanel>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // â”€â”€â”€ Toggle Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Toggle Header ──────────────────────────────────────────────────
         GestureDetector(
           onTap: widget.onToggle,
           child: Container(
@@ -142,7 +142,7 @@ class _LiveAgentPanelState extends State<LiveAgentPanel>
           ),
         ),
 
-        // â”€â”€â”€ Steps List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Steps List ─────────────────────────────────────────────────────
         AnimatedSize(
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOutCubic,
@@ -215,7 +215,7 @@ class _AgentStepTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // â”€â”€ Left: icon + connector line â”€â”€
+            // ── Left: icon + connector line ──
             Column(
               children: [
                 // Status icon circle
@@ -268,7 +268,7 @@ class _AgentStepTile extends StatelessWidget {
 
             const SizedBox(width: 12),
 
-            // â”€â”€ Right: content â”€â”€
+            // ── Right: content ──
             Expanded(
               child: Padding(
                 padding: EdgeInsets.only(bottom: isLast ? 14 : 12),
@@ -370,7 +370,7 @@ class _AgentStepTile extends StatelessWidget {
                           borderRadius: AppTheme.radiusSm,
                         ),
                         child: Text(
-                          'âœ— ${step.decision!}',
+                          '✗ ${step.decision!}',
                           style: const TextStyle(
                             color: AppTheme.redAlert,
                             fontSize: 11,

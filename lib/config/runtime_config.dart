@@ -5,6 +5,10 @@ class RuntimeConfig {
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
 
+  /// Google Maps API key — used for live worker tracking map.
+  /// Hardcoded for hackathon demo; move to dart-define for production.
+  static const String mapsApiKey = 'AIzaSyCX0lQaNZFHXlwDS8aM3Yz3yLNBrQRkHiw';
+
   static const String superAdminPhone =
       String.fromEnvironment('SUPER_ADMIN_PHONE', defaultValue: '03000000000');
 

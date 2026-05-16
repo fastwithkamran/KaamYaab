@@ -26,6 +26,7 @@ dependencies:
 
   # Location
   geolocator: ^11.1.0
+  google_maps_flutter: ^2.9.0
 
   # Animations & UI
   lottie: ^3.1.2

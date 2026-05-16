@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -50,10 +50,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
   ];
 
   final List<String> _agentAdvice = [
-    'âš¡ Accept 2 more AC jobs today â€” surge window closes at 6 PM',
-    'ðŸ“ Move towards G-13 â€” 7 requests in the last 30 mins',
-    'â­ Your DNA Score is 912 â€” top 5% of providers',
-    'ðŸ’° You can earn 1.6x by accepting urgent bookings now',
+    '⚡ Accept 2 more AC jobs today — surge window closes at 6 PM',
+    'Move towards G-13 — 7 requests in the last 30 mins',
+    'Your DNA Score is 912 — top 5% of providers',
+    '💰 You can earn 1.6x by accepting urgent bookings now',
   ];
 
   @override
@@ -102,7 +102,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
-              // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Header ──────────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -121,7 +121,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(_providerName,
                               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                          const Text('Provider Mode Â· AC Technician',
+                          const Text('Provider Mode · AC Technician',
                               style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                         ]),
                       ),
@@ -185,7 +185,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(),
               ),
 
-              // â”€â”€ Agent Advice Ticker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Agent Advice Ticker ──────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -208,7 +208,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                         boxShadow: [BoxShadow(color: AppTheme.purpleAgent.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 4))],
                       ),
                       child: Row(children: [
-                        const Text('ðŸ¤– ', style: TextStyle(fontSize: 16)),
+                        const Text('🤖 ', style: TextStyle(fontSize: 16)),
                         Expanded(
                           child: Text(
                             _agentAdvice[_adviceIndex],
@@ -232,7 +232,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(delay: 100.ms),
               ),
 
-              // â”€â”€ Animated Stats Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Animated Stats Row ────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -240,7 +240,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                     Expanded(child: _StatCard(
                       label: "Today's Earnings",
                       value: 'Rs. ${_displayedTodayEarnings.toInt()}',
-                      icon: 'ðŸ’°',
+                      icon: '💰',
                       color: AppTheme.goldAccent,
                       subtitle: '+12% vs yesterday',
                     )),
@@ -248,7 +248,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                     Expanded(child: _StatCard(
                       label: 'Completed',
                       value: '$_completedToday jobs',
-                      icon: 'âœ…',
+                      icon: '✅',
                       color: AppTheme.greenSuccess,
                       subtitle: 'of ${_completedToday + _pendingJobs} total',
                     )),
@@ -256,7 +256,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                     Expanded(child: _StatCard(
                       label: 'Pending',
                       value: '$_pendingJobs jobs',
-                      icon: 'â³',
+                      icon: 'P',
                       color: AppTheme.blueInfo,
                       subtitle: 'next at 10 AM',
                     )),
@@ -264,7 +264,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(delay: 150.ms),
               ),
 
-              // â”€â”€ Earnings Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Earnings Chart ────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -279,7 +279,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          const Text('ðŸ“ˆ Weekly Earnings',
+                          const Text('📈 Weekly Earnings',
                               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
                           const Spacer(),
                           Text('Rs. ${_displayedWeekEarnings.toInt()}',
@@ -354,14 +354,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(delay: 200.ms),
               ),
 
-              // â”€â”€ Hot Zones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Hot Zones ─────────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('ðŸ”¥ Demand Hot Zones',
+                      const Text('🔥 Demand Hot Zones',
                           style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 3),
                       const Text('Areas with highest AC Repair demand right now',
@@ -374,14 +374,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(delay: 250.ms),
               ),
 
-              // â”€â”€ Today's Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Today's Schedule ──────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("ðŸ“… Today's Schedule",
+                      const Text("📅 Today's Schedule",
                           style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 10),
                       ..._upcomingJobs.map((j) => _JobTile(job: j)),
@@ -390,7 +390,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                 ).animate().fadeIn(delay: 300.ms),
               ),
 
-              // â”€â”€ Optimal Slots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Optimal Slots ─────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -405,7 +405,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Row(children: [
-                          Text('ðŸ’¡ ', style: TextStyle(fontSize: 16)),
+                          Text('💡 ', style: TextStyle(fontSize: 16)),
                           Text('Agent Recommended Slots',
                               style: TextStyle(color: AppTheme.goldAccent, fontWeight: FontWeight.w700, fontSize: 13)),
                         ]),
@@ -559,9 +559,9 @@ class _JobTile extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${job['time']} Â· ${job['service']}',
+          Text('${job['time']} · ${job['service']}',
               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-          Text('${job['area']} Â· ${job['customer']}',
+          Text('${job['area']} · ${job['customer']}',
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -570,7 +570,7 @@ class _JobTile extends StatelessWidget {
                 color: isSurge ? AppTheme.goldAccent : AppTheme.tealPrimary,
                 fontWeight: FontWeight.w700, fontSize: 13,
               )),
-          if (isSurge) const Text('âš¡ Surge', style: TextStyle(color: AppTheme.goldAccent, fontSize: 9)),
+          if (isSurge) const Text('⚡ Surge', style: TextStyle(color: AppTheme.goldAccent, fontSize: 9)),
         ]),
       ]),
     );

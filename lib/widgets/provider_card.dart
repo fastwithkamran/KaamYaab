@@ -4,19 +4,24 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../models/provider_model.dart';
 import 'dna_score_chart.dart';
+import '../services/gemini_service.dart';
 
 class ProviderCard extends StatefulWidget {
   final ProviderMatch match;
   final int rank;
   final bool isExpanded;
+  final String serviceType;
+  final double surgeMultiplier;
   final VoidCallback onTap;
-  final VoidCallback onBook;
+  final void Function(double finalPrice, String? note) onBook;
 
   const ProviderCard({
     super.key,
     required this.match,
     required this.rank,
     required this.isExpanded,
+    required this.serviceType,
+    required this.surgeMultiplier,
     required this.onTap,
     required this.onBook,
   });
@@ -28,6 +33,10 @@ class ProviderCard extends StatefulWidget {
 class _ProviderCardState extends State<ProviderCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _shimmerCtrl;
+  bool _negotiating = false;
+  bool _negotiated = false;
+  double? _negotiatedPrice;
+  String? _negotiationNote;
 
   @override
   void initState() {
@@ -67,6 +76,31 @@ class _ProviderCardState extends State<ProviderCard>
   String _dayAbbr(int weekday) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[(weekday - 1) % 7];
+  }
+
+  Future<void> _negotiatePrice() async {
+    setState(() => _negotiating = true);
+    
+    // Dynamically import GeminiService only when needed to prevent circular dependencies
+    // Alternatively, we can assume it's imported at the top, but let's import it safely
+    final result = await GeminiService.negotiatePrice(
+      providerName: widget.match.provider.name,
+      originalQuote: widget.match.quotePkr,
+      userOffer: widget.match.quotePkr * 0.88,
+      serviceType: widget.serviceType,
+      providerDnaScore: widget.match.provider.dnascore,
+      surgeMultiplier: widget.surgeMultiplier,
+      isRepeatCustomer: false,
+    );
+
+    final counterOffer = (result['counter_offer_pkr'] as num).toDouble();
+    setState(() {
+      _negotiating = false;
+      _negotiated = true;
+      _negotiatedPrice = counterOffer;
+      _negotiationNote = result['reasoning'] as String?; // mock uses reasoning
+    });
+    HapticFeedback.mediumImpact();
   }
 
   @override
@@ -125,7 +159,7 @@ class _ProviderCardState extends State<ProviderCard>
 
             Column(
               children: [
-                // â”€â”€â”€ Card Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ─── Card Header ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -192,7 +226,7 @@ class _ProviderCardState extends State<ProviderCard>
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${p.area} Â· ${widget.match.distanceKm.toStringAsFixed(1)}km Â· ETA ${widget.match.etaMinutes}min',
+                              '${p.area} · ${widget.match.distanceKm.toStringAsFixed(1)}km · ETA ${widget.match.etaMinutes}min',
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
                             ),
                             const SizedBox(height: 4),
@@ -267,7 +301,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // â”€â”€â”€ Quick Stats Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ─── Quick Stats Row ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Row(
@@ -286,7 +320,7 @@ class _ProviderCardState extends State<ProviderCard>
                       const SizedBox(width: 8),
                       _StatChip(
                         icon: Icons.currency_rupee,
-                        value: 'Rs. ${widget.match.quotePkr.toStringAsFixed(0)}',
+                        value: 'Rs. ${(_negotiatedPrice ?? widget.match.quotePkr).toStringAsFixed(0)}',
                         color: AppTheme.tealPrimary,
                       ),
                       const Spacer(),
@@ -321,7 +355,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // â”€â”€â”€ AI Rationale Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ─── AI Rationale Banner ────────────────────────────────────
                 Container(
                   margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -348,7 +382,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // â”€â”€â”€ Expanded: DNA Chart + Book Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ─── Expanded: DNA Chart + Book Button ─────────────────────
                 AnimatedSize(
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeOutCubic,
@@ -393,7 +427,7 @@ class _ProviderCardState extends State<ProviderCard>
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
-                                        p.certifications.join(' Â· '),
+                                        p.certifications.join(' · '),
                                         style: const TextStyle(
                                           color: AppTheme.goldAccent,
                                           fontSize: 11,
@@ -404,6 +438,46 @@ class _ProviderCardState extends State<ProviderCard>
                                   ],
                                 ),
                               ),
+                            // Negotiation UI
+                            if (_negotiated && _negotiationNote != null) ...[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.greenSuccess.withValues(alpha: 0.08),
+                                    borderRadius: AppTheme.radiusSm,
+                                    border: Border.all(color: AppTheme.greenSuccess.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(children: [
+                                    const Icon(Icons.handshake_rounded, color: AppTheme.greenSuccess, size: 14),
+                                    const SizedBox(width: 6),
+                                    Expanded(child: Text(_negotiationNote!,
+                                        style: const TextStyle(color: AppTheme.greenSuccess, fontSize: 11))),
+                                  ]),
+                                ),
+                              ),
+                            ] else ...[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _negotiating ? null : _negotiatePrice,
+                                    icon: _negotiating
+                                        ? const SizedBox(width: 14, height: 14,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.tealPrimary))
+                                        : const Icon(Icons.handshake_rounded, size: 16, color: AppTheme.tealPrimary),
+                                    label: Text(_negotiating ? 'Negotiating...' : 'Negotiate Better Price',
+                                        style: const TextStyle(color: AppTheme.tealPrimary, fontSize: 13)),
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: AppTheme.tealPrimary),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             // Book button
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -412,11 +486,11 @@ class _ProviderCardState extends State<ProviderCard>
                                 child: ElevatedButton.icon(
                                   onPressed: () {
                                     HapticFeedback.mediumImpact();
-                                    widget.onBook();
+                                    widget.onBook(_negotiatedPrice ?? widget.match.quotePkr, _negotiationNote);
                                   },
                                   icon: const Icon(Icons.flash_on_rounded, size: 18),
                                   label: Text(
-                                    'Book ${p.name.split(' ').first} Â· Rs. ${widget.match.quotePkr.toStringAsFixed(0)}',
+                                    'Book ${p.name.split(' ').first} · Rs. ${(_negotiatedPrice ?? widget.match.quotePkr).toStringAsFixed(0)}',
                                     style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   style: ElevatedButton.styleFrom(

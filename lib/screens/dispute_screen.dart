@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/gemini_service.dart';
@@ -29,11 +29,11 @@ class _DisputeScreenState extends State<DisputeScreen>
   late Animation<double> _verdictFade;
 
   final List<Map<String, String>> _disputeTypes = [
-    {'id': 'price_disagreement', 'label': 'Price Dispute',    'icon': 'ðŸ’°'},
-    {'id': 'quality_complaint',  'label': 'Quality Issue',    'icon': 'âš ï¸'},
-    {'id': 'no_show',            'label': 'Provider No-Show', 'icon': 'ðŸ‘»'},
-    {'id': 'overrun',            'label': 'Time Overrun',     'icon': 'â°'},
-    {'id': 'cancellation',       'label': 'Cancellation',     'icon': 'âŒ'},
+    {'id': 'price_disagreement', 'label': 'Price Dispute',    'icon': ''},
+    {'id': 'quality_complaint',  'label': 'Quality Issue',    'icon': ''},
+    {'id': 'no_show',            'label': 'Provider No-Show', 'icon': ''},
+    {'id': 'overrun',            'label': 'Time Overrun',     'icon': ''},
+    {'id': 'cancellation',       'label': 'Cancellation',     'icon': ''},
   ];
 
   final List<Map<String, dynamic>> _pastDisputes = [
@@ -104,7 +104,7 @@ class _DisputeScreenState extends State<DisputeScreen>
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
-              // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Header ─────────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -118,7 +118,7 @@ class _DisputeScreenState extends State<DisputeScreen>
                           borderRadius: AppTheme.radiusMd,
                           border: Border.all(color: AppTheme.redAlert.withValues(alpha: 0.3)),
                         ),
-                        child: const Center(child: Text('âš–ï¸', style: TextStyle(fontSize: 22))),
+                        child: const Center(child: Icon(Icons.gavel, color: AppTheme.redAlert, size: 22)),
                       ),
                       const SizedBox(width: 14),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
@@ -132,7 +132,7 @@ class _DisputeScreenState extends State<DisputeScreen>
                 ).animate().fadeIn(),
               ),
 
-              // â”€â”€ Progress Steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Progress Steps ─────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -140,7 +140,7 @@ class _DisputeScreenState extends State<DisputeScreen>
                 ).animate().fadeIn(delay: 50.ms),
               ),
 
-              // â”€â”€ Past Cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Past Cases ─────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -156,7 +156,7 @@ class _DisputeScreenState extends State<DisputeScreen>
                 ).animate().fadeIn(delay: 100.ms),
               ),
 
-              // â”€â”€ New Dispute Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── New Dispute Form ───────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
@@ -193,8 +193,6 @@ class _DisputeScreenState extends State<DisputeScreen>
                                   ),
                                 ),
                                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(t['icon']!, style: const TextStyle(fontSize: 14)),
-                                  const SizedBox(width: 6),
                                   Text(t['label']!,
                                       style: TextStyle(
                                         color: selected ? AppTheme.redAlert : AppTheme.textSecondary,
@@ -277,7 +275,7 @@ class _DisputeScreenState extends State<DisputeScreen>
                 ).animate().fadeIn(delay: 200.ms),
               ),
 
-              // â”€â”€ Animated Verdict â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Animated Verdict ───────────────────────────────────────────
               if (_result != null)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -305,7 +303,7 @@ class _DisputeScreenState extends State<DisputeScreen>
   }
 }
 
-// â”€â”€ Progress Stepper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Progress Stepper ───────────────────────────────────────────────────────────
 class _ProgressStepper extends StatelessWidget {
   final int currentStep;
   const _ProgressStepper({required this.currentStep});
@@ -375,7 +373,7 @@ class _ProgressStepper extends StatelessWidget {
   }
 }
 
-// â”€â”€ Form Section with Step Number â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Form Section with Step Number ─────────────────────────────────────────────
 class _FormSection extends StatelessWidget {
   final int step;
   final String title;
@@ -467,9 +465,9 @@ class _PastDisputeTile extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${dispute['type']} Â· ${dispute['provider']}',
+          Text('${dispute['type']} · ${dispute['provider']}',
               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-          Text('${dispute['id']} Â· ${dispute['date']}',
+          Text('${dispute['id']} · ${dispute['date']}',
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -480,7 +478,7 @@ class _PastDisputeTile extends StatelessWidget {
               borderRadius: AppTheme.radiusSm,
             ),
             child: Text(
-              isUserFavor ? 'âœ… Won' : 'âš–ï¸ Mediated',
+              isUserFavor ? 'Won' : 'Mediated',
               style: TextStyle(
                 color: isUserFavor ? AppTheme.greenSuccess : AppTheme.goldAccent,
                 fontSize: 10, fontWeight: FontWeight.w600,
@@ -529,7 +527,7 @@ class _DisputeResultCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: const [
-          Text('âš–ï¸ ', style: TextStyle(fontSize: 20)),
+          Icon(Icons.gavel, color: AppTheme.textPrimary, size: 20),
           Text('Dispute Agent Verdict',
               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
         ]),
@@ -543,9 +541,9 @@ class _DisputeResultCard extends StatelessWidget {
             border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Text(
-            verdict == 'user_favor' ? 'âœ… Decided in Your Favour' :
-            verdict == 'mediated'   ? 'ðŸ¤ Mediated Settlement' :
-            verdict == 'provider_favor' ? 'âš–ï¸ Decided for Provider' : 'ðŸš¨ Escalated',
+            verdict == 'user_favor' ? '✅ Decided in Your Favour' :
+            verdict == 'mediated'   ? 'Mediated Settlement' :
+            verdict == 'provider_favor' ? '⚖️ Decided for Provider' : '🚨 Escalated',
             style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 15),
             textAlign: TextAlign.center,
           ),

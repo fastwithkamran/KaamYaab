@@ -9,17 +9,22 @@ import '../services/gemini_service.dart';
 import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
 import '../services/booking_history_service.dart';
+import 'live_tracking_screen.dart';
 
 class BookingFlowScreen extends StatefulWidget {
   final ProviderMatch match;
   final ServiceRequest request;
   final double surgeMultiplier;
+  final double negotiatedPrice;
+  final String? negotiationNote;
 
   const BookingFlowScreen({
     super.key,
     required this.match,
     required this.request,
     required this.surgeMultiplier,
+    required this.negotiatedPrice,
+    this.negotiationNote,
   });
 
   @override
@@ -36,9 +41,6 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   bool _isFailed = false; // reserved for future error handling
 
   PriceQuote? _quote;
-  bool _negotiating = false;
-  bool _negotiated = false;
-  String? _negotiationNote;
   double _finalPrice = 0;
 
   double _rating = 0;
@@ -58,7 +60,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   @override
   void initState() {
     super.initState();
-    _finalPrice = widget.match.quotePkr;
+    _finalPrice = widget.negotiatedPrice;
     _quote = _buildQuote();
 
     _successCtrl = AnimationController(
@@ -211,33 +213,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       case 1: return 'In-app booking notification sent to ${p.phone}';
       case 2: return 'Receipt #KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)} generated';
       case 3: return 'Reminders set: T-24h, T-1h, T-15min';
-      case 4: return '${p.name} is en-route â€” ETA ${widget.match.etaMinutes} minutes';
+      case 4: return '${p.name} is en-route — ETA ${widget.match.etaMinutes} minutes';
       case 5: return 'Service completion logged with photo checklist';
-      case 6: return 'DNA Score updated â€” ${p.name} earned +2 points';
+      case 6: return 'DNA Score updated — ${p.name} earned +2 points';
       default: return '';
     }
-  }
-
-  Future<void> _negotiatePrice() async {
-    setState(() => _negotiating = true);
-    final result = await GeminiService.negotiatePrice(
-      providerName: widget.match.provider.name,
-      originalQuote: _finalPrice,
-      userOffer: _finalPrice * 0.88,
-      serviceType: widget.request.serviceType,
-      providerDnaScore: widget.match.provider.dnascore,
-      surgeMultiplier: widget.surgeMultiplier,
-      isRepeatCustomer: false,
-    );
-
-    final counterOffer = (result['counter_offer_pkr'] as num).toDouble();
-    setState(() {
-      _negotiating = false;
-      _negotiated = true;
-      _finalPrice = counterOffer;
-      _negotiationNote = result['note'] as String?;
-    });
-    HapticFeedback.mediumImpact();
   }
 
   Future<void> _submitFeedback() async {
@@ -246,11 +226,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     setState(() => _feedbackSubmitted = true);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(children: const [
-          Text('â­ '),
-          Text('Feedback submitted! DNA Score updated.',
+        content: const Text('⭐ Feedback submitted! DNA Score updated.',
               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
-        ]),
         backgroundColor: AppTheme.cardDark,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -280,7 +257,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         status: 'completed',
         receiptNumber: receipt,
         surgeMultiplier: widget.surgeMultiplier,
-        negotiatedNote: _negotiationNote,
+        negotiatedNote: widget.negotiationNote,
       );
       _bookingPersisted = true;
     } catch (_) {
@@ -312,65 +289,112 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              _buildHeader(p),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+            child: SafeArea(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildHeader(p)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: _buildPriceCard(),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    sliver: SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardDark,
+                          borderRadius: AppTheme.radiusLg,
+                          border: Border.all(color: AppTheme.textMuted.withValues(alpha: 0.15)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Timeline header
+                            const Text('Booking Pipeline',
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            const Text('AI orchestrating 7-step agentic flow',
+                                style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                            const SizedBox(height: 16),
 
-              // â”€â”€ Scrollable body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Price quote card
-                      if (_quote != null) _buildPriceCard(),
-                      const SizedBox(height: 20),
+                            // Timeline steps
+                            ..._steps.asMap().entries.map((e) =>
+                                _TimelineStep(
+                                  step: e.value,
+                                  index: e.key,
+                                  isLast: e.key == _steps.length - 1,
+                                  currentStep: _currentStep,
+                                )),
 
-                      // Timeline header
-                      const Text('Booking Pipeline',
-                          style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      const Text('AI orchestrating 7-step agentic flow',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                      const SizedBox(height: 16),
+                            // Success banner
+                            if (_isComplete) ...[
+                              const SizedBox(height: 16),
+                              _buildSuccessBanner(),
+                            ],
 
-                      // Timeline steps
-                      ..._steps.asMap().entries.map((e) =>
-                          _TimelineStep(
-                            step: e.value,
-                            index: e.key,
-                            isLast: e.key == _steps.length - 1,
-                            currentStep: _currentStep,
-                          )),
+                            // Feedback section
+                            if (_isComplete) ...[
+                              const SizedBox(height: 16),
+                              _buildFeedback(),
+                            ],
 
-                      // Success banner
-                      if (_isComplete) ...[
-                        const SizedBox(height: 16),
-                        _buildSuccessBanner(),
-                      ],
-
-                      // Feedback section
-                      if (_isComplete) ...[
-                        const SizedBox(height: 16),
-                        _buildFeedback(),
-                      ],
-
-                      const SizedBox(height: 80),
-                    ],
+                            const SizedBox(height: 120),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // ── Floating Live Tracking button (appears at En-Route step) ──
+          if (_currentStep >= 4)
+            Positioned(
+              bottom: 24,
+              left: 20,
+              right: 20,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (_, a, __) => LiveTrackingScreen(
+                      match: widget.match,
+                      request: widget.request,
+                    ),
+                    transitionsBuilder: (_, a, __, child) => SlideTransition(
+                      position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                          .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+                      child: child,
+                    ),
+                    transitionDuration: const Duration(milliseconds: 350),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
+                icon: const Icon(Icons.my_location_rounded, size: 18),
+                label: const Text('Track Worker Live',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.tealPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
+                  elevation: 8,
+                  shadowColor: AppTheme.tealPrimary.withValues(alpha: 0.5),
+                ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.3),
+            ),
+        ],
       ),
     );
   }
@@ -411,7 +435,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(p.name,
               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
-          Text('${widget.request.serviceType} Â· ${widget.request.area} Â· ${widget.match.recommendedSlot}',
+          Text('${widget.request.serviceType} · ${widget.request.area} · ${widget.match.recommendedSlot}',
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         ])),
         if (_isRunning)
@@ -435,7 +459,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Text('ðŸ’° Price Breakdown',
+          const Text('💰 Price Breakdown',
               style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
           const Spacer(),
           Text('Rs. ${_finalPrice.toStringAsFixed(0)}',
@@ -446,7 +470,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         Text(_quote!.breakdown,
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 11, height: 1.4)),
 
-        if (_negotiated && _negotiationNote != null) ...[
+        if (widget.negotiationNote != null) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(10),
@@ -458,29 +482,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
             child: Row(children: [
               const Icon(Icons.handshake_rounded, color: AppTheme.greenSuccess, size: 14),
               const SizedBox(width: 6),
-              Expanded(child: Text(_negotiationNote!,
+              Expanded(child: Text(widget.negotiationNote!,
                   style: const TextStyle(color: AppTheme.greenSuccess, fontSize: 11))),
             ]),
-          ),
-        ],
-
-        if (_quote!.isNegotiable && !_negotiated) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _negotiating ? null : _negotiatePrice,
-              icon: _negotiating
-                  ? const SizedBox(width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.tealPrimary))
-                  : const Icon(Icons.handshake_rounded, size: 16, color: AppTheme.tealPrimary),
-              label: Text(_negotiating ? 'Negotiating...' : 'Negotiate Better Price',
-                  style: const TextStyle(color: AppTheme.tealPrimary, fontSize: 13)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppTheme.tealPrimary),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
           ),
         ],
       ]),
@@ -503,13 +507,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
           boxShadow: AppTheme.tealGlowStrong,
         ),
         child: Column(children: [
-          const Text('ðŸŽ‰', style: TextStyle(fontSize: 36)),
+          const Text('🎉', style: TextStyle(fontSize: 36)),
           const SizedBox(height: 8),
           const Text('Booking Confirmed!',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
           const SizedBox(height: 4),
           Text(
-            '${widget.match.provider.name} will arrive by ${widget.match.recommendedSlot} Â· Rs. ${_finalPrice.toStringAsFixed(0)}',
+            '${widget.match.provider.name} will arrive by ${widget.match.recommendedSlot} · Rs. ${_finalPrice.toStringAsFixed(0)}',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
@@ -527,32 +531,67 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('â­ Rate Your Experience',
+        const Text('⭐ Service Quality Loop',
             style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
         const SizedBox(height: 4),
-        const Text('Your rating updates the provider\'s DNA Score',
+        const Text('Your verification updates the provider\'s DNA Score',
             style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         const SizedBox(height: 14),
 
+        // Quality Checklist
+        const Text('Completion Checklist', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        _buildChecklistItem('Task completed as requested?'),
+        _buildChecklistItem('Area left clean & tidy?'),
+        _buildChecklistItem('Payment settled?'),
+        const SizedBox(height: 14),
+
+        // Photo Evidence Placeholder
+        GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('📸 Camera launched (simulated)'), behavior: SnackBarBehavior.floating));
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: AppTheme.radiusMd,
+              border: Border.all(color: Colors.white12, style: BorderStyle.solid),
+            ),
+            child: const Column(children: [
+              Icon(Icons.add_a_photo_rounded, color: AppTheme.textMuted, size: 24),
+              SizedBox(height: 4),
+              Text('Attach Photo Evidence (Optional)', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Divider(color: Colors.white12),
+        const SizedBox(height: 12),
+
         // Star rating
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        const Center(
+          child: Text('Rate Provider', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
           children: List.generate(5, (i) {
             return GestureDetector(
               onTap: _feedbackSubmitted ? null : () {
                 HapticFeedback.selectionClick();
                 setState(() => _rating = i + 1);
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Icon(
-                  _rating > i ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: _rating > i ? AppTheme.goldAccent : AppTheme.textMuted,
-                  size: 36,
-                ).animate(target: _rating > i ? 1 : 0)
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 150.ms)
-                    .then().scale(end: const Offset(1, 1), duration: 100.ms),
-              ),
+              child: Icon(
+                _rating > i ? Icons.star_rounded : Icons.star_outline_rounded,
+                color: _rating > i ? AppTheme.goldAccent : AppTheme.textMuted,
+                size: 34,
+              ).animate(target: _rating > i ? 1 : 0)
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 150.ms)
+                  .then().scale(end: const Offset(1, 1), duration: 100.ms),
             );
           }),
         ),
@@ -577,7 +616,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
             icon: _feedbackSubmitted
                 ? const Icon(Icons.check_circle_rounded)
                 : const Icon(Icons.send_rounded, size: 16),
-            label: Text(_feedbackSubmitted ? 'Submitted â€” DNA Score Updated!' : 'Submit Rating'),
+            label: Text(_feedbackSubmitted ? 'Submitted — DNA Score Updated!' : 'Submit Rating'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _feedbackSubmitted ? AppTheme.greenSuccess : AppTheme.goldAccent,
               foregroundColor: Colors.black,
@@ -588,9 +627,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       ]),
     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.08);
   }
+
+  Widget _buildChecklistItem(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline_rounded, color: AppTheme.tealPrimary.withValues(alpha: 0.7), size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
+        ],
+      ),
+    );
+  }
 }
 
-// â”€â”€ Timeline Step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Timeline Step ──────────────────────────────────────────────────────────────
 class _TimelineStep extends StatelessWidget {
   final BookingStep step;
   final int index;
@@ -619,7 +671,7 @@ class _TimelineStep extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // â”€â”€ Left rail (icon + connector) â”€â”€
+          // ── Left rail (icon + connector) ──
           Column(
             children: [
               // Circle icon
@@ -677,7 +729,7 @@ class _TimelineStep extends StatelessWidget {
 
           const SizedBox(width: 14),
 
-          // â”€â”€ Content â”€â”€
+          // ── Content ──
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 16, top: 4),
@@ -713,7 +765,7 @@ class _TimelineStep extends StatelessWidget {
                         borderRadius: AppTheme.radiusSm,
                       ),
                       child: Text(
-                        'âœ“ ${step.agentNote!}',
+                        '✓ ${step.agentNote!}',
                         style: const TextStyle(color: AppTheme.greenSuccess, fontSize: 10, height: 1.3),
                       ),
                     ),
