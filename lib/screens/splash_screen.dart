@@ -130,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('âš¡', style: TextStyle(fontSize: 13)),
+                              Text('⚡', style: TextStyle(fontSize: 13)),
                               SizedBox(width: 6),
                               Text(
                                 'Powered by Antigravity',
@@ -168,7 +168,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-// â”€â”€ DNA Helix Painter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DNA Helix Painter ──────────────────────────────────────────────────────────
 class _DnaHelixPainter extends CustomPainter {
   final double progress;
   _DnaHelixPainter(this.progress);
@@ -246,7 +246,7 @@ class _DnaHelixPainter extends CustomPainter {
   bool shouldRepaint(_DnaHelixPainter old) => old.progress != progress;
 }
 
-// â”€â”€ Particle Background Dot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Particle Background Dot ────────────────────────────────────────────────────
 class _ParticleDot extends StatelessWidget {
   final int index;
   const _ParticleDot({required this.index});
@@ -283,7 +283,7 @@ class _ParticleDot extends StatelessWidget {
   }
 }
 
-// â”€â”€ Loading Dots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Loading Dots ───────────────────────────────────────────────────────────────
 class _LoadingDots extends StatefulWidget {
   const _LoadingDots();
 

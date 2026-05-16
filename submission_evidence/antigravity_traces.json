@@ -1,0 +1,1266 @@
+[
+  {
+    "trace_id": "TRACE-A219BD7B",
+    "scenario": "Normal AC Repair Booking",
+    "raw_input": "AC bilkul kaam nahi kar raha, kal subah G-13 mein chahiye, budget zyada nahi",
+    "generated_at": "2026-05-16T05:30:02.562825",
+    "total_latency_ms": 1063,
+    "agents_invoked": [
+      "IntentAgent",
+      "MatchingAgent",
+      "PricingAgent",
+      "BookingAgent",
+      "SchedulingAgent",
+      "SurgeAgent"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "timestamp": "2026-05-16T05:30:03.382825",
+        "agent": "IntentAgent",
+        "task": "Parse multilingual user request",
+        "tool_call": "gemini.generate_content(intent_prompt)",
+        "inputs": {
+          "raw_input": "AC bilkul kaam nahi kar raha, kal subah G-13 mein chahiye, budget zyada nahi"
+        },
+        "outputs": {
+          "service_type": "AC Repair",
+          "location": "Islamabad",
+          "area": "G-13",
+          "urgency": "medium",
+          "preferred_time": "morning",
+          "preferred_date": "tomorrow",
+          "budget_sensitivity": 0.8,
+          "confidence": 0.91,
+          "language": "roman_urdu",
+          "clarification_needed": false,
+          "clarification_question": "",
+          "issue_description": "AC bilkul kaam nahi kar raha, kal subah G-13 mein chahiye, budget zyada nahi",
+          "job_complexity": "basic",
+          "agent": "IntentAgent",
+          "model": "rule_based_fallback"
+        },
+        "decision": "Extracted service='AC Repair', area='G-13', urgency='medium'. Confidence=91% → Proceed to matching",
+        "latency_ms": 820
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-05-16T05:30:03.427825",
+        "agent": "SurgeAgent",
+        "task": "Detect demand surge in area",
+        "tool_call": "demand_data.query(area, service, hour)",
+        "inputs": {
+          "area": "G-13",
+          "service": "AC Repair",
+          "hour": 15
+        },
+        "outputs": {
+          "status": "success",
+          "area": "G-13",
+          "service": "AC Repair",
+          "current_demand": 13,
+          "threshold": 10,
+          "available_providers": 3,
+          "surge_multiplier": 1.83,
+          "active": true,
+          "demand_trend": "rising",
+          "provider_notification": {
+            "message": "🌊 Surge Alert! AC Repair demand in G-13 is 1.83x. Accept jobs now to earn more.",
+            "multiplier": 1.83,
+            "area": "G-13"
+          },
+          "user_alert": {
+            "title": "Surge Active in G-13",
+            "body": "Demand for AC Repair is high (13 requests, 3 providers). Book now to lock current price.",
+            "multiplier": 1.83,
+            "alternatives": "Off-peak hours: 05:00, 06:00, 07:00"
+          },
+          "forecast": {
+            "area": "G-13",
+            "service": "AC Repair",
+            "predicted_peak_hour": 15,
+            "predicted_multiplier": 1.6,
+            "confidence": 0.84
+          },
+          "agent": "SurgeAgent"
+        },
+        "decision": "Demand=13 requests vs threshold. Multiplier=1.83x. Surge ACTIVE — notify user and providers",
+        "latency_ms": 45
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-05-16T05:30:03.465825",
+        "agent": "MatchingAgent",
+        "task": "Rank providers using 8-factor DNA algorithm",
+        "tool_call": "matching_agent.score_all(providers, intent, surge)",
+        "inputs": {
+          "service_type": "AC Repair",
+          "user_location": {
+            "lat": 33.7215,
+            "lng": 73.0433
+          },
+          "surge_multiplier": 1.83,
+          "providers_evaluated": 2
+        },
+        "outputs": {
+          "status": "success",
+          "top_matches": [
+            {
+              "rank": 1,
+              "name": "Tariq Mehmood",
+              "dna_score": 912,
+              "match_score": 84.9,
+              "distance_km": 0.0,
+              "quote_pkr": 1662,
+              "rationale": "97% on-time arrival rate · very low cancellation risk · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 55,
+                "rating_score": 98.0,
+                "review_recency_score": 100,
+                "reliability_score": 97.0,
+                "specialization_score": 100,
+                "price_fit_score": 40.0,
+                "cancellation_risk": 98.0,
+                "capacity_score": 72.8,
+                "user_preference_match": 60
+              }
+            },
+            {
+              "rank": 2,
+              "name": "Bilal Hussain",
+              "dna_score": 868,
+              "match_score": 84.4,
+              "distance_km": 0.92,
+              "quote_pkr": 1524,
+              "rationale": "very low cancellation risk · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 55,
+                "rating_score": 94.0,
+                "review_recency_score": 100,
+                "reliability_score": 93.0,
+                "specialization_score": 100,
+                "price_fit_score": 45.0,
+                "cancellation_risk": 97.0,
+                "capacity_score": 77.2,
+                "user_preference_match": 60
+              }
+            }
+          ]
+        },
+        "decision": "Top provider: Tariq Mehmood (DNA=912, Score=84.9). Rationale: 97% on-time arrival rate · very low cancellation risk · verified identity",
+        "latency_ms": 38
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-05-16T05:30:03.487825",
+        "agent": "PricingAgent",
+        "task": "Generate transparent dynamic quote",
+        "tool_call": "pricing_agent.calculate(provider, intent, dist, surge)",
+        "inputs": {
+          "base_rate": 1200,
+          "urgency": "medium",
+          "distance_km": 0.0,
+          "surge_multiplier": 1.83
+        },
+        "outputs": {
+          "base_pkr": 1200,
+          "urgency_adj_pkr": 0,
+          "distance_cost_pkr": 0,
+          "surge_adj_pkr": 996,
+          "surge_multiplier": 1.83,
+          "loyalty_discount_pkr": 0,
+          "total_pkr": 2196,
+          "is_negotiable": true,
+          "min_acceptable_pkr": 1020,
+          "breakdown": "Base Rs.1200 + Urgency Rs.0 + Distance Rs.0 + Surge Rs.996",
+          "agent": "PricingAgent"
+        },
+        "decision": "Quote=Rs.2196. Negotiable=True. Breakdown: Base Rs.1200 + Urgency Rs.0 + Distance Rs.0 + Surge Rs.996",
+        "latency_ms": 22
+      },
+      {
+        "step": 5,
+        "timestamp": "2026-05-16T05:30:03.505825",
+        "agent": "SchedulingAgent",
+        "task": "Lock provider slot, check double-booking",
+        "tool_call": "calendar.lock_slot(provider_id, date, time)",
+        "inputs": {
+          "provider_id": "p001",
+          "requested_date": "2026-05-14",
+          "requested_time": "09:00",
+          "travel_buffer_required": "30 min"
+        },
+        "outputs": {
+          "status": "confirmed",
+          "booking_id": "BK-F5091790",
+          "provider_id": "p001",
+          "provider_name": "Tariq Mehmood",
+          "slot": "09:00",
+          "date": "2026-05-14",
+          "travel_buffer_minutes": 30,
+          "message": "Slot 09:00 on 2026-05-14 locked for Tariq Mehmood.",
+          "agent": "SchedulingAgent"
+        },
+        "decision": "Slot 09:00 on 2026-05-14 → CONFIRMED. Booking ID: BK-F5091790",
+        "latency_ms": 18
+      },
+      {
+        "step": 6,
+        "timestamp": "2026-05-16T05:30:03.625825",
+        "agent": "BookingAgent",
+        "task": "Execute 7-step booking simulation chain",
+        "tool_call": "booking_agent.execute_chain(scheduling_result, quote, provider)",
+        "inputs": {
+          "booking_id": "BK-F5091790",
+          "provider": "Tariq Mehmood"
+        },
+        "outputs": {
+          "receipt_number": "KG-20260516-2EFB41",
+          "status": "booking_confirmed",
+          "scheduled": "2026-05-14 at 09:00",
+          "steps_completed": 7,
+          "chain": [
+            {
+              "step": 1,
+              "title": "Slot Lock",
+              "note": "Provider calendar slot 09:00 locked. Booking ID: BK-F5091790"
+            },
+            {
+              "step": 2,
+              "title": "Confirmation",
+              "note": "In-app booking notification sent to user and Tariq Mehmood (+1234567)"
+            },
+            {
+              "step": 3,
+              "title": "Receipt Generated",
+              "note": "Receipt #KG-20260516-2EFB41 — Rs. 2196 — AC Repair service"
+            },
+            {
+              "step": 4,
+              "title": "Reminders Scheduled",
+              "note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging"
+            },
+            {
+              "step": 5,
+              "title": "En-Route Update",
+              "note": "Provider en-route notification will trigger at departure. ETA calculated dynamically."
+            },
+            {
+              "step": 6,
+              "title": "Service Completion",
+              "note": "Completion checklist (3 items) + photo placeholder activated for post-service verification"
+            },
+            {
+              "step": 7,
+              "title": "Feedback & DNA",
+              "note": "Post-service feedback form triggered. DNA Score update queued for Tariq Mehmood."
+            }
+          ]
+        },
+        "decision": "All 7 booking steps completed. Receipt: KG-20260516-2EFB41",
+        "latency_ms": 120
+      }
+    ],
+    "final_output": {
+      "status": "booking_confirmed",
+      "receipt_number": "KG-20260516-2EFB41",
+      "booking_id": "BK-F5091790",
+      "provider": "Tariq Mehmood",
+      "service": "AC Repair",
+      "scheduled": "2026-05-14 at 09:00",
+      "total_pkr": 2196,
+      "surge_multiplier": 1.83,
+      "steps": [
+        {
+          "step": 1,
+          "title": "Slot Lock",
+          "agent_note": "Provider calendar slot 09:00 locked. Booking ID: BK-F5091790",
+          "timestamp": "2026-05-16T05:30:04.563276",
+          "status": "completed"
+        },
+        {
+          "step": 2,
+          "title": "Confirmation",
+          "agent_note": "In-app booking notification sent to user and Tariq Mehmood (+1234567)",
+          "timestamp": "2026-05-16T05:30:06.563276",
+          "status": "completed"
+        },
+        {
+          "step": 3,
+          "title": "Receipt Generated",
+          "agent_note": "Receipt #KG-20260516-2EFB41 — Rs. 2196 — AC Repair service",
+          "timestamp": "2026-05-16T05:30:08.563276",
+          "status": "completed"
+        },
+        {
+          "step": 4,
+          "title": "Reminders Scheduled",
+          "agent_note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging",
+          "timestamp": "2026-05-16T05:30:10.563276",
+          "status": "completed"
+        },
+        {
+          "step": 5,
+          "title": "En-Route Update",
+          "agent_note": "Provider en-route notification will trigger at departure. ETA calculated dynamically.",
+          "timestamp": "2026-05-16T05:30:12.563276",
+          "status": "completed"
+        },
+        {
+          "step": 6,
+          "title": "Service Completion",
+          "agent_note": "Completion checklist (3 items) + photo placeholder activated for post-service verification",
+          "timestamp": "2026-05-16T05:30:14.563276",
+          "status": "completed"
+        },
+        {
+          "step": 7,
+          "title": "Feedback & DNA",
+          "agent_note": "Post-service feedback form triggered. DNA Score update queued for Tariq Mehmood.",
+          "timestamp": "2026-05-16T05:30:16.563276",
+          "status": "completed"
+        }
+      ],
+      "antigravity_trace": {
+        "agents_invoked": [
+          "IntentAgent",
+          "SurgeAgent",
+          "MatchingAgent",
+          "PricingAgent",
+          "SchedulingAgent",
+          "BookingAgent"
+        ],
+        "total_steps": 7,
+        "completed_at": "2026-05-16T05:30:02.563276"
+      },
+      "agent": "BookingAgent"
+    },
+    "antigravity_metadata": {
+      "platform": "Google Antigravity",
+      "llm": "gemini-1.5-flash",
+      "trace_version": "1.0",
+      "challenge": "Challenge 2 — AI Service Orchestrator",
+      "hackathon": "AI Seekho Hackathon 26"
+    }
+  },
+  {
+    "trace_id": "TRACE-506B369F",
+    "scenario": "Emergency Electrical + Negotiation",
+    "raw_input": "bijli emergency hai, G-13 mein abhi electrician chahiye",
+    "generated_at": "2026-05-16T05:30:02.563353",
+    "total_latency_ms": 1843,
+    "agents_invoked": [
+      "IntentAgent",
+      "MatchingAgent",
+      "NegotiationAgent",
+      "PricingAgent",
+      "BookingAgent",
+      "SchedulingAgent",
+      "SurgeAgent"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "timestamp": "2026-05-16T05:30:03.383353",
+        "agent": "IntentAgent",
+        "task": "Parse multilingual user request",
+        "tool_call": "gemini.generate_content(intent_prompt)",
+        "inputs": {
+          "raw_input": "bijli emergency hai, G-13 mein abhi electrician chahiye"
+        },
+        "outputs": {
+          "service_type": "Electrical",
+          "location": "Islamabad",
+          "area": "G-13",
+          "urgency": "emergency",
+          "preferred_time": "flexible",
+          "preferred_date": "flexible",
+          "budget_sensitivity": 0.5,
+          "confidence": 0.86,
+          "language": "roman_urdu",
+          "clarification_needed": false,
+          "clarification_question": "",
+          "issue_description": "bijli emergency hai, G-13 mein abhi electrician chahiye",
+          "job_complexity": "basic",
+          "agent": "IntentAgent",
+          "model": "rule_based_fallback"
+        },
+        "decision": "Extracted service='Electrical', area='G-13', urgency='emergency'. Confidence=86% → Proceed to matching",
+        "latency_ms": 820
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-05-16T05:30:03.428353",
+        "agent": "SurgeAgent",
+        "task": "Detect demand surge in area",
+        "tool_call": "demand_data.query(area, service, hour)",
+        "inputs": {
+          "area": "G-13",
+          "service": "Electrical",
+          "hour": 16
+        },
+        "outputs": {
+          "status": "success",
+          "area": "G-13",
+          "service": "Electrical",
+          "current_demand": 7,
+          "threshold": 6,
+          "available_providers": 2,
+          "surge_multiplier": 1.38,
+          "active": true,
+          "demand_trend": "stable",
+          "provider_notification": {
+            "message": "🌊 Surge Alert! Electrical demand in G-13 is 1.38x. Accept jobs now to earn more.",
+            "multiplier": 1.38,
+            "area": "G-13"
+          },
+          "user_alert": {
+            "title": "Surge Active in G-13",
+            "body": "Demand for Electrical is high (7 requests, 2 providers). Book now to lock current price.",
+            "multiplier": 1.38,
+            "alternatives": "Off-peak hours: 05:00, 06:00, 07:00"
+          },
+          "forecast": {
+            "area": "G-13",
+            "service": "Electrical",
+            "predicted_peak_hour": 16,
+            "predicted_multiplier": 1.4,
+            "confidence": 0.71
+          },
+          "agent": "SurgeAgent"
+        },
+        "decision": "Demand=7 requests vs threshold. Multiplier=1.38x. Surge ACTIVE — notify user and providers",
+        "latency_ms": 45
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-05-16T05:30:03.466353",
+        "agent": "MatchingAgent",
+        "task": "Rank providers using 8-factor DNA algorithm",
+        "tool_call": "matching_agent.score_all(providers, intent, surge)",
+        "inputs": {
+          "service_type": "Electrical",
+          "user_location": {
+            "lat": 33.7215,
+            "lng": 73.0433
+          },
+          "surge_multiplier": 1.38,
+          "providers_evaluated": 3
+        },
+        "outputs": {
+          "status": "success",
+          "top_matches": [
+            {
+              "rank": 1,
+              "name": "Imran Haider",
+              "dna_score": 934,
+              "match_score": 94.8,
+              "distance_km": 0.27,
+              "quote_pkr": 2456,
+              "rationale": "98% on-time arrival rate · very low cancellation risk · zero dispute history · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 95,
+                "rating_score": 98.0,
+                "review_recency_score": 100,
+                "reliability_score": 98.0,
+                "specialization_score": 100,
+                "price_fit_score": 84.38,
+                "cancellation_risk": 99.0,
+                "capacity_score": 60,
+                "user_preference_match": 75
+              }
+            },
+            {
+              "rank": 2,
+              "name": "Aamir Sultan",
+              "dna_score": 829,
+              "match_score": 92.3,
+              "distance_km": 0.51,
+              "quote_pkr": 1965,
+              "rationale": "verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 95,
+                "rating_score": 92.0,
+                "review_recency_score": 100,
+                "reliability_score": 91.0,
+                "specialization_score": 90,
+                "price_fit_score": 93.75,
+                "cancellation_risk": 96.0,
+                "capacity_score": 78.64,
+                "user_preference_match": 60
+              }
+            },
+            {
+              "rank": 3,
+              "name": "Irfan Baig",
+              "dna_score": 898,
+              "match_score": 91.7,
+              "distance_km": 0.74,
+              "quote_pkr": 2948,
+              "rationale": "96% on-time arrival rate · very low cancellation risk · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 95,
+                "rating_score": 96.0,
+                "review_recency_score": 100,
+                "reliability_score": 96.0,
+                "specialization_score": 90,
+                "price_fit_score": 75.0,
+                "cancellation_risk": 98.0,
+                "capacity_score": 68.88,
+                "user_preference_match": 60
+              }
+            }
+          ]
+        },
+        "decision": "Top provider: Imran Haider (DNA=934, Score=94.8). Rationale: 98% on-time arrival rate · very low cancellation risk · zero dispute history · verified identity",
+        "latency_ms": 38
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-05-16T05:30:03.488353",
+        "agent": "PricingAgent",
+        "task": "Generate transparent dynamic quote",
+        "tool_call": "pricing_agent.calculate(provider, intent, dist, surge)",
+        "inputs": {
+          "base_rate": 1500,
+          "urgency": "emergency",
+          "distance_km": 0.27,
+          "surge_multiplier": 1.38
+        },
+        "outputs": {
+          "base_pkr": 1500,
+          "urgency_adj_pkr": 450,
+          "distance_cost_pkr": 14,
+          "surge_adj_pkr": 741,
+          "surge_multiplier": 1.38,
+          "loyalty_discount_pkr": 105,
+          "total_pkr": 2600,
+          "is_negotiable": false,
+          "min_acceptable_pkr": 1275,
+          "breakdown": "Base Rs.1500 + Urgency Rs.450 + Distance Rs.14 + Surge Rs.741 - Loyalty Rs.105",
+          "agent": "PricingAgent"
+        },
+        "decision": "Quote=Rs.2600. Negotiable=False. Breakdown: Base Rs.1500 + Urgency Rs.450 + Distance Rs.14 + Surge Rs.741 - Loyalty Rs.105",
+        "latency_ms": 22
+      },
+      {
+        "step": 5,
+        "timestamp": "2026-05-16T05:30:04.268353",
+        "agent": "NegotiationAgent",
+        "task": "Mediate price negotiation",
+        "tool_call": "gemini.generate_content(negotiation_prompt)",
+        "inputs": {
+          "original_quote": 2600,
+          "user_offer": 1200,
+          "surge": 1.38,
+          "repeat_customer": true
+        },
+        "outputs": {
+          "accepted": false,
+          "counter_offer_pkr": 2418,
+          "reasoning": "Provider's minimum is Rs.2418 (surge 1.38x active). Loyalty discount of Rs.182 already applied.",
+          "discount_applied_pkr": 182,
+          "discount_reason": "loyalty",
+          "is_final_offer": true,
+          "agent": "NegotiationAgent"
+        },
+        "decision": "User offered Rs.1200. Counter: Rs.2418. Counter-offered. Provider's minimum is Rs.2418 (surge 1.38x active). Loyalty discount of Rs.182 already applied.",
+        "latency_ms": 780
+      },
+      {
+        "step": 6,
+        "timestamp": "2026-05-16T05:30:04.286353",
+        "agent": "SchedulingAgent",
+        "task": "Lock provider slot, check double-booking",
+        "tool_call": "calendar.lock_slot(provider_id, date, time)",
+        "inputs": {
+          "provider_id": "p008",
+          "requested_date": "2026-05-14",
+          "requested_time": "10:00",
+          "travel_buffer_required": "31 min"
+        },
+        "outputs": {
+          "status": "confirmed",
+          "booking_id": "BK-E8101845",
+          "provider_id": "p008",
+          "provider_name": "Imran Haider",
+          "slot": "10:00",
+          "date": "2026-05-14",
+          "travel_buffer_minutes": 30,
+          "message": "Slot 10:00 on 2026-05-14 locked for Imran Haider.",
+          "agent": "SchedulingAgent"
+        },
+        "decision": "Slot 10:00 on 2026-05-14 → CONFIRMED. Booking ID: BK-E8101845",
+        "latency_ms": 18
+      },
+      {
+        "step": 7,
+        "timestamp": "2026-05-16T05:30:04.406353",
+        "agent": "BookingAgent",
+        "task": "Execute 7-step booking simulation chain",
+        "tool_call": "booking_agent.execute_chain(scheduling_result, quote, provider)",
+        "inputs": {
+          "booking_id": "BK-E8101845",
+          "provider": "Imran Haider"
+        },
+        "outputs": {
+          "receipt_number": "KG-20260516-156C99",
+          "status": "booking_confirmed",
+          "scheduled": "2026-05-14 at 10:00",
+          "steps_completed": 7,
+          "chain": [
+            {
+              "step": 1,
+              "title": "Slot Lock",
+              "note": "Provider calendar slot 10:00 locked. Booking ID: BK-E8101845"
+            },
+            {
+              "step": 2,
+              "title": "Confirmation",
+              "note": "In-app booking notification sent to user and Imran Haider (+8901234)"
+            },
+            {
+              "step": 3,
+              "title": "Receipt Generated",
+              "note": "Receipt #KG-20260516-156C99 — Rs. 2600 — Electrical service"
+            },
+            {
+              "step": 4,
+              "title": "Reminders Scheduled",
+              "note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging"
+            },
+            {
+              "step": 5,
+              "title": "En-Route Update",
+              "note": "Provider en-route notification will trigger at departure. ETA calculated dynamically."
+            },
+            {
+              "step": 6,
+              "title": "Service Completion",
+              "note": "Completion checklist (3 items) + photo placeholder activated for post-service verification"
+            },
+            {
+              "step": 7,
+              "title": "Feedback & DNA",
+              "note": "Post-service feedback form triggered. DNA Score update queued for Imran Haider."
+            }
+          ]
+        },
+        "decision": "All 7 booking steps completed. Receipt: KG-20260516-156C99",
+        "latency_ms": 120
+      }
+    ],
+    "final_output": {
+      "status": "booking_confirmed",
+      "receipt_number": "KG-20260516-156C99",
+      "booking_id": "BK-E8101845",
+      "provider": "Imran Haider",
+      "service": "Electrical",
+      "scheduled": "2026-05-14 at 10:00",
+      "total_pkr": 2600,
+      "surge_multiplier": 1.38,
+      "steps": [
+        {
+          "step": 1,
+          "title": "Slot Lock",
+          "agent_note": "Provider calendar slot 10:00 locked. Booking ID: BK-E8101845",
+          "timestamp": "2026-05-16T05:30:04.563549",
+          "status": "completed"
+        },
+        {
+          "step": 2,
+          "title": "Confirmation",
+          "agent_note": "In-app booking notification sent to user and Imran Haider (+8901234)",
+          "timestamp": "2026-05-16T05:30:06.563549",
+          "status": "completed"
+        },
+        {
+          "step": 3,
+          "title": "Receipt Generated",
+          "agent_note": "Receipt #KG-20260516-156C99 — Rs. 2600 — Electrical service",
+          "timestamp": "2026-05-16T05:30:08.563549",
+          "status": "completed"
+        },
+        {
+          "step": 4,
+          "title": "Reminders Scheduled",
+          "agent_note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging",
+          "timestamp": "2026-05-16T05:30:10.563549",
+          "status": "completed"
+        },
+        {
+          "step": 5,
+          "title": "En-Route Update",
+          "agent_note": "Provider en-route notification will trigger at departure. ETA calculated dynamically.",
+          "timestamp": "2026-05-16T05:30:12.563549",
+          "status": "completed"
+        },
+        {
+          "step": 6,
+          "title": "Service Completion",
+          "agent_note": "Completion checklist (3 items) + photo placeholder activated for post-service verification",
+          "timestamp": "2026-05-16T05:30:14.563549",
+          "status": "completed"
+        },
+        {
+          "step": 7,
+          "title": "Feedback & DNA",
+          "agent_note": "Post-service feedback form triggered. DNA Score update queued for Imran Haider.",
+          "timestamp": "2026-05-16T05:30:16.563549",
+          "status": "completed"
+        }
+      ],
+      "antigravity_trace": {
+        "agents_invoked": [
+          "IntentAgent",
+          "SurgeAgent",
+          "MatchingAgent",
+          "PricingAgent",
+          "SchedulingAgent",
+          "BookingAgent"
+        ],
+        "total_steps": 7,
+        "completed_at": "2026-05-16T05:30:02.563549"
+      },
+      "agent": "BookingAgent"
+    },
+    "antigravity_metadata": {
+      "platform": "Google Antigravity",
+      "llm": "gemini-1.5-flash",
+      "trace_version": "1.0",
+      "challenge": "Challenge 2 — AI Service Orchestrator",
+      "hackathon": "AI Seekho Hackathon 26"
+    }
+  },
+  {
+    "trace_id": "TRACE-67F7F3B0",
+    "scenario": "Ambiguous Input + Clarification",
+    "raw_input": "kuch masla hai ghar mein",
+    "generated_at": "2026-05-16T05:30:02.563611",
+    "total_latency_ms": 1035,
+    "agents_invoked": [
+      "IntentAgent",
+      "MatchingAgent",
+      "SurgeAgent"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "timestamp": "2026-05-16T05:30:03.383611",
+        "agent": "IntentAgent",
+        "task": "Parse multilingual user request",
+        "tool_call": "gemini.generate_content(intent_prompt)",
+        "inputs": {
+          "raw_input": "kuch masla hai ghar mein"
+        },
+        "outputs": {
+          "service_type": "Unknown",
+          "location": "Islamabad",
+          "area": "G-13",
+          "urgency": "low",
+          "preferred_time": "flexible",
+          "preferred_date": "flexible",
+          "budget_sensitivity": 0.5,
+          "confidence": 0.58,
+          "language": "roman_urdu",
+          "clarification_needed": true,
+          "clarification_question": "Ap kis service ki zaroorat hai? (AC Repair, Plumbing, Electrical, Tutoring, ya Cleaning)",
+          "issue_description": "kuch masla hai ghar mein",
+          "job_complexity": "basic",
+          "agent": "IntentAgent",
+          "model": "rule_based_fallback"
+        },
+        "decision": "Extracted service='Unknown', area='G-13', urgency='low'. Confidence=58% → Request clarification",
+        "latency_ms": 820
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-05-16T05:30:03.503611",
+        "agent": "IntentAgent",
+        "task": "Generate clarification question",
+        "tool_call": null,
+        "inputs": {
+          "confidence": 0.58
+        },
+        "outputs": {
+          "clarification_question": "Ap kis service ki zaroorat hai? (AC Repair, Plumbing, Electrical, Tutoring, ya Cleaning)"
+        },
+        "decision": "Confidence below 0.70 threshold → pause flow, ask user for clarification",
+        "latency_ms": 120
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-05-16T05:30:03.548611",
+        "agent": "SurgeAgent",
+        "task": "Detect demand surge in area",
+        "tool_call": "demand_data.query(area, service, hour)",
+        "inputs": {
+          "area": "G-13",
+          "service": "Unknown",
+          "hour": 10
+        },
+        "outputs": {
+          "status": "success",
+          "area": "G-13",
+          "service": "Unknown",
+          "current_demand": 0,
+          "threshold": 10,
+          "available_providers": 5,
+          "surge_multiplier": 1.0,
+          "active": false,
+          "demand_trend": "stable",
+          "provider_notification": null,
+          "user_alert": null,
+          "forecast": null,
+          "agent": "SurgeAgent"
+        },
+        "decision": "Demand=0 requests vs threshold. Multiplier=1.0x. No surge — standard pricing",
+        "latency_ms": 45
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-05-16T05:30:03.586611",
+        "agent": "MatchingAgent",
+        "task": "Rank providers using 8-factor DNA algorithm",
+        "tool_call": "matching_agent.score_all(providers, intent, surge)",
+        "inputs": {
+          "service_type": "Unknown",
+          "user_location": {
+            "lat": 33.7215,
+            "lng": 73.0433
+          },
+          "surge_multiplier": 1.0,
+          "providers_evaluated": 0
+        },
+        "outputs": {
+          "status": "no_providers",
+          "top_matches": []
+        },
+        "decision": "Top provider: None (DNA=0, Score=0). Rationale: N/A",
+        "latency_ms": 38
+      },
+      {
+        "step": 5,
+        "timestamp": "2026-05-16T05:30:03.598611",
+        "agent": "MatchingAgent",
+        "task": "Fallback — no providers found",
+        "tool_call": null,
+        "inputs": {
+          "service": "Unknown"
+        },
+        "outputs": {
+          "action": "waitlist_and_expand_radius"
+        },
+        "decision": "No providers matched. Adding user to waitlist and expanding search radius to 15km.",
+        "latency_ms": 12
+      }
+    ],
+    "final_output": {
+      "status": "no_providers",
+      "message": "No providers found for 'Unknown'. Consider expanding search radius.",
+      "fallback": "waitlist",
+      "matches": []
+    },
+    "antigravity_metadata": {
+      "platform": "Google Antigravity",
+      "llm": "gemini-1.5-flash",
+      "trace_version": "1.0",
+      "challenge": "Challenge 2 — AI Service Orchestrator",
+      "hackathon": "AI Seekho Hackathon 26"
+    }
+  },
+  {
+    "trace_id": "TRACE-CB01EA7F",
+    "scenario": "Price Dispute After Service",
+    "raw_input": "AC repair karwana tha G-13 mein",
+    "generated_at": "2026-05-16T05:30:02.563716",
+    "total_latency_ms": 2113,
+    "agents_invoked": [
+      "IntentAgent",
+      "MatchingAgent",
+      "PricingAgent",
+      "DisputeAgent",
+      "BookingAgent",
+      "SchedulingAgent",
+      "SurgeAgent"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "timestamp": "2026-05-16T05:30:03.383716",
+        "agent": "IntentAgent",
+        "task": "Parse multilingual user request",
+        "tool_call": "gemini.generate_content(intent_prompt)",
+        "inputs": {
+          "raw_input": "AC repair karwana tha G-13 mein"
+        },
+        "outputs": {
+          "service_type": "AC Repair",
+          "location": "Islamabad",
+          "area": "G-13",
+          "urgency": "low",
+          "preferred_time": "flexible",
+          "preferred_date": "flexible",
+          "budget_sensitivity": 0.5,
+          "confidence": 0.86,
+          "language": "roman_urdu",
+          "clarification_needed": false,
+          "clarification_question": "",
+          "issue_description": "AC repair karwana tha G-13 mein",
+          "job_complexity": "intermediate",
+          "agent": "IntentAgent",
+          "model": "rule_based_fallback"
+        },
+        "decision": "Extracted service='AC Repair', area='G-13', urgency='low'. Confidence=86% → Proceed to matching",
+        "latency_ms": 820
+      },
+      {
+        "step": 2,
+        "timestamp": "2026-05-16T05:30:03.428716",
+        "agent": "SurgeAgent",
+        "task": "Detect demand surge in area",
+        "tool_call": "demand_data.query(area, service, hour)",
+        "inputs": {
+          "area": "G-13",
+          "service": "AC Repair",
+          "hour": 11
+        },
+        "outputs": {
+          "status": "success",
+          "area": "G-13",
+          "service": "AC Repair",
+          "current_demand": 11,
+          "threshold": 10,
+          "available_providers": 4,
+          "surge_multiplier": 1.26,
+          "active": true,
+          "demand_trend": "stable",
+          "provider_notification": {
+            "message": "🌊 Surge Alert! AC Repair demand in G-13 is 1.26x. Accept jobs now to earn more.",
+            "multiplier": 1.26,
+            "area": "G-13"
+          },
+          "user_alert": {
+            "title": "Surge Active in G-13",
+            "body": "Demand for AC Repair is high (11 requests, 4 providers). Book now to lock current price.",
+            "multiplier": 1.26,
+            "alternatives": "Off-peak hours: 05:00, 06:00, 07:00"
+          },
+          "forecast": {
+            "area": "G-13",
+            "service": "AC Repair",
+            "predicted_peak_hour": 15,
+            "predicted_multiplier": 1.6,
+            "confidence": 0.84
+          },
+          "agent": "SurgeAgent"
+        },
+        "decision": "Demand=11 requests vs threshold. Multiplier=1.26x. Surge ACTIVE — notify user and providers",
+        "latency_ms": 45
+      },
+      {
+        "step": 3,
+        "timestamp": "2026-05-16T05:30:03.466716",
+        "agent": "MatchingAgent",
+        "task": "Rank providers using 8-factor DNA algorithm",
+        "tool_call": "matching_agent.score_all(providers, intent, surge)",
+        "inputs": {
+          "service_type": "AC Repair",
+          "user_location": {
+            "lat": 33.7215,
+            "lng": 73.0433
+          },
+          "surge_multiplier": 1.26,
+          "providers_evaluated": 2
+        },
+        "outputs": {
+          "status": "success",
+          "top_matches": [
+            {
+              "rank": 1,
+              "name": "Tariq Mehmood",
+              "dna_score": 912,
+              "match_score": 95.2,
+              "distance_km": 0.0,
+              "quote_pkr": 1754,
+              "rationale": "97% on-time arrival rate · very low cancellation risk · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 95,
+                "rating_score": 98.0,
+                "review_recency_score": 100,
+                "reliability_score": 97.0,
+                "specialization_score": 100,
+                "price_fit_score": 93.75,
+                "cancellation_risk": 98.0,
+                "capacity_score": 72.8,
+                "user_preference_match": 60
+              }
+            },
+            {
+              "rank": 2,
+              "name": "Bilal Hussain",
+              "dna_score": 868,
+              "match_score": 94.5,
+              "distance_km": 0.92,
+              "quote_pkr": 1608,
+              "rationale": "very low cancellation risk · verified identity",
+              "warnings": [],
+              "score_breakdown": {
+                "distance_score": 100,
+                "availability_score": 95,
+                "rating_score": 94.0,
+                "review_recency_score": 100,
+                "reliability_score": 93.0,
+                "specialization_score": 100,
+                "price_fit_score": 96.87,
+                "cancellation_risk": 97.0,
+                "capacity_score": 77.2,
+                "user_preference_match": 60
+              }
+            }
+          ]
+        },
+        "decision": "Top provider: Tariq Mehmood (DNA=912, Score=95.2). Rationale: 97% on-time arrival rate · very low cancellation risk · verified identity",
+        "latency_ms": 38
+      },
+      {
+        "step": 4,
+        "timestamp": "2026-05-16T05:30:03.488716",
+        "agent": "PricingAgent",
+        "task": "Generate transparent dynamic quote",
+        "tool_call": "pricing_agent.calculate(provider, intent, dist, surge)",
+        "inputs": {
+          "base_rate": 1200,
+          "urgency": "low",
+          "distance_km": 0.0,
+          "surge_multiplier": 1.26
+        },
+        "outputs": {
+          "base_pkr": 1200,
+          "urgency_adj_pkr": 0,
+          "distance_cost_pkr": 0,
+          "surge_adj_pkr": 312,
+          "surge_multiplier": 1.26,
+          "loyalty_discount_pkr": 0,
+          "total_pkr": 1512,
+          "is_negotiable": false,
+          "min_acceptable_pkr": 1020,
+          "breakdown": "Base Rs.1200 + Urgency Rs.0 + Distance Rs.0 + Surge Rs.312",
+          "agent": "PricingAgent"
+        },
+        "decision": "Quote=Rs.1512. Negotiable=False. Breakdown: Base Rs.1200 + Urgency Rs.0 + Distance Rs.0 + Surge Rs.312",
+        "latency_ms": 22
+      },
+      {
+        "step": 5,
+        "timestamp": "2026-05-16T05:30:03.506716",
+        "agent": "SchedulingAgent",
+        "task": "Lock provider slot, check double-booking",
+        "tool_call": "calendar.lock_slot(provider_id, date, time)",
+        "inputs": {
+          "provider_id": "p001",
+          "requested_date": "2026-05-14",
+          "requested_time": "10:00",
+          "travel_buffer_required": "30 min"
+        },
+        "outputs": {
+          "status": "confirmed",
+          "booking_id": "BK-F98F1A9B",
+          "provider_id": "p001",
+          "provider_name": "Tariq Mehmood",
+          "slot": "10:00",
+          "date": "2026-05-14",
+          "travel_buffer_minutes": 30,
+          "message": "Slot 10:00 on 2026-05-14 locked for Tariq Mehmood.",
+          "agent": "SchedulingAgent"
+        },
+        "decision": "Slot 10:00 on 2026-05-14 → CONFIRMED. Booking ID: BK-F98F1A9B",
+        "latency_ms": 18
+      },
+      {
+        "step": 6,
+        "timestamp": "2026-05-16T05:30:03.626716",
+        "agent": "BookingAgent",
+        "task": "Execute 7-step booking simulation chain",
+        "tool_call": "booking_agent.execute_chain(scheduling_result, quote, provider)",
+        "inputs": {
+          "booking_id": "BK-F98F1A9B",
+          "provider": "Tariq Mehmood"
+        },
+        "outputs": {
+          "receipt_number": "KG-20260516-9F4DF3",
+          "status": "booking_confirmed",
+          "scheduled": "2026-05-14 at 10:00",
+          "steps_completed": 7,
+          "chain": [
+            {
+              "step": 1,
+              "title": "Slot Lock",
+              "note": "Provider calendar slot 10:00 locked. Booking ID: BK-F98F1A9B"
+            },
+            {
+              "step": 2,
+              "title": "Confirmation",
+              "note": "In-app booking notification sent to user and Tariq Mehmood (+1234567)"
+            },
+            {
+              "step": 3,
+              "title": "Receipt Generated",
+              "note": "Receipt #KG-20260516-9F4DF3 — Rs. 1512 — AC Repair service"
+            },
+            {
+              "step": 4,
+              "title": "Reminders Scheduled",
+              "note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging"
+            },
+            {
+              "step": 5,
+              "title": "En-Route Update",
+              "note": "Provider en-route notification will trigger at departure. ETA calculated dynamically."
+            },
+            {
+              "step": 6,
+              "title": "Service Completion",
+              "note": "Completion checklist (3 items) + photo placeholder activated for post-service verification"
+            },
+            {
+              "step": 7,
+              "title": "Feedback & DNA",
+              "note": "Post-service feedback form triggered. DNA Score update queued for Tariq Mehmood."
+            }
+          ]
+        },
+        "decision": "All 7 booking steps completed. Receipt: KG-20260516-9F4DF3",
+        "latency_ms": 120
+      },
+      {
+        "step": 7,
+        "timestamp": "2026-05-16T05:30:04.676716",
+        "agent": "DisputeAgent",
+        "task": "Resolve price_disagreement dispute",
+        "tool_call": "gemini.generate_content(dispute_prompt)",
+        "inputs": {
+          "type": "price_disagreement",
+          "provider_dna": 912,
+          "quoted": 1512,
+          "charged": 1800
+        },
+        "outputs": {
+          "status": "resolved",
+          "ticket_id": "DSP-16C42F0A",
+          "dispute_type": "price_disagreement",
+          "verdict": "mediated",
+          "action": "partial_refund",
+          "refund_amount_pkr": 144.0,
+          "penalty_to_provider": "warning",
+          "reasoning": "Pricing discrepancy of Rs.288 noted. Goodwill refund of Rs.144 issued. Provider warned.",
+          "escalate_to_human": false,
+          "provider_dna_delta": 0,
+          "support_ticket": {
+            "id": "DSP-16C42F0A",
+            "created_at": "2026-05-16T05:30:02.563866",
+            "provider": "Tariq Mehmood",
+            "type": "price_disagreement",
+            "trace_attached": true
+          },
+          "agent": "DisputeAgent"
+        },
+        "decision": "Verdict=mediated. Action=partial_refund. Refund=Rs.144.0. Penalty=warning. Pricing discrepancy of Rs.288 noted. Goodwill refund of Rs.144 issued. Provider warned.",
+        "latency_ms": 1050
+      }
+    ],
+    "final_output": {
+      "status": "booking_confirmed",
+      "receipt_number": "KG-20260516-9F4DF3",
+      "booking_id": "BK-F98F1A9B",
+      "provider": "Tariq Mehmood",
+      "service": "AC Repair",
+      "scheduled": "2026-05-14 at 10:00",
+      "total_pkr": 1512,
+      "surge_multiplier": 1.26,
+      "steps": [
+        {
+          "step": 1,
+          "title": "Slot Lock",
+          "agent_note": "Provider calendar slot 10:00 locked. Booking ID: BK-F98F1A9B",
+          "timestamp": "2026-05-16T05:30:04.563835",
+          "status": "completed"
+        },
+        {
+          "step": 2,
+          "title": "Confirmation",
+          "agent_note": "In-app booking notification sent to user and Tariq Mehmood (+1234567)",
+          "timestamp": "2026-05-16T05:30:06.563835",
+          "status": "completed"
+        },
+        {
+          "step": 3,
+          "title": "Receipt Generated",
+          "agent_note": "Receipt #KG-20260516-9F4DF3 — Rs. 1512 — AC Repair service",
+          "timestamp": "2026-05-16T05:30:08.563835",
+          "status": "completed"
+        },
+        {
+          "step": 4,
+          "title": "Reminders Scheduled",
+          "agent_note": "Reminder chain queued: T-24h, T-1h, T-15min via Firebase Cloud Messaging",
+          "timestamp": "2026-05-16T05:30:10.563835",
+          "status": "completed"
+        },
+        {
+          "step": 5,
+          "title": "En-Route Update",
+          "agent_note": "Provider en-route notification will trigger at departure. ETA calculated dynamically.",
+          "timestamp": "2026-05-16T05:30:12.563835",
+          "status": "completed"
+        },
+        {
+          "step": 6,
+          "title": "Service Completion",
+          "agent_note": "Completion checklist (3 items) + photo placeholder activated for post-service verification",
+          "timestamp": "2026-05-16T05:30:14.563835",
+          "status": "completed"
+        },
+        {
+          "step": 7,
+          "title": "Feedback & DNA",
+          "agent_note": "Post-service feedback form triggered. DNA Score update queued for Tariq Mehmood.",
+          "timestamp": "2026-05-16T05:30:16.563835",
+          "status": "completed"
+        }
+      ],
+      "antigravity_trace": {
+        "agents_invoked": [
+          "IntentAgent",
+          "SurgeAgent",
+          "MatchingAgent",
+          "PricingAgent",
+          "SchedulingAgent",
+          "BookingAgent"
+        ],
+        "total_steps": 7,
+        "completed_at": "2026-05-16T05:30:02.563835"
+      },
+      "agent": "BookingAgent"
+    },
+    "antigravity_metadata": {
+      "platform": "Google Antigravity",
+      "llm": "gemini-1.5-flash",
+      "trace_version": "1.0",
+      "challenge": "Challenge 2 — AI Service Orchestrator",
+      "hackathon": "AI Seekho Hackathon 26"
+    }
+  }
+]

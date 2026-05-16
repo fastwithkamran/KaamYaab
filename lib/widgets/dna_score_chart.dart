@@ -82,7 +82,7 @@ class _DnaScoreChartState extends State<DnaScoreChart>
             border: Border.all(color: tierColor.withValues(alpha: 0.5)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('ðŸ¦  DNA: ${p.dnascore}',
+            Text('🦠 DNA: ${p.dnascore}',
                 style: TextStyle(color: tierColor, fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(width: 8),
             Container(
@@ -118,12 +118,12 @@ class _DnaScoreChartState extends State<DnaScoreChart>
 
 class _Factor {
   final String label;
-  final double value; // 0.0â€“1.0
+  final double value; // 0.0–1.0
   final Color color;
   const _Factor(this.label, this.value, this.color);
 }
 
-// â”€â”€ Tier ring (thin outer circle colored by DNA tier) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tier ring (thin outer circle colored by DNA tier) ─────────────────────────
 class _TierRingPainter extends CustomPainter {
   final Color color;
   final double progress;

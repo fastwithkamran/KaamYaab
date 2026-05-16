@@ -78,7 +78,7 @@ class _SurgeAlertCardState extends State<SurgeAlertCard>
           children: [
             Row(
               children: [
-                const Text('ðŸŒŠ', style: TextStyle(fontSize: 20)),
+                const Text('🌊', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -93,7 +93,7 @@ class _SurgeAlertCardState extends State<SurgeAlertCard>
                         ),
                       ),
                       Text(
-                        '${widget.activeRequests} requests Â· ${widget.availableProviders} providers available',
+                        '${widget.activeRequests} requests · ${widget.availableProviders} providers available',
                         style: TextStyle(
                           color: widget.multiplier >= 1.5
                               ? Colors.white70

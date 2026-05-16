@@ -167,14 +167,18 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
     HapticFeedback.mediumImpact();
     setState(() { _loading = true; _error = null; });
 
-    final code = await OtpService().sendOtp(_phoneCtrl.text.trim());
+    final sendResult = await OtpService().sendOtp(_phoneCtrl.text.trim());
     if (!mounted) return;
     setState(() => _loading = false);
+    if (sendResult.hasFatalError) {
+      _showError(sendResult.errorMessage ?? 'Could not send OTP.');
+      return;
+    }
 
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => OtpScreen(
         phone: _phoneCtrl.text.trim(),
-        demoOtp: code ?? '',
+        demoOtp: sendResult.demoCode ?? '',
         onVerified: _register,
       ),
     ));
