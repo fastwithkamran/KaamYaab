@@ -156,6 +156,19 @@ class AuthService {
     }
   }
 
+  Future<void> setAvailabilityRules(List<String> rules) async {
+    if (_currentUser == null || !_currentUser!.isWorker) return;
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    final idx = allUsers.indexWhere((u) => u.uid == _currentUser!.uid);
+    if (idx >= 0) {
+      allUsers[idx] = allUsers[idx].copyWith(availabilityRules: rules);
+      _currentUser = allUsers[idx];
+      await _saveAllUsers(prefs, allUsers);
+      await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
+    }
+  }
+
   // ── Admin: Ban / Unban / Delete ───────────────────────────────────────────
   Future<void> banUser(String uid) async {
     final prefs = await SharedPreferences.getInstance();

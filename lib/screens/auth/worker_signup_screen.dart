@@ -12,6 +12,8 @@ import '../../models/user_model.dart';
 import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
+import '../map_picker_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 // ── Sub-roles per category (for AI matching) ─────────────────────────────────
 const Map<String, List<String>> _subRoles = {
@@ -58,6 +60,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   final _bioCtrl = TextEditingController();
 
   String? _selectedCity;
+  LatLng? _selectedLocation;
   String? _selectedCategory;
   String? _selectedSubRole;
   int _experience = 1;
@@ -190,6 +193,8 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
       experienceYears: _experience, isAvailable: true,
       bio: _bioCtrl.text.trim().isNotEmpty ? _bioCtrl.text.trim() : null,
       profileImageBase64: _profileImageBase64,
+      latitude: _selectedLocation?.latitude,
+      longitude: _selectedLocation?.longitude,
     );
 
     final result = await AuthService().register(user, _passCtrl.text);
@@ -280,6 +285,51 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
                               prefixIcon: Icons.location_city_outlined,
                               onChanged: (v) => setState(() => _selectedCity = v),
                               validator: (v) => v == null ? 'Please select your city' : null),
+                          const SizedBox(height: 16),
+
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceDark.withValues(alpha: 0.5),
+                              borderRadius: AppTheme.radiusMd,
+                              border: Border.all(color: AppTheme.purpleAgent.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.map_outlined, color: AppTheme.purpleAgent, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Exact Location', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                                      Text(
+                                        _selectedLocation != null ? 'Location selected' : 'Tap to pin on map',
+                                        style: TextStyle(color: _selectedLocation != null ? AppTheme.greenSuccess : AppTheme.textMuted, fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    final LatLng? result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => MapPickerScreen(initialPosition: _selectedLocation)),
+                                    );
+                                    if (result != null) {
+                                      setState(() => _selectedLocation = result);
+                                    }
+                                  },
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: AppTheme.purpleAgent.withValues(alpha: 0.1),
+                                    foregroundColor: AppTheme.purpleAgent,
+                                  ),
+                                  child: const Text('Pick'),
+                                )
+                              ],
+                            ),
+                          ),
 
                           const SizedBox(height: 28),
                           AuthSectionHeader(title: 'Your Service & Role', color: AppTheme.purpleAgent),

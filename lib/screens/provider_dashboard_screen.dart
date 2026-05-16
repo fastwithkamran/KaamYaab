@@ -1,9 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
+import '../widgets/worker_agent_chat.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
@@ -14,8 +16,9 @@ class ProviderDashboardScreen extends StatefulWidget {
 
 class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
     with TickerProviderStateMixin {
-  // Simulated provider data for demo
-  final String _providerName = 'Tariq Mehmood';
+  
+  late String _providerName;
+  late String _providerCategory;
   final int _dnascore = 912;
   final double _todayEarnings = 5400;
   final double _weekEarnings = 28700;
@@ -59,6 +62,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
   @override
   void initState() {
     super.initState();
+    final user = AuthService().currentUser;
+    _providerName = user?.name ?? 'Provider';
+    _providerCategory = user?.serviceCategory ?? 'Technician';
 
     // Counter animation
     _counterCtrl = AnimationController(
@@ -97,6 +103,19 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.purpleAgent,
+        icon: const Icon(Icons.mic, color: Colors.white),
+        label: const Text('Agent', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const WorkerAgentChatBottomSheet(),
+          );
+        },
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
@@ -121,8 +140,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(_providerName,
                               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-                          const Text('Provider Mode Â· AC Technician',
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                          Text('Provider Mode · $_providerCategory',
+                              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                         ]),
                       ),
                       // Online/Offline toggle

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../utils/distance_utils.dart';
+import '../services/auth_service.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
@@ -24,6 +25,42 @@ class MatchingService {
       final list = (decoded['providers'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
       _allProviders = list.map(ServiceProvider.fromJson).toList();
+
+      // Merge live workers
+      final liveWorkers = await AuthService().getAllWorkers();
+      for (var worker in liveWorkers) {
+        if (worker.latitude != null && worker.longitude != null) {
+          _allProviders!.add(ServiceProvider(
+            id: worker.uid,
+            name: worker.name,
+            phone: worker.phone,
+            serviceCategory: worker.serviceCategory ?? 'General',
+            skills: worker.skills ?? [],
+            lat: worker.latitude!,
+            lng: worker.longitude!,
+            area: worker.area,
+            city: worker.city,
+            dnascore: 800,
+            rating: worker.rating,
+            totalJobs: worker.totalJobs,
+            completedJobs: worker.totalJobs,
+            onTimeRate: 0.9,
+            cancellationRate: 0.05,
+            priceFairnessScore: 0.8,
+            disputeCount: 0,
+            surgeAcceptor: true,
+            baseRatePkr: worker.baseRatePkr ?? 500.0,
+            experienceLevel: 'intermediate',
+            certifications: [],
+            availability: worker.availabilityRules ?? [],
+            availableSlots: ['09:00', '10:00', '14:00', '16:00'],
+            reviewCount: 0,
+            profileImage: worker.profileImageBase64 ?? '',
+            isVerified: true,
+            lastActiveDate: DateTime.now().toIso8601String(),
+          ));
+        }
+      }
     } catch (_) {
       _allProviders = [];
     }
@@ -199,6 +236,15 @@ class MatchingService {
 
   static double _availabilityScore(ServiceProvider p, String preferredTime) {
     if (preferredTime == 'flexible') return 95;
+    
+    // Simple availability rules check for live workers
+    if (p.availability.isNotEmpty) {
+      final rulesStr = p.availability.join(' ').toLowerCase();
+      if (rulesStr.contains('off') || rulesStr.contains('not available') || rulesStr.contains('busy')) {
+        return 0; // Filter out if agent memory says they are off
+      }
+    }
+
     final hasSlot = p.availableSlots.any((slot) => slot.contains(preferredTime));
     return hasSlot ? 95 : 55;
   }

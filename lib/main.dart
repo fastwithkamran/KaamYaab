@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/provider_dashboard_screen.dart';
+import 'screens/worker_home_screen.dart';
 import 'screens/customer_hub_screen.dart';
 import 'screens/auth/role_select_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
@@ -55,13 +55,13 @@ class KaamYaabApp extends StatelessWidget {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const RoleSelectScreen(),
         '/home': (context) => const MainShell(),
-        '/dashboard': (context) => const ProviderDashboardScreen(),
+        '/dashboard': (context) => const WorkerHomeScreen(),
         '/admin': (context) => const AdminDashboardScreen(),
         '/workers': (context) => const WorkersBrowseScreen(),
         '/voice-booking': (context) => const VoiceBookingAgent(),
         '/hub': (context) => const CustomerHubScreen(),
         // Legacy aliases
-        '/provider-dashboard': (context) => const ProviderDashboardScreen(),
+        '/provider-dashboard': (context) => const WorkerHomeScreen(),
       },
       // BookingFlowScreen is pushed via Navigator.push (requires params)
     );
