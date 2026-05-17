@@ -9,6 +9,7 @@ import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
 import '../services/booking_history_service.dart';
 import 'live_tracking_screen.dart';
+import 'dispute_screen.dart';
 
 class BookingFlowScreen extends StatefulWidget {
   final ProviderMatch match;
@@ -223,16 +224,28 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     if (_rating == 0) return;
     HapticFeedback.mediumImpact();
     setState(() => _feedbackSubmitted = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('⭐ Feedback submitted! DNA Score updated.',
-              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
-        backgroundColor: AppTheme.cardDark,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
-      ),
-    );
+    // ISSUE-010 FIX: persist the feedback text alongside the booking
+    try {
+      await BookingHistoryService().updateFeedback(
+        requestId: widget.request.id,
+        rating: _rating,
+        feedback: _feedback,
+      );
+    } catch (_) {
+      // Non-blocking if service unavailable
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('⭐ Feedback submitted! DNA Score updated.',
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
+          backgroundColor: AppTheme.cardDark,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),
+        ),
+      );
+    }
   }
 
   Future<void> _persistBookingHistory() async {
@@ -620,6 +633,24 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
               backgroundColor: _feedbackSubmitted ? AppTheme.greenSuccess : AppTheme.goldAccent,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+          ),
+        ),
+        // ISSUE-012 FIX: Dispute button visible after booking completion
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DisputeScreen()),
+            ),
+            icon: const Icon(Icons.gavel_rounded, size: 16, color: AppTheme.redAlert),
+            label: const Text('File a Dispute',
+                style: TextStyle(color: AppTheme.redAlert, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppTheme.redAlert.withValues(alpha: 0.5)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         ),

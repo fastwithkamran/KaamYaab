@@ -7,6 +7,7 @@ import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/worker_home_screen.dart';
 import 'screens/customer_hub_screen.dart';
+import 'screens/simulation_dashboard_screen.dart';
 import 'screens/auth/role_select_screen.dart';
 import 'screens/auth/language_selection_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
@@ -69,6 +70,7 @@ class KaamYaabApp extends StatelessWidget {
         '/workers': (context) => const WorkersBrowseScreen(),
         '/voice-booking': (context) => const VoiceBookingAgent(),
         '/hub': (context) => const CustomerHubScreen(),
+        '/agent-logs': (context) => const SimulationDashboardScreen(),
         // Legacy aliases
         '/provider-dashboard': (context) => const WorkerHomeScreen(),
       },
@@ -97,13 +99,14 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       HomeScreen(),
       WorkersBrowseScreen(),
       CustomerHubScreen(),
+      SimulationDashboardScreen(),
     ];
     _navAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
     _itemCtrls = List.generate(
-      3,
+      4,
       (_) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 200),
@@ -162,6 +165,7 @@ class _GlassNavBar extends StatelessWidget {
     _NavItemData(Icons.home_rounded, Icons.home_outlined, 'Home'),
     _NavItemData(Icons.people_rounded, Icons.people_outlined, 'Browse'),
     _NavItemData(Icons.account_circle_rounded, Icons.account_circle_outlined, 'Account'),
+    _NavItemData(Icons.hub_rounded, Icons.hub_outlined, 'AI Logs'),
   ];
 
   @override

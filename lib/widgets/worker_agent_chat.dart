@@ -56,7 +56,10 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
   void _sendAgentGreeting() {
     final user = AuthService().currentUser;
     final name = user?.name.split(' ').first ?? 'there';
+<<<<<<< HEAD
     final category = user?.serviceCategory;
+=======
+>>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
     final rules = user?.availabilityRules ?? [];
 
     String greeting;

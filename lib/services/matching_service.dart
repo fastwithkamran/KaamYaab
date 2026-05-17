@@ -287,11 +287,39 @@ class MatchingService {
     final provider = providerCategory.toLowerCase();
     final service = serviceType.toLowerCase();
     if (provider == service) return true;
-    if (service.contains('ac') && provider.contains('ac')) return true;
-    if (service.contains('plumb') && provider.contains('plumb')) return true;
-    if (service.contains('electric') && provider.contains('electric')) return true;
-    if (service.contains('clean') && provider.contains('clean')) return true;
-    if (service.contains('tutor') && provider.contains('tutor')) return true;
+    // AC / cooling
+    if ((service.contains('ac') || service.contains('air con') || service.contains('cooling')) &&
+        (provider.contains('ac') || provider.contains('air con') || provider.contains('technician'))) return true;
+    // Plumbing
+    if ((service.contains('plumb') || service.contains('pipe') || service.contains('water')) &&
+        (provider.contains('plumb') || provider.contains('pipe'))) return true;
+    // Electrical
+    if ((service.contains('electric') || service.contains('wiring')) &&
+        (provider.contains('electric'))) return true;
+    // Cleaning
+    if ((service.contains('clean') || service.contains('safai')) &&
+        (provider.contains('clean'))) return true;
+    // Tutoring / teaching
+    if ((service.contains('tutor') || service.contains('teach') || service.contains('parhai')) &&
+        (provider.contains('tutor') || provider.contains('teach'))) return true;
+    // Carpentry
+    if ((service.contains('carpent') || service.contains('wood') || service.contains('furniture') || service.contains('darwaza')) &&
+        (provider.contains('carpent') || provider.contains('wood') || provider.contains('furniture'))) return true;
+    // Painting
+    if ((service.contains('paint') || service.contains('rang') || service.contains('colour')) &&
+        (provider.contains('paint'))) return true;
+    // Gardening
+    if ((service.contains('garden') || service.contains('plant') || service.contains('lawn')) &&
+        (provider.contains('garden') || provider.contains('plant'))) return true;
+    // Cook / food
+    if ((service.contains('cook') || service.contains('khana') || service.contains('bawarchi')) &&
+        (provider.contains('cook') || provider.contains('chef') || provider.contains('bawarchi'))) return true;
+    // Driver
+    if ((service.contains('driver') || service.contains('cab') || service.contains('gari')) &&
+        (provider.contains('driver') || provider.contains('cab'))) return true;
+    // Security
+    if ((service.contains('security') || service.contains('guard')) &&
+        (provider.contains('security') || provider.contains('guard'))) return true;
     return false;
   }
 
