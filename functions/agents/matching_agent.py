@@ -371,17 +371,32 @@ def run(
     filtered: List[Dict] = []
     for p in providers:
         cat = str(p.get("service_category", "")).lower()
-        # Service category match
+        # Service category match (expanded to cover all service types)
         service_match = (
             cat == service_lower
-            or ("ac" in service_lower and "ac" in cat)
-            or ("plumb" in service_lower and "plumb" in cat)
+            or ("ac" in service_lower and ("ac" in cat or "technician" in cat))
+            or ("plumb" in service_lower and ("plumb" in cat or "pipe" in cat))
             or ("electric" in service_lower and "electric" in cat)
             or ("clean" in service_lower and "clean" in cat)
-            or ("tutor" in service_lower and "tutor" in cat)
+            or ("tutor" in service_lower and ("tutor" in cat or "teach" in cat))
+            or ("carpent" in service_lower and ("carpent" in cat or "wood" in cat or "furniture" in cat))
+            or ("paint" in service_lower and "paint" in cat)
+            or ("garden" in service_lower and ("garden" in cat or "plant" in cat))
+            or ("cook" in service_lower and ("cook" in cat or "chef" in cat))
+            or ("driver" in service_lower and "driver" in cat)
+            or ("security" in service_lower and ("security" in cat or "guard" in cat))
         )
         if not service_match:
             continue
+
+        # BUG-2 FIX: Complexity compatibility filter
+        # Jobs requiring complex skill MUST have a provider at adequate experience level
+        exp_raw = str(p.get("experience_level", "basic")).lower()
+        if exp_raw == "complex":
+            exp_raw = "expert"   # normalise legacy label
+        required_levels = COMPLEXITY_REQUIRED_LEVEL.get(job_complexity, COMPLEXITY_REQUIRED_LEVEL["basic"])
+        if exp_raw not in required_levels:
+            continue   # provider is under-qualified for this complexity level
 
         # Hard disqualify: too many disputes (≥ 3 disputes = hidden from results)
         if p.get("dispute_count", 0) >= 3:
@@ -400,16 +415,22 @@ def run(
         filtered.append(p)
 
     if not filtered:
-        # Fallback: try relaxed filter (allow dispute_count < 5, ignore staleness)
+        # Fallback: try relaxed filter (allow dispute_count < 5, ignore staleness, relax complexity)
         for p in providers:
             cat = str(p.get("service_category", "")).lower()
             service_match = (
                 cat == service_lower
-                or ("ac" in service_lower and "ac" in cat)
+                or ("ac" in service_lower and ("ac" in cat or "technician" in cat))
                 or ("plumb" in service_lower and "plumb" in cat)
                 or ("electric" in service_lower and "electric" in cat)
                 or ("clean" in service_lower and "clean" in cat)
                 or ("tutor" in service_lower and "tutor" in cat)
+                or ("carpent" in service_lower and ("carpent" in cat or "wood" in cat))
+                or ("paint" in service_lower and "paint" in cat)
+                or ("garden" in service_lower and "garden" in cat)
+                or ("cook" in service_lower and ("cook" in cat or "chef" in cat))
+                or ("driver" in service_lower and "driver" in cat)
+                or ("security" in service_lower and "security" in cat)
             )
             if service_match and p.get("dispute_count", 0) < 5:
                 filtered.append(p)

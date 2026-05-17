@@ -217,11 +217,13 @@ def negotiation_agent_run(
     floor          = max(original_quote * 0.80, surge_floor - loyalty_disc)
 
     if user_offer >= floor:
+        reason_label = "loyalty" if loyalty_disc > 0 else "within_floor"
         return {
             "accepted":            True,
             "agreed_price_pkr":    round(user_offer),
             "counter_offer_pkr":   round(user_offer),
             "reasoning":           f"Offer accepted." + (f" Loyalty discount Rs.{round(loyalty_disc)} applied." if loyalty_disc else ""),
+            "discount_reason":     reason_label,
             "discount_applied_pkr": round(loyalty_disc),
             "is_final_offer":      True,
             "round":               negotiation_round,
@@ -241,11 +243,13 @@ def negotiation_agent_run(
     if surge_mult > 1.2:
         reasoning += f" (Surge {surge_mult}x currently active.)"
 
+    counter_reason = "loyalty" if loyalty_disc > 0 else ("surge" if surge_mult > 1.2 else "standard")
     return {
         "accepted":            False,
         "agreed_price_pkr":    None,
         "counter_offer_pkr":   counter,
         "reasoning":           reasoning,
+        "discount_reason":     counter_reason,
         "discount_applied_pkr": round(loyalty_disc),
         "is_final_offer":      is_final,
         "round":               negotiation_round,

@@ -77,11 +77,91 @@ class BookingHistoryService {
     });
   }
 
+  /// Updates booking with user rating and feedback text after service completion.
+  Future<void> updateFeedback({
+    required String requestId,
+    required double rating,
+    required String feedback,
+  }) async {
+    final user = AuthService().currentUser;
+    if (user == null) return;
+
+    final query = await _db
+        .collection('bookings')
+        .where('customer_uid', isEqualTo: user.uid)
+        .where('request_id', isEqualTo: requestId)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      await query.docs.first.reference.update({
+        'user_rating': rating,
+        'user_feedback': feedback,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   DateTime? _toDateTime(dynamic value) {
     if (value == null) return null;
     if (value is DateTime) return value;
     if (value is Timestamp) return value.toDate();
     if (value is String) return DateTime.tryParse(value);
     return null;
+  }
+
+  /// Stream of completed bookings where this worker was the provider.
+  Stream<List<Map<String, dynamic>>> watchWorkerBookings() {
+    final user = AuthService().currentUser;
+    if (user == null) return Stream.value(const []);
+    return _db
+        .collection('bookings')
+        .where('provider_id', isEqualTo: user.uid)
+        .snapshots()
+        .map((snap) {
+      final items = snap.docs.map((d) {
+        final data = d.data();
+        data['id'] = d.id;
+        return data;
+      }).toList()
+        ..sort((a, b) {
+          final aD = _toDateTime(a['created_at']);
+          final bD = _toDateTime(b['created_at']);
+          if (aD == null && bD == null) return 0;
+          if (aD == null) return 1;
+          if (bD == null) return -1;
+          return bD.compareTo(aD);
+        });
+      return items;
+    });
+  }
+
+  /// Stream of reviews (bookings with user_rating set) left for this worker.
+  Stream<List<Map<String, dynamic>>> watchWorkerReviews() {
+    final user = AuthService().currentUser;
+    if (user == null) return Stream.value(const []);
+    return _db
+        .collection('bookings')
+        .where('provider_id', isEqualTo: user.uid)
+        .snapshots()
+        .map((snap) {
+      final items = snap.docs
+          .where((d) => d.data()['user_rating'] != null)
+          .map((d) {
+            final data = d.data();
+            data['id'] = d.id;
+            return data;
+          })
+          .toList()
+        ..sort((a, b) {
+          final aD = _toDateTime(a['updated_at'] ?? a['created_at']);
+          final bD = _toDateTime(b['updated_at'] ?? b['created_at']);
+          if (aD == null && bD == null) return 0;
+          if (aD == null) return 1;
+          if (bD == null) return -1;
+          return bD.compareTo(aD);
+        });
+      return items;
+    });
   }
 }

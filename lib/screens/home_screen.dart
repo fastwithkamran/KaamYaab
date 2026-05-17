@@ -9,12 +9,11 @@ import '../models/service_request_model.dart';
 import '../services/gemini_service.dart';
 import '../services/matching_service.dart';
 import '../services/language_service.dart';
-import '../widgets/live_agent_panel.dart';
+import '../services/location_service.dart';
 import '../widgets/provider_card.dart';
 import '../widgets/surge_alert_card.dart';
 import '../widgets/shimmer_card.dart';
 import 'booking_flow_screen.dart';
-import 'workers_browse_screen.dart';
 import 'voice_booking_agent.dart';
 
 
@@ -29,7 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollCtrl = ScrollController();
   final _lang = LanguageService();
 
-  bool _agentPanelVisible = true;
+  // ignore: unused_field
+  bool _agentPanelVisible = true; // reserved for animation toggle
   bool _isSearching = false;
   bool _showSurge = false;
   bool _showShimmer = false;
@@ -44,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _fabCtrl;
   late Animation<double> _fabAnim;
 
+  // ignore: unused_element
   String _t(String en, String ur) => _lang.t(en, ur);
 
   @override
@@ -172,8 +173,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ));
 
     await Future.delayed(const Duration(milliseconds: 1600));
-    const userLat = 33.7215;
-    const userLng = 73.0433;
+
+    // BUG-002 FIX: Try to get real GPS; fall back to G-13 (Islamabad) if denied
+    double userLat = 33.7215;
+    double userLng = 73.0433;
+    try {
+      final locResult = await LocationService().getCurrentLocation();
+      if (locResult.isSuccess && locResult.data != null) {
+        userLat = locResult.data!.latitude;
+        userLng = locResult.data!.longitude;
+      }
+    } catch (_) {
+      // GPS not available — using Islamabad default
+    }
+
     final results = await MatchingService.matchProviders(
       request: _currentRequest!,
       userLat: userLat,
@@ -600,11 +613,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              // — Empty state ————————————————————————————————————————————
-              if (_matches.isEmpty && !_isSearching && _agentSteps.isEmpty)
+              // — Empty state + Browse Workers ——————————————————————————
+              if (_matches.isEmpty && !_isSearching && _agentSteps.isEmpty) ...[
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 40, 40, 20),
+                    padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
                     child: Column(
                       children: [
                         Container(
@@ -643,6 +656,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ).animate().fadeIn(delay: 400.ms),
                 ),
+                // Browse Workers Banner
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                    child: _BrowseWorkersBanner(
+                      onBrowse: () => Navigator.pushNamed(context, '/workers'),
+                      onVoiceBook: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const VoiceBookingAgent()),
+                      ),
+                      onCategoryTap: (cat) => _handleSearch(cat),
+                    ),
+                  ).animate().fadeIn(delay: 500.ms),
+                ),
+              ],
 
               const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],

@@ -1,14 +1,21 @@
 /// Centralized runtime config loaded via `--dart-define` values.
+/// Keys are hardcoded as defaultValues for hackathon demo builds.
 class RuntimeConfig {
   const RuntimeConfig._();
 
-  static const String geminiApiKey =
-      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  /// Gemini 1.5 Flash API key — hardcoded for demo, override with --dart-define.
+  static const String geminiApiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: 'REDACTED_GEMINI_KEY',
+  );
 
-  /// Google Maps API key — used for live worker tracking map.
-  /// Hardcoded for hackathon demo; move to dart-define for production.
-  static const String mapsApiKey = 'REDACTED_MAPS_KEY';
+  /// Google Maps API key.
+  static const String mapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: 'REDACTED_MAPS_KEY',
+  );
 
+  /// Super Admin phone — login with this number to access admin panel.
   static const String superAdminPhone =
       String.fromEnvironment('SUPER_ADMIN_PHONE', defaultValue: '03000000000');
 
