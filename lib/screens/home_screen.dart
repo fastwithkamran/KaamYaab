@@ -9,10 +9,7 @@ import '../models/service_request_model.dart';
 import '../services/ai_service.dart';
 import '../services/matching_service.dart';
 import '../services/language_service.dart';
-<<<<<<< HEAD
-=======
 import '../services/location_service.dart';
->>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
 import '../widgets/provider_card.dart';
 import '../widgets/surge_alert_card.dart';
 import '../widgets/shimmer_card.dart';
@@ -31,11 +28,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollCtrl = ScrollController();
   final _lang = LanguageService();
 
-<<<<<<< HEAD
-=======
   // ignore: unused_field
   bool _agentPanelVisible = true; // reserved for animation toggle
->>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
   bool _isSearching = false;
   bool _showSurge = false;
   bool _showShimmer = false;
@@ -50,12 +44,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _fabCtrl;
   late Animation<double> _fabAnim;
 
-<<<<<<< HEAD
-=======
   // ignore: unused_element
   String _t(String en, String ur) => _lang.t(en, ur);
 
->>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
+
   @override
   void initState() {
     super.initState();
@@ -73,8 +65,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-<<<<<<< HEAD
-=======
   Future<void> _handleSearch(String input) async {
     if (input.trim().isEmpty) return;
     HapticFeedback.mediumImpact();
@@ -105,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() => _showShimmer = false);
 
     await Future.delayed(const Duration(milliseconds: 1400));
-    final intentResult = await GeminiService.extractIntent(input);
+    final intentResult = await AiService.extractIntent(input);
     final confidence = (intentResult['confidence'] as num).toDouble();
     final serviceType = intentResult['service_type'] as String;
     final area = intentResult['area'] as String? ?? 'G-13';
@@ -265,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
->>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
+
   void _showClarificationDialog(String question) {
     showDialog(
       context: context,
