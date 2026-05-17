@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
+import '../services/location_service.dart';
 import '../widgets/worker_agent_chat.dart';
 
 class WorkerHomeScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
   late String _workerName;
   late String _workerCategory;
   bool _isOnline = true;
+  bool _isUrdu = LanguageService().isUrdu;
   List<String> _availabilityRules = [];
 
   late AnimationController _pulseCtrl;
@@ -34,6 +37,12 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
+    
+    if (_workerCategory == 'Unassigned' || _availabilityRules.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openVoiceAgent();
+      });
+    }
   }
 
   @override
@@ -42,11 +51,14 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
     super.dispose();
   }
 
+  String _t(String en, String ur) => _isUrdu ? ur : en;
+
   void _refreshAvailability() {
     final user = AuthService().currentUser;
     if (user != null && mounted) {
       setState(() {
         _availabilityRules = user.availabilityRules ?? [];
+        _workerCategory = user.serviceCategory ?? 'Technician';
       });
     }
   }
@@ -61,21 +73,21 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
     ).then((_) => _refreshAvailability());
   }
 
-  void _openChatAgent() {
-    HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const WorkerAgentChatBottomSheet(initialMode: AgentInputMode.text),
-    ).then((_) => _refreshAvailability());
-  }
-
   Future<void> _toggleOnline() async {
     HapticFeedback.mediumImpact();
     final newStatus = !_isOnline;
     setState(() => _isOnline = newStatus);
     await AuthService().setWorkerAvailability(newStatus);
+    
+    if (newStatus) {
+      // Auto-save location when going online to help matching
+      try {
+        final loc = await LocationService().getCurrentLocation();
+        if (loc.isSuccess && loc.data != null) {
+          await LocationService().saveUserLocation(AuthService().currentUser!.uid, loc.data!);
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _logout() async {
@@ -84,17 +96,17 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
       builder: (_) => AlertDialog(
         backgroundColor: AppTheme.cardDark,
         shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-        title: const Text('Logout', style: TextStyle(color: AppTheme.textPrimary)),
-        content: const Text('Are you sure you want to logout?',
-            style: TextStyle(color: AppTheme.textSecondary)),
+        title: Text(_t('Logout', 'لاگ آؤٹ'), style: const TextStyle(color: AppTheme.textPrimary)),
+        content: Text(_t('Are you sure you want to logout?', 'کیا آپ واقعی لاگ آؤٹ کرنا چاہتے ہیں؟'),
+            style: const TextStyle(color: AppTheme.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(_t('Cancel', 'کینسل'), style: const TextStyle(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: AppTheme.redAlert)),
+            child: Text(_t('Logout', 'لاگ آؤٹ'), style: const TextStyle(color: AppTheme.redAlert)),
           ),
         ],
       ),
@@ -114,35 +126,28 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ──────────────────────────────────────────
-                _buildHeader(),
-                const SizedBox(height: 28),
-
-                // ── Welcome Card ────────────────────────────────────
-                _buildWelcomeCard(),
-                const SizedBox(height: 24),
-
-                // ── Agent CTAs ──────────────────────────────────────
-                _buildAgentSection(),
-                const SizedBox(height: 24),
-
-                // ── Availability Summary ────────────────────────────
-                _buildAvailabilitySummary(),
-                const SizedBox(height: 24),
-
-                // ── Online/Offline Toggle ───────────────────────────
-                _buildOnlineToggle(),
-                const SizedBox(height: 16),
-
-                // ── Logout ──────────────────────────────────────────
-                _buildLogoutButton(),
-              ],
-            ),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildOnlineToggle(),
+                      const SizedBox(height: 24),
+                      _buildBigVoiceButton(),
+                      const SizedBox(height: 24),
+                      _buildAvailabilitySummary(),
+                    ],
+                  ),
+                ),
+              ),
+              _buildLogoutButton(),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
@@ -153,10 +158,8 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
   Widget _buildHeader() {
     return Row(
       children: [
-        // Avatar
         Container(
-          width: 52,
-          height: 52,
+          width: 56, height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: AppTheme.primaryGradient,
@@ -165,11 +168,7 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
           child: Center(
             child: Text(
               _workerName.isNotEmpty ? _workerName.substring(0, 2).toUpperCase() : 'W',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-              ),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
             ),
           ),
         ),
@@ -178,533 +177,191 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _workerName,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
+              Text(_workerName,
+                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 20),
               ),
               const SizedBox(height: 2),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-                      borderRadius: AppTheme.radiusSm,
-                    ),
-                    child: Text(
-                      _workerCategory,
-                      style: const TextStyle(
-                        color: AppTheme.tealPrimary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                _workerCategory == 'Unassigned' ? _t('Setup Required', 'سیٹ اپ کی ضرورت ہے') : _workerCategory,
+                style: TextStyle(
+                  color: _workerCategory == 'Unassigned' ? AppTheme.goldAccent : AppTheme.tealPrimary,
+                  fontSize: 13, fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
         ),
-        // Status indicator
-        AnimatedBuilder(
-          animation: _pulseCtrl,
-          builder: (_, __) {
-            final pulse = _pulseCtrl.value;
-            return Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isOnline ? AppTheme.greenSuccess : AppTheme.textMuted,
-                boxShadow: _isOnline
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.greenSuccess.withValues(alpha: 0.4 * pulse),
-                          blurRadius: 8 + 4 * pulse,
-                          spreadRadius: 2 * pulse,
-                        ),
-                      ]
-                    : [],
-              ),
-            );
-          },
-        ),
+        _buildStatusIcon(),
       ],
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  // ── Welcome Card ────────────────────────────────────────────────────────────
-  Widget _buildWelcomeCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.purpleAgent.withValues(alpha: 0.2),
-            AppTheme.blueInfo.withValues(alpha: 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: AppTheme.purpleAgent.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.purpleAgent.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Text('🤖', style: TextStyle(fontSize: 28)),
-              SizedBox(width: 12),
-              Text(
-                'KaamYaab Agent',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
+  Widget _buildStatusIcon() {
+    return AnimatedBuilder(
+      animation: _pulseCtrl,
+      builder: (_, __) {
+        final pulse = _pulseCtrl.value;
+        return Container(
+          width: 14, height: 14,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _isOnline ? AppTheme.greenSuccess : AppTheme.textMuted,
+            boxShadow: _isOnline ? [
+              BoxShadow(
+                color: AppTheme.greenSuccess.withValues(alpha: 0.4 * pulse),
+                blurRadius: 8 + 4 * pulse, spreadRadius: 2 * pulse,
               ),
-            ],
+            ] : [],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Salam, $_workerName! Tell me when you\'re available and I\'ll connect you with customers nearby.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 14,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'You can speak or type — whatever is easier for you.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 100.ms, duration: 500.ms).slideY(begin: 0.05);
+        );
+      },
+    );
   }
 
-  // ── Agent Input Section ─────────────────────────────────────────────────────
-  Widget _buildAgentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Set Your Availability',
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+  // ── Big Online Toggle ───────────────────────────────────────────────────────
+  Widget _buildOnlineToggle() {
+    return GestureDetector(
+      onTap: _toggleOnline,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        decoration: BoxDecoration(
+          color: _isOnline ? AppTheme.greenSuccess.withValues(alpha: 0.1) : AppTheme.cardDark,
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(
+            color: _isOnline ? AppTheme.greenSuccess : Colors.white12,
+            width: _isOnline ? 2 : 1,
           ),
+          boxShadow: _isOnline ? [BoxShadow(color: AppTheme.greenSuccess.withValues(alpha: 0.1), blurRadius: 20)] : [],
         ),
-        const SizedBox(height: 4),
-        const Text(
-          'Choose how you\'d like to talk to the agent',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-        ),
-        const SizedBox(height: 14),
-        Row(
+        child: Row(
           children: [
-            // Voice CTA
+            Icon(_isOnline ? Icons.check_circle : Icons.power_settings_new,
+                color: _isOnline ? AppTheme.greenSuccess : AppTheme.textMuted, size: 32),
+            const SizedBox(width: 16),
             Expanded(
-              child: _AgentCTA(
-                icon: Icons.mic_rounded,
-                label: 'Talk to Agent',
-                subtitle: 'Use your voice',
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.purpleAgent.withValues(alpha: 0.25),
-                    AppTheme.purpleAgent.withValues(alpha: 0.1),
-                  ],
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  _isOnline ? _t('YOU ARE ONLINE', 'آپ آن لائن ہیں') : _t('YOU ARE OFFLINE', 'آپ آف لائن ہیں'),
+                  style: TextStyle(
+                    color: _isOnline ? AppTheme.greenSuccess : AppTheme.textSecondary,
+                    fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1,
+                  ),
                 ),
-                borderColor: AppTheme.purpleAgent.withValues(alpha: 0.4),
-                iconColor: AppTheme.purpleAgent,
-                onTap: _openVoiceAgent,
-              ),
+                Text(
+                  _isOnline ? _t('Ready for jobs', 'کام کے لیے تیار') : _t('Tap to start working', 'کام شروع کرنے کے لیے دبائیں'),
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                ),
+              ]),
             ),
-            const SizedBox(width: 12),
-            // Text CTA
-            Expanded(
-              child: _AgentCTA(
-                icon: Icons.chat_rounded,
-                label: 'Chat with Agent',
-                subtitle: 'Type your schedule',
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.tealPrimary.withValues(alpha: 0.2),
-                    AppTheme.tealPrimary.withValues(alpha: 0.08),
-                  ],
-                ),
-                borderColor: AppTheme.tealPrimary.withValues(alpha: 0.35),
-                iconColor: AppTheme.tealPrimary,
-                onTap: _openChatAgent,
-              ),
+            Switch(
+              value: _isOnline,
+              onChanged: (_) => _toggleOnline(),
+              activeColor: AppTheme.greenSuccess,
             ),
           ],
         ),
-      ],
-    ).animate().fadeIn(delay: 200.ms, duration: 500.ms).slideY(begin: 0.05);
+      ),
+    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1);
+  }
+
+  // ── Big Voice Button ───────────────────────────────────────────────────────
+  Widget _buildBigVoiceButton() {
+    return GestureDetector(
+      onTap: _openVoiceAgent,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.purpleAgent.withValues(alpha: 0.25), AppTheme.purpleAgent.withValues(alpha: 0.1)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+          ),
+          borderRadius: AppTheme.radiusXl,
+          border: Border.all(color: AppTheme.purpleAgent.withValues(alpha: 0.5), width: 2),
+          boxShadow: [
+            BoxShadow(color: AppTheme.purpleAgent.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 2),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.purpleAgent.withValues(alpha: 0.2),
+                border: Border.all(color: AppTheme.purpleAgent, width: 2),
+              ),
+              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 48),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1500.ms),
+            const SizedBox(height: 20),
+            Text(
+              _t('Talk to Assistant', 'اسسٹنٹ سے بات کریں'),
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _t('Set your work and time with your voice', 'اپنی آواز سے کام اور وقت بتائیں'),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.95, 0.95));
   }
 
   // ── Availability Summary ────────────────────────────────────────────────────
   Widget _buildAvailabilitySummary() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.cardDark,
         borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: Colors.white12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.schedule_rounded, color: AppTheme.goldAccent, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Your Availability',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              if (_availabilityRules.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.greenSuccess.withValues(alpha: 0.15),
-                    borderRadius: AppTheme.radiusSm,
-                  ),
-                  child: Text(
-                    '${_availabilityRules.length} rule${_availabilityRules.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: AppTheme.greenSuccess,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
+          Text(_t('Your Schedule', 'آپ کا شیڈول'),
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 16),
           if (_availabilityRules.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundDark.withValues(alpha: 0.5),
-                borderRadius: AppTheme.radiusMd,
-                border: Border.all(
-                  color: AppTheme.textMuted.withValues(alpha: 0.15),
-                  style: BorderStyle.solid,
-                ),
-              ),
-              child: Column(
-                children: [
-                  const Text('📅', style: TextStyle(fontSize: 28)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No availability set yet',
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Talk to the agent to set your schedule',
-                    style: TextStyle(
-                      color: AppTheme.textMuted.withValues(alpha: 0.7),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            )
+             _t('No schedule set. Tap the purple button above to set it.', 
+                'کوئی شیڈول سیٹ نہیں ہے۔ سیٹ کرنے کے لیے اوپر والا بٹن دبائیں۔').split('.').map((s) => 
+                Text(s, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13))).first
           else
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _availabilityRules.map((rule) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.tealPrimary.withValues(alpha: 0.12),
-                        AppTheme.blueInfo.withValues(alpha: 0.06),
-                      ],
-                    ),
-                    borderRadius: AppTheme.radiusMd,
-                    border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.25)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle_outline, color: AppTheme.tealPrimary, size: 14),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          rule,
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+              spacing: 10, runSpacing: 10,
+              children: _availabilityRules.map((rule) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.1),
+                  borderRadius: AppTheme.radiusMd,
+                  border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.event_available, color: AppTheme.tealPrimary, size: 16),
+                  const SizedBox(width: 8),
+                  Text(rule, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                ]),
+              )).toList(),
             ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms, duration: 500.ms).slideY(begin: 0.05);
+    ).animate().fadeIn(delay: 300.ms);
   }
 
-  // ── Online/Offline Toggle ───────────────────────────────────────────────────
-  Widget _buildOnlineToggle() {
-    return GestureDetector(
-      onTap: _toggleOnline,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic,
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: _isOnline
-              ? LinearGradient(colors: [
-                  AppTheme.greenSuccess.withValues(alpha: 0.15),
-                  AppTheme.greenSuccess.withValues(alpha: 0.05),
-                ])
-              : LinearGradient(colors: [
-                  AppTheme.textMuted.withValues(alpha: 0.1),
-                  AppTheme.textMuted.withValues(alpha: 0.05),
-                ]),
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(
-            color: _isOnline
-                ? AppTheme.greenSuccess.withValues(alpha: 0.4)
-                : AppTheme.textMuted.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isOnline
-                    ? AppTheme.greenSuccess.withValues(alpha: 0.2)
-                    : AppTheme.textMuted.withValues(alpha: 0.1),
-              ),
-              child: Icon(
-                _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                color: _isOnline ? AppTheme.greenSuccess : AppTheme.textMuted,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isOnline ? 'You\'re Online' : 'You\'re Offline',
-                    style: TextStyle(
-                      color: _isOnline ? AppTheme.greenSuccess : AppTheme.textSecondary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _isOnline
-                        ? 'Customers can find and book you'
-                        : 'Tap to go online and start receiving jobs',
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 48,
-              height: 28,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: _isOnline
-                    ? AppTheme.greenSuccess
-                    : AppTheme.textMuted.withValues(alpha: 0.3),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                alignment: _isOnline ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 400.ms, duration: 500.ms);
-  }
-
-  // ── Logout Button ───────────────────────────────────────────────────────────
   Widget _buildLogoutButton() {
-    return GestureDetector(
-      onTap: _logout,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppTheme.redAlert.withValues(alpha: 0.08),
-          borderRadius: AppTheme.radiusMd,
-          border: Border.all(color: AppTheme.redAlert.withValues(alpha: 0.2)),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout_rounded, color: AppTheme.redAlert, size: 18),
-            SizedBox(width: 8),
-            Text(
-              'Logout',
-              style: TextStyle(
-                color: AppTheme.redAlert,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 500.ms);
-  }
-}
-
-// ── Agent CTA Card ────────────────────────────────────────────────────────────
-class _AgentCTA extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final LinearGradient gradient;
-  final Color borderColor;
-  final Color iconColor;
-  final VoidCallback onTap;
-
-  const _AgentCTA({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.gradient,
-    required this.borderColor,
-    required this.iconColor,
-    required this.onTap,
-  });
-
-  @override
-  State<_AgentCTA> createState() => _AgentCTAState();
-}
-
-class _AgentCTAState extends State<_AgentCTA> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        transform: Matrix4.identity()..scale(_pressed ? 0.96 : 1.0),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: widget.gradient,
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: widget.borderColor),
-          boxShadow: _pressed
-              ? []
-              : [
-                  BoxShadow(
-                    color: widget.iconColor.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.iconColor.withValues(alpha: 0.15),
-                border: Border.all(color: widget.iconColor.withValues(alpha: 0.3)),
-              ),
-              child: Icon(widget.icon, color: widget.iconColor, size: 26),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              widget.subtitle,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 11,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextButton.icon(
+        onPressed: _logout,
+        icon: const Icon(Icons.logout, color: AppTheme.textMuted, size: 16),
+        label: Text(_t('Logout', 'لاگ آؤٹ'), style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
       ),
     );
   }

@@ -37,7 +37,7 @@ class AuthService {
     }
   }
 
-  Future<AuthResult> register(AppUser user, String password) async {
+  Future<AuthResult> register(AppUser user) async {
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
 
@@ -45,29 +45,14 @@ class AuthService {
       return AuthResult.error('This phone number is already registered.');
     }
 
-    final uid = '${user.phone}_${DateTime.now().millisecondsSinceEpoch}';
-    final newUser = AppUser(
-      uid: uid,
-      name: user.name,
-      phone: user.phone,
-      cnic: user.cnic,
-      city: user.city,
-      area: user.area,
-      role: user.role,
-      createdAt: DateTime.now(),
-      serviceCategory: user.serviceCategory,
-      skills: user.skills,
-      baseRatePkr: user.baseRatePkr,
-      experienceYears: user.experienceYears,
+    final newUser = user.copyWith(
       isAvailable: true,
       rating: 0.0,
       totalJobs: 0,
-      bio: user.bio,
     );
 
     allUsers.add(newUser);
     await _saveAllUsers(prefs, allUsers);
-    await _saveWithPassword(prefs, newUser.uid, password);
 
     _currentUser = newUser;
     await prefs.setString(_currentUserKey, jsonEncode(newUser.toJson()));
@@ -75,7 +60,7 @@ class AuthService {
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────
-  Future<AuthResult> login(String phone, String password) async {
+  Future<AuthResult> login(String phone) async {
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
 
@@ -88,11 +73,6 @@ class AuthService {
     final banned = await _loadBannedUids(prefs);
     if (banned.contains(user.uid)) {
       return AuthResult.error('Your account has been suspended.');
-    }
-
-    final storedPassword = prefs.getString('pwd_${user.uid}');
-    if (storedPassword != password) {
-      return AuthResult.error('Incorrect password. Please try again.');
     }
 
     _currentUser = user;
@@ -150,6 +130,19 @@ class AuthService {
     final idx = allUsers.indexWhere((u) => u.uid == _currentUser!.uid);
     if (idx >= 0) {
       allUsers[idx] = allUsers[idx].copyWith(isAvailable: available);
+      _currentUser = allUsers[idx];
+      await _saveAllUsers(prefs, allUsers);
+      await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
+    }
+  }
+
+  Future<void> updateWorkerService(String category, List<String> skills) async {
+    if (_currentUser == null || !_currentUser!.isWorker) return;
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    final idx = allUsers.indexWhere((u) => u.uid == _currentUser!.uid);
+    if (idx >= 0) {
+      allUsers[idx] = allUsers[idx].copyWith(serviceCategory: category, skills: skills);
       _currentUser = allUsers[idx];
       await _saveAllUsers(prefs, allUsers);
       await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
@@ -278,10 +271,6 @@ class AuthService {
 
   Future<void> _saveAllUsers(SharedPreferences prefs, List<AppUser> users) async {
     await prefs.setString(_usersKey, jsonEncode(users.map((u) => u.toJson()).toList()));
-  }
-
-  Future<void> _saveWithPassword(SharedPreferences prefs, String uid, String password) async {
-    await prefs.setString('pwd_$uid', password);
   }
 }
 

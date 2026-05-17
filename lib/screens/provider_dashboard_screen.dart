@@ -140,13 +140,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen>
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(_providerName,
                               style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16)),
-<<<<<<< HEAD
                           Text('Provider Mode · $_providerCategory',
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-=======
-                          const Text('Provider Mode · AC Technician',
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
->>>>>>> b4f0fa9c3e57262e70d950cf3742e48be789eb33
                         ]),
                       ),
                       // Online/Offline toggle

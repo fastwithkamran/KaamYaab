@@ -6,41 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../theme/app_theme.dart';
+import '../../services/language_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/otp_service.dart';
 import '../../models/user_model.dart';
 import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
-import '../map_picker_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-// ── Sub-roles per category (for AI matching) ─────────────────────────────────
-const Map<String, List<String>> _subRoles = {
-  'Plumber': ['Emergency Plumber', 'Bathroom Specialist', 'Water Tank Expert', 'Pipe Fitter', 'Drain Cleaning'],
-  'Electrician': ['Solar Installer', 'Inverter/UPS Specialist', 'CCTV & Security Systems', 'Fan & Lighting', 'Wiring Specialist'],
-  'Carpenter': ['Furniture Maker', 'Door & Window Expert', 'Kitchen Cabinet Specialist', 'Modular Office Fit-out', 'Wood Polishing'],
-  'Painter': ['Interior Designer Painter', 'Exterior Painter', 'Waterproofing Expert', 'Texture Finish Specialist', 'Wood Polish Expert'],
-  'AC Technician': ['Split AC Specialist', 'Window AC Technician', 'Central AC / HVAC', 'Gas Filling Expert', 'Compressor Repair'],
-  'Cleaner': ['Deep Clean Specialist', 'Sofa & Carpet Wash', 'Post-Construction Clean', 'Industrial Cleaner', 'Kitchen & Bathroom Expert'],
-  'Security Guard': ['Day Shift Guard', 'Night Shift Guard', 'Armed Security', 'Event Security', 'Bank / Office Security'],
-  'Driver': ['Local Trips Driver', 'Long Route Driver', 'School Pick-Drop', 'Office Commute Driver', 'Wedding / Events Driver'],
-  'Cook': ['Home Cook', 'Catering Chef', 'BBQ Specialist', 'Desi Food Expert', 'Continental Chef'],
-  'Mason': ['Brick Layer', 'Tile Fixer', 'Plastering Expert', 'Roof / Slab Work', 'Renovation Specialist'],
-};
-
-const Map<String, List<String>> _categorySkills = {
-  'Plumber': ['Pipe Fitting', 'Leak Repair', 'Water Tank', 'Bathroom Fitting', 'Drain Cleaning'],
-  'Electrician': ['Wiring', 'Circuit Breakers', 'Fan Installation', 'Inverter/UPS', 'CCTV', 'Solar Panels'],
-  'Carpenter': ['Furniture Repair', 'Door/Window', 'Kitchen Cabinets', 'Polishing', 'Custom Work'],
-  'Painter': ['Interior', 'Exterior', 'Texture Paint', 'Waterproofing', 'Wood Polish'],
-  'AC Technician': ['AC Installation', 'Gas Filling', 'AC Service', 'Compressor Repair', 'HVAC'],
-  'Cleaner': ['Deep Cleaning', 'Sofa/Carpet', 'Window Cleaning', 'Kitchen', 'Bathroom'],
-  'Security Guard': ['Day Shift', 'Night Shift', 'Armed Security', 'Event Security'],
-  'Driver': ['Local Trips', 'Long Route', 'School Pick-Drop', 'Office Commute'],
-  'Cook': ['Desi Food', 'BBQ', 'Continental', 'Catering', 'Baking'],
-  'Mason': ['Brick Work', 'Tiling', 'Plastering', 'Renovation', 'Roof Work'],
-};
+import 'login_screen.dart';
 
 class WorkerSignupScreen extends StatefulWidget {
   const WorkerSignupScreen({super.key});
@@ -54,22 +27,13 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _cnicCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
-  final _confirmPassCtrl = TextEditingController();
-  final _rateCtrl = TextEditingController();
-  final _bioCtrl = TextEditingController();
+  final _areaCtrl = TextEditingController();
 
   String? _selectedCity;
-  LatLng? _selectedLocation;
-  String? _selectedCategory;
-  String? _selectedSubRole;
-  int _experience = 1;
   bool _loading = false;
-  bool _obscurePass = true;
   String? _error;
-  List<String> _selectedSkills = [];
 
-  // Profile image
+  // Profile image (now optional)
   String? _profileImageBase64;
   bool _pickingImage = false;
 
@@ -78,12 +42,10 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
     'Multan', 'Hyderabad', 'Peshawar', 'Quetta', 'Sialkot',
   ];
 
-  List<String> get _categories => _subRoles.keys.toList();
-
   @override
   void dispose() {
-    _nameCtrl.dispose(); _phoneCtrl.dispose(); _passCtrl.dispose();
-    _cnicCtrl.dispose(); _confirmPassCtrl.dispose(); _rateCtrl.dispose(); _bioCtrl.dispose();
+    _nameCtrl.dispose(); _phoneCtrl.dispose();
+    _cnicCtrl.dispose(); _areaCtrl.dispose();
     super.dispose();
   }
 
@@ -115,6 +77,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   }
 
   void _showImagePicker() {
+    final isUrdu = LanguageService().isUrdu;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.cardDark,
@@ -126,20 +89,20 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
           Container(width: 36, height: 4,
               decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          const Text('Upload Profile Photo',
-              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+          Text(isUrdu ? 'پروفائل فوٹو اپ لوڈ کریں' : 'Upload Profile Photo',
+              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
-          const Text('A clear face photo helps customers trust you',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 13), textAlign: TextAlign.center),
+          Text(isUrdu ? 'واضح چہرے کی تصویر گاہکوں کو آپ پر بھروسہ کرنے میں مدد دیتی ہے' : 'A clear face photo helps customers trust you',
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           Row(children: [
             Expanded(child: _ImageSourceBtn(
-              icon: Icons.photo_library_outlined, label: 'Gallery',
+              icon: Icons.photo_library_outlined, label: isUrdu ? 'گیلری' : 'Gallery',
               onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery); },
             )),
             const SizedBox(width: 12),
             Expanded(child: _ImageSourceBtn(
-              icon: Icons.camera_alt_outlined, label: 'Camera',
+              icon: Icons.camera_alt_outlined, label: isUrdu ? 'کیمرہ' : 'Camera',
               onTap: () { Navigator.pop(context); _pickImage(ImageSource.camera); },
             )),
           ]),
@@ -155,14 +118,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
 
   Future<void> _sendOtpAndContinue() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedSkills.isEmpty) {
-      _showError('Please select at least one skill.');
-      return;
-    }
-    if (_profileImageBase64 == null) {
-      _showError('A profile photo is required. Please upload your photo.');
-      return;
-    }
+    // Profile picture is now optional, so no check here.
 
     HapticFeedback.mediumImpact();
     setState(() { _loading = true; _error = null; });
@@ -189,19 +145,19 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
 
     final user = AppUser(
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
-      cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: '',
+      cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
       role: UserRole.worker, createdAt: DateTime.now(),
-      serviceCategory: _selectedCategory, subRole: _selectedSubRole,
-      skills: _selectedSkills,
-      baseRatePkr: double.tryParse(_rateCtrl.text.trim()),
-      experienceYears: _experience, isAvailable: true,
-      bio: _bioCtrl.text.trim().isNotEmpty ? _bioCtrl.text.trim() : null,
+      // Defaults that will be filled out by AI Agent later
+      serviceCategory: 'Unassigned',
+      subRole: null,
+      skills: [],
+      baseRatePkr: 0.0,
+      experienceYears: 1,
+      isAvailable: true,
       profileImageBase64: _profileImageBase64,
-      latitude: _selectedLocation?.latitude,
-      longitude: _selectedLocation?.longitude,
     );
 
-    final result = await AuthService().register(user, _passCtrl.text);
+    final result = await AuthService().register(user);
     if (!mounted) return;
     setState(() => _loading = false);
 
@@ -215,6 +171,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isUrdu = LanguageService().isUrdu;
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       body: Container(
@@ -239,222 +196,64 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
                             padding: EdgeInsets.zero,
                           ),
                           const SizedBox(height: 20),
-                          const Text('🔧  Register as a Worker',
-                              style: TextStyle(color: AppTheme.purpleAgent, fontSize: 26, fontWeight: FontWeight.w800),
+                          Text(isUrdu ? '🔧 کارکن کے طور پر رجسٹر ہوں' : '🔧  Register as a Worker',
+                              style: const TextStyle(color: AppTheme.purpleAgent, fontSize: 26, fontWeight: FontWeight.w800),
                           ).animate().fadeIn(duration: 400.ms),
                           const SizedBox(height: 6),
-                          const Text('Create your profile and start getting jobs.',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          Text(isUrdu ? 'پروفائل بنائیں اور کام حاصل کرنا شروع کریں۔' : 'Create your profile and start getting jobs.',
+                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                           ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
 
                           const SizedBox(height: 28),
 
                           // ── Profile photo ──────────────────────────────────────────
-                          AuthSectionHeader(title: 'Profile Photo (Required)', color: AppTheme.purpleAgent),
+                          AuthSectionHeader(title: isUrdu ? 'پروفائل فوٹو (اختیاری)' : 'Profile Photo (Optional)', color: AppTheme.purpleAgent),
                           const SizedBox(height: 14),
                           _buildPhotoUploader(),
 
                           const SizedBox(height: 24),
-                          AuthSectionHeader(title: 'Personal Information', color: AppTheme.purpleAgent),
+                          AuthSectionHeader(title: isUrdu ? 'ذاتی معلومات' : 'Personal Information', color: AppTheme.purpleAgent),
                           const SizedBox(height: 14),
 
-                          AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Muhammad Usman',
+                          AuthGlassInput(controller: _nameCtrl, label: isUrdu ? 'پورا نام' : 'Full Name', hint: isUrdu ? 'محمد عثمان' : 'Muhammad Usman',
                               prefixIcon: Icons.person_outline, accentColor: AppTheme.purpleAgent,
-                              validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
+                              validator: (v) => v == null || v.isEmpty ? (isUrdu ? 'نام درکار ہے' : 'Name is required') : null),
                           const SizedBox(height: 16),
 
-                          AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
+                          AuthGlassInput(controller: _phoneCtrl, label: isUrdu ? 'فون نمبر' : 'Phone Number', hint: '03XX XXXXXXX',
                               prefixIcon: Icons.phone_outlined, accentColor: AppTheme.purpleAgent,
                               keyboardType: TextInputType.phone,
                               inputFormatters: pakistanPhoneInputFormatters,
                               maxLength: 11,
                               validator: (v) {
-                                if (v == null || v.isEmpty) return 'Phone is required';
+                                if (v == null || v.isEmpty) return isUrdu ? 'فون نمبر درکار ہے' : 'Phone is required';
                                 if (!pakistanPhoneRegex.hasMatch(v)) {
-                                  return 'Enter a valid 11-digit number starting with 03';
+                                  return isUrdu ? 'درست فون نمبر درج کریں' : 'Enter a valid 11-digit number starting with 03';
                                 }
                                 return null;
                               }),
                           const SizedBox(height: 16),
 
-                          AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                          AuthGlassInput(controller: _cnicCtrl, label: isUrdu ? 'شناختی کارڈ نمبر' : 'CNIC Number', hint: isUrdu ? 'بغیر ڈیش کے 13 ہندسے' : '13 digits without dashes',
                               prefixIcon: Icons.badge_outlined, accentColor: AppTheme.purpleAgent,
                               keyboardType: TextInputType.number,
                               inputFormatters: CnicUtils.inputFormatters,
                               validator: CnicUtils.validator),
                           const SizedBox(height: 16),
 
-                          AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
+                          AuthDropdownField(label: isUrdu ? 'شہر' : 'City', hint: isUrdu ? 'اپنا شہر منتخب کریں' : 'Select your city', value: _selectedCity,
                               items: _cities, accentColor: AppTheme.purpleAgent,
                               prefixIcon: Icons.location_city_outlined,
                               onChanged: (v) => setState(() => _selectedCity = v),
-                              validator: (v) => v == null ? 'Please select your city' : null),
+                              validator: (v) => v == null ? (isUrdu ? 'براہ کرم اپنا شہر منتخب کریں' : 'Please select your city') : null),
                           const SizedBox(height: 16),
 
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceDark.withValues(alpha: 0.5),
-                              borderRadius: AppTheme.radiusMd,
-                              border: Border.all(color: AppTheme.purpleAgent.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.map_outlined, color: AppTheme.purpleAgent, size: 22),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('Exact Location', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                                      Text(
-                                        _selectedLocation != null ? 'Location selected' : 'Tap to pin on map',
-                                        style: TextStyle(color: _selectedLocation != null ? AppTheme.greenSuccess : AppTheme.textMuted, fontSize: 11),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    final LatLng? result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => MapPickerScreen(initialPosition: _selectedLocation)),
-                                    );
-                                    if (result != null) {
-                                      setState(() => _selectedLocation = result);
-                                    }
-                                  },
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: AppTheme.purpleAgent.withValues(alpha: 0.1),
-                                    foregroundColor: AppTheme.purpleAgent,
-                                  ),
-                                  child: const Text('Pick'),
-                                )
-                              ],
-                            ),
-                          ),
+                          AuthGlassInput(controller: _areaCtrl, label: isUrdu ? 'علاقہ / محلہ' : 'Locality / Area',
+                            hint: isUrdu ? 'مثلاً ڈی ایچ اے، گلشن، ماڈل ٹاؤن' : 'e.g. DHA, Gulshan, Model Town',
+                            prefixIcon: Icons.location_on_outlined, accentColor: AppTheme.purpleAgent,
+                            validator: (v) => v == null || v.isEmpty ? (isUrdu ? 'علاقہ درکار ہے' : 'Area is required') : null),
 
                           const SizedBox(height: 28),
-                          AuthSectionHeader(title: 'Your Service & Role', color: AppTheme.purpleAgent),
-                          const SizedBox(height: 14),
-
-                          // Category
-                          AuthDropdownField(label: 'Service Category', hint: 'What service do you offer?',
-                              value: _selectedCategory, items: _categories,
-                              accentColor: AppTheme.purpleAgent, prefixIcon: Icons.build_outlined,
-                              onChanged: (v) => setState(() {
-                                _selectedCategory = v;
-                                _selectedSubRole = null;
-                                _selectedSkills = [];
-                              }),
-                              validator: (v) => v == null ? 'Please select a category' : null),
-                          const SizedBox(height: 16),
-
-                          // Sub-role
-                          if (_selectedCategory != null) ...[
-                            AuthDropdownField(
-                              label: 'Your Specialty (Sub-role)',
-                              hint: 'Select your specific specialty',
-                              value: _selectedSubRole,
-                              items: _subRoles[_selectedCategory!] ?? [],
-                              accentColor: AppTheme.purpleAgent,
-                              prefixIcon: Icons.star_outline,
-                              onChanged: (v) => setState(() => _selectedSubRole = v),
-                              validator: (v) => v == null ? 'Please select your specialty' : null,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Skills chips
-                          if (_selectedCategory != null) ...[
-                            const Text('Skills (select all that apply)',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8, runSpacing: 8,
-                              children: (_categorySkills[_selectedCategory!] ?? []).map((skill) {
-                                final sel = _selectedSkills.contains(skill);
-                                return FilterChip(
-                                  label: Text(skill), selected: sel,
-                                  onSelected: (v) {
-                                    HapticFeedback.selectionClick();
-                                    setState(() => sel ? _selectedSkills.remove(skill) : _selectedSkills.add(skill));
-                                  },
-                                  selectedColor: AppTheme.purpleAgent.withValues(alpha: 0.25),
-                                  checkmarkColor: AppTheme.purpleAgent,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.06),
-                                  labelStyle: TextStyle(
-                                    color: sel ? AppTheme.purpleAgent : AppTheme.textSecondary,
-                                    fontSize: 13, fontWeight: sel ? FontWeight.w600 : FontWeight.w400),
-                                  side: BorderSide(color: sel ? AppTheme.purpleAgent : Colors.white.withValues(alpha: 0.15)),
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Experience stepper
-                          const Text('Years of Experience',
-                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.06), borderRadius: AppTheme.radiusMd,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
-                            child: Row(children: [
-                              const Icon(Icons.work_outline, color: AppTheme.purpleAgent, size: 20),
-                              const SizedBox(width: 12),
-                              Text('$_experience year${_experience == 1 ? '' : 's'}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 15)),
-                              const Spacer(),
-                              _StepBtn(icon: Icons.remove, color: AppTheme.purpleAgent,
-                                  onTap: () => setState(() { if (_experience > 1) _experience--; })),
-                              const SizedBox(width: 12),
-                              _StepBtn(icon: Icons.add, color: AppTheme.purpleAgent,
-                                  onTap: () => setState(() => _experience++)),
-                            ]),
-                          ),
-                          const SizedBox(height: 16),
-
-                          AuthGlassInput(controller: _rateCtrl, label: 'Hourly Rate (PKR)', hint: 'e.g. 500',
-                              prefixIcon: Icons.payments_outlined, accentColor: AppTheme.purpleAgent,
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) return 'Hourly rate is required';
-                                if (double.tryParse(v) == null) return 'Enter a valid number';
-                                return null;
-                              }),
-                          const SizedBox(height: 16),
-
-                          AuthGlassInput(controller: _bioCtrl, label: 'About You (optional)',
-                              hint: 'Tell customers about yourself and your work quality...',
-                              prefixIcon: Icons.info_outline, accentColor: AppTheme.purpleAgent, maxLines: 3),
-
-                          const SizedBox(height: 28),
-                          AuthSectionHeader(title: 'Account Security', color: AppTheme.purpleAgent),
-                          const SizedBox(height: 14),
-
-                          AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
-                              prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
-                              obscureText: _obscurePass,
-                              suffixIcon: IconButton(
-                                icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
-                                    color: AppTheme.textMuted, size: 20),
-                                onPressed: () => setState(() => _obscurePass = !_obscurePass),
-                              ),
-                              validator: (v) {
-                                if (v == null || v.isEmpty) return 'Password is required';
-                                if (v.length < 6) return 'At least 6 characters';
-                                return null;
-                              }),
-                          const SizedBox(height: 16),
-
-                          AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
-                              prefixIcon: Icons.lock_outline, accentColor: AppTheme.purpleAgent,
-                              obscureText: _obscurePass,
-                              validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
 
                           if (_error != null) ...[
                             const SizedBox(height: 16),
@@ -472,16 +271,19 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
                               child: _loading
                                   ? const SizedBox(width: 22, height: 22,
                                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                  : const Text('Send Verification Code',
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                                  : Text(isUrdu ? 'تصدیقی کوڈ بھیجیں' : 'Send Verification Code',
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                             ),
                           ),
                           const SizedBox(height: 16),
                           Center(
                             child: TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Already registered? Sign In',
-                                  style: TextStyle(color: AppTheme.purpleLight, fontSize: 13)),
+                              onPressed: () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginScreen(role: UserRole.worker)),
+                              ),
+                              child: Text(isUrdu ? 'پہلے سے رجسٹرڈ ہیں؟ سائن ان کریں' : 'Already registered? Sign In',
+                                  style: const TextStyle(color: AppTheme.purpleLight, fontSize: 13)),
                             ),
                           ),
                           const Spacer(),
@@ -501,6 +303,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
 
   // ── Profile photo uploader ───────────────────────────────────────────────
   Widget _buildPhotoUploader() {
+    final isUrdu = LanguageService().isUrdu;
     return Center(
       child: GestureDetector(
         onTap: _showImagePicker,
@@ -527,7 +330,7 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
                       : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           const Icon(Icons.person_add_alt_1, color: AppTheme.purpleAgent, size: 36),
                           const SizedBox(height: 6),
-                          Text('Add Photo', style: TextStyle(color: AppTheme.purpleAgent.withValues(alpha: 0.8), fontSize: 11)),
+                          Text(isUrdu ? 'تصویر شامل کریں' : 'Add Photo', style: TextStyle(color: AppTheme.purpleAgent.withValues(alpha: 0.8), fontSize: 11)),
                         ]),
             ),
             Positioned(bottom: 4, right: 4,
@@ -573,25 +376,6 @@ class _ImageSourceBtn extends StatelessWidget {
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(color: AppTheme.purpleAgent, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
-      ),
-    );
-  }
-}
-
-class _StepBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  const _StepBtn({required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
-        child: Icon(icon, color: color, size: 18),
       ),
     );
   }

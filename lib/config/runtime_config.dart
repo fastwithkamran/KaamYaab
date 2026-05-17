@@ -1,9 +1,14 @@
+import 'env_config.dart';
+
 /// Centralized runtime config loaded via `--dart-define` values.
 class RuntimeConfig {
   const RuntimeConfig._();
 
   static const String geminiApiKey =
       String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+
+  static const String cohereApiKey =
+      String.fromEnvironment('COHERE_API_KEY', defaultValue: EnvConfig.cohereApiKey);
 
   /// Google Maps API key — used for live worker tracking map.
   /// Hardcoded for hackathon demo; move to dart-define for production.

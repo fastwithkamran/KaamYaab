@@ -6,15 +6,13 @@ import '../theme/app_theme.dart';
 import '../models/agent_model.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
-import '../services/gemini_service.dart';
+import '../services/ai_service.dart';
 import '../services/matching_service.dart';
 import '../services/language_service.dart';
-import '../widgets/live_agent_panel.dart';
 import '../widgets/provider_card.dart';
 import '../widgets/surge_alert_card.dart';
 import '../widgets/shimmer_card.dart';
 import 'booking_flow_screen.dart';
-import 'workers_browse_screen.dart';
 import 'voice_booking_agent.dart';
 
 
@@ -29,7 +27,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollCtrl = ScrollController();
   final _lang = LanguageService();
 
-  bool _agentPanelVisible = true;
   bool _isSearching = false;
   bool _showSurge = false;
   bool _showShimmer = false;
@@ -43,8 +40,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late AnimationController _fabCtrl;
   late Animation<double> _fabAnim;
-
-  String _t(String en, String ur) => _lang.t(en, ur);
 
   @override
   void initState() {
@@ -61,184 +56,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _scrollCtrl.dispose();
     _fabCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleSearch(String input) async {
-    if (input.trim().isEmpty) return;
-    HapticFeedback.mediumImpact();
-
-    setState(() {
-      _isSearching = true;
-      _showShimmer = true;
-      _agentSteps = [];
-      _matches = [];
-      _showSurge = false;
-      _expandedCard = -1;
-    });
-    _fabCtrl.reverse();
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    _scrollCtrl.animateTo(0,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-
-    // ── Step 1: Intent Agent ──────────────────────────────────────────────────
-    _addStep(AgentStep(
-      agentName: AgentIdentity.intent,
-      task: 'Parsing multilingual request',
-      reasoning: 'Detecting language, extracting service type, location, urgency, and budget sensitivity...',
-      toolCall: 'gemini.extract_intent(raw_input)',
-      status: AgentStepStatus.thinking,
-      timestamp: DateTime.now(),
-    ));
-    setState(() => _showShimmer = false);
-
-    await Future.delayed(const Duration(milliseconds: 1400));
-    final intentResult = await GeminiService.extractIntent(input);
-    final confidence = (intentResult['confidence'] as num).toDouble();
-    final serviceType = intentResult['service_type'] as String;
-    final area = intentResult['area'] as String? ?? 'G-13';
-    final urgency = intentResult['urgency'] as String? ?? 'medium';
-
-    _updateLastStep(
-      status: AgentStepStatus.done,
-      decision: 'Service: $serviceType | Area: $area | Urgency: $urgency | Confidence: ${(confidence * 100).toInt()}%',
-    );
-
-    if (confidence < 0.75) {
-      setState(() => _isSearching = false);
-      _showClarificationDialog(
-          intentResult['clarification_question'] as String? ??
-              'Can you clarify the service needed?');
-      return;
-    }
-
-    _currentRequest = ServiceRequest(
-      id: 'req_${DateTime.now().millisecondsSinceEpoch}',
-      rawInput: input,
-      serviceType: serviceType,
-      location: 'Islamabad',
-      area: area,
-      urgency: urgency,
-      preferredTime: intentResult['preferred_time'] as String? ?? 'flexible',
-      preferredDate: intentResult['preferred_date'] as String? ?? 'tomorrow',
-      budgetSensitivity: (intentResult['budget_sensitivity'] as num).toDouble(),
-      confidence: confidence,
-      language: intentResult['language'] as String? ?? 'mixed',
-      createdAt: DateTime.now(),
-      status: 'pending',
-    );
-
-    // ── Step 2: Surge Agent ──────────────────────────────────────────────────
-    _addStep(AgentStep(
-      agentName: AgentIdentity.surge,
-      task: 'Checking demand in $area',
-      reasoning: 'Scanning demand clusters, active requests, and provider availability in 30-min window...',
-      toolCall: 'surge_agent.check(area=$area, service=$serviceType)',
-      status: AgentStepStatus.thinking,
-      timestamp: DateTime.now(),
-    ));
-
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    final hasSurge = (urgency == 'high' || urgency == 'emergency') &&
-        (serviceType == 'AC Repair' || serviceType == 'Electrical');
-    if (hasSurge) {
-      _surgeMultiplier = urgency == 'emergency' ? 2.1 : 1.6;
-      _surgeRequests = urgency == 'emergency' ? 12 : 7;
-    } else {
-      _surgeMultiplier = 1.0;
-    }
-
-    _updateLastStep(
-      status: AgentStepStatus.done,
-      decision: hasSurge
-          ? '⚠️ Surge detected: ${_surgeMultiplier}x — $_surgeRequests active requests, limited providers'
-          : 'No surge. Normal pricing applies.',
-    );
-
-    if (hasSurge) {
-      HapticFeedback.heavyImpact();
-      setState(() => _showSurge = true);
-    }
-
-    // ── Step 3: Matching Agent ─────────────────────────────────────────────
-    _addStep(AgentStep(
-      agentName: AgentIdentity.matching,
-        task: 'Ranking providers with 10-factor matching algorithm',
-        reasoning: 'Scoring distance, availability, rating, review recency, reliability, specialization, price fit, cancellation risk, capacity, and preference match...',
-      toolCall: 'matching_agent.rank(service=$serviceType, area=$area, surge=${_surgeMultiplier}x)',
-      status: AgentStepStatus.thinking,
-      timestamp: DateTime.now(),
-    ));
-
-    await Future.delayed(const Duration(milliseconds: 1600));
-    const userLat = 33.7215;
-    const userLng = 73.0433;
-    final results = await MatchingService.matchProviders(
-      request: _currentRequest!,
-      userLat: userLat,
-      userLng: userLng,
-      surgeMult: _surgeMultiplier,
-    );
-
-    _updateLastStep(
-      status: results.isEmpty ? AgentStepStatus.failed : AgentStepStatus.done,
-      decision: results.isEmpty
-          ? 'No providers available. Expanding search radius...'
-          : 'Top match: ${results.first.provider.name} — DNA ${results.first.provider.dnascore} — ${results.first.matchScore.toStringAsFixed(0)}% match',
-    );
-
-    // ── Step 4: Pricing Agent ─────────────────────────────────────────────
-    if (results.isNotEmpty) {
-      _addStep(AgentStep(
-        agentName: AgentIdentity.pricing,
-        task: 'Generating dynamic price quotes',
-        reasoning: 'Applying base rate + urgency adjustment + distance cost + surge multiplier − loyalty discount...',
-        toolCall: 'pricing_agent.quote(providers=${results.length}, surge=${_surgeMultiplier}x)',
-        status: AgentStepStatus.thinking,
-        timestamp: DateTime.now(),
-      ));
-
-      await Future.delayed(const Duration(milliseconds: 800));
-      _updateLastStep(
-        status: AgentStepStatus.done,
-        decision: 'Quote for ${results.first.provider.name}: Rs. ${results.first.quotePkr.toStringAsFixed(0)} (incl. Rs. ${(results.first.quotePkr * 0.1).toStringAsFixed(0)} urgency adj.)',
-      );
-    }
-
-    setState(() {
-      _matches = results;
-      _isSearching = false;
-      if (results.isNotEmpty) {
-        _expandedCard = 0;
-        _fabCtrl.forward();
-        HapticFeedback.lightImpact();
-      }
-    });
-
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (_scrollCtrl.hasClients) {
-      _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent * 0.3,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  void _addStep(AgentStep step) {
-    setState(() => _agentSteps = [..._agentSteps, step]);
-  }
-
-  void _updateLastStep({required AgentStepStatus status, String? decision}) {
-    setState(() {
-      if (_agentSteps.isEmpty) return;
-      final last = _agentSteps.last;
-      _agentSteps = [
-        ..._agentSteps.sublist(0, _agentSteps.length - 1),
-        last.copyWith(status: status, decision: decision),
-      ];
-    });
   }
 
   void _showClarificationDialog(String question) {
@@ -294,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     HapticFeedback.selectionClick();
     setState(() {
       _matches = [];
-      _agentSteps = [];
+      _agentSteps.clear();
       _showSurge = false;
       _currentRequest = null;
       _expandedCard = -1;

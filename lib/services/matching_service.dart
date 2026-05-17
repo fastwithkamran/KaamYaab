@@ -4,6 +4,8 @@ import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../utils/distance_utils.dart';
 import '../services/auth_service.dart';
+import '../config/runtime_config.dart';
+import 'ai_service.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
@@ -76,27 +78,78 @@ class MatchingService {
     required double userLat,
     required double userLng,
     double surgeMult = 1.0,
+    bool isUrdu = false,
   }) async {
     final providers = await loadProviders();
 
     // Step 1: Filter by service category and policy overrides.
     final filtered = providers.where((p) {
       if (!_serviceMatches(p.serviceCategory, request.serviceType)) return false;
-      if (p.disputeCount >= 3) return false; // README override: dispute-heavy providers excluded
-      if (request.preferredTime == '10:00' && p.id.endsWith('1')) return false; // simulated slot lock
+      if (p.disputeCount >= 3) return false;
       return true;
     }).toList();
 
     if (filtered.isEmpty) return [];
 
-    // Step 2: Score each provider using README 10-factor algorithm.
+    // ─── Agentic Path: If API key exists, let AI rank them ──────────────
+    if (RuntimeConfig.cohereApiKey.isNotEmpty) {
+      final providerMaps = filtered.map((p) => {
+        'id': p.id,
+        'name': p.name,
+        'rating': p.rating,
+        'total_jobs': p.totalJobs,
+        'price': p.baseRatePkr,
+        'skills': p.skills,
+        'on_time': p.onTimeRate,
+        'area': p.area,
+      }).toList();
+
+      final intentMap = {
+        'service': request.serviceType,
+        'area': request.area,
+        'urgency': request.urgency,
+        'budget': request.budgetSensitivity,
+      };
+
+      final agentResult = await AiService.rankProviders(
+        intent: intentMap,
+        providers: providerMaps,
+        surgeMultiplier: surgeMult,
+      );
+
+      final rankedIds = (agentResult['ranked_ids'] as List?)?.cast<String>() ?? [];
+      final topReasoning = isUrdu 
+          ? (agentResult['top_choice_reasoning_urdu'] as String? ?? agentResult['top_choice_reasoning'] as String? ?? 'بہترین انتخاب۔')
+          : (agentResult['top_choice_reasoning'] as String? ?? 'Best overall match.');
+
+      if (rankedIds.isNotEmpty) {
+        final matches = <ProviderMatch>[];
+        for (var id in rankedIds) {
+          final pIdx = filtered.indexWhere((provider) => provider.id == id);
+          if (pIdx < 0) continue;
+          final p = filtered[pIdx];
+          final dist = haversineDistanceKm((lat: userLat, lng: userLng), (lat: p.lat, lng: p.lng));
+          final match = _computeMatch(p, request, dist, surgeMult, isUrdu: isUrdu);
+          
+          // Inject the agent's reasoning for the top one
+          if (matches.isEmpty) {
+            matches.add(match.copyWith(rankRationale: topReasoning));
+          } else {
+            matches.add(match);
+          }
+        }
+        if (matches.isNotEmpty) return matches;
+      }
+    }
+
+    // fallback to old scoring logic
     final scored = <ProviderMatch>[];
     for (final p in filtered) {
       final dist = haversineDistanceKm(
         (lat: userLat, lng: userLng),
         (lat: p.lat, lng: p.lng),
       );
-      final match = _computeMatch(p, request, dist, surgeMult);
+      final match = _computeMatch(p, request, dist, surgeMult, isUrdu: isUrdu);
       scored.add(match);
     }
 
@@ -122,8 +175,9 @@ class MatchingService {
     ServiceProvider p,
     ServiceRequest req,
     double distKm,
-    double surge,
-  ) {
+    double surge, {
+    bool isUrdu = false,
+  }) {
     final distanceScore = _distanceScore(distKm);
     final availabilityScore = _availabilityScore(p, req.preferredTime);
     final ratingScore = (p.rating / 5.0) * 100.0;
@@ -165,7 +219,7 @@ class MatchingService {
     final quote = _calculateQuote(p, req, distKm, surge);
     final slot = p.availableSlots.isNotEmpty ? p.availableSlots.first : '10:00';
     final eta = (estimateTravelTimeHours(distKm) * 60).round();
-    final rationale = _buildRationale(p, score, distKm, surge);
+    final rationale = _buildRationale(p, score, distKm, surge, isUrdu: isUrdu);
 
     return ProviderMatch(
       provider: p,
@@ -202,18 +256,31 @@ class MatchingService {
         .roundToDouble();
   }
 
-  static String _buildRationale(ServiceProvider p, double score, double dist, double surge) {
+  static String _buildRationale(ServiceProvider p, double score, double dist, double surge, {bool isUrdu = false}) {
     final parts = <String>[];
-    if (p.onTimeRate >= 0.95) parts.add('${(p.onTimeRate * 100).toInt()}% on-time rate');
-    if (p.cancellationRate <= 0.03) parts.add('very low cancellation risk');
-    if (p.disputeCount == 0) parts.add('zero dispute history');
-    if (p.isVerified) parts.add('verified provider');
-    if (p.skills.length >= 4) parts.add('highly specialized');
-    if (surge > 1.2 && p.surgeAcceptor) parts.add('surge-ready');
-    if (dist < 2) parts.add('${dist.toStringAsFixed(1)}km away');
-    if (p.cancellationRate > 0.1) parts.add('higher cancellation rate');
-    if (p.disputeCount > 5) parts.add('multiple past disputes');
-    return parts.isEmpty ? 'Good overall match.' : parts.join(' · ');
+    if (isUrdu) {
+      if (p.onTimeRate >= 0.95) parts.add('${(p.onTimeRate * 100).toInt()}% وقت پر آمد');
+      if (p.cancellationRate <= 0.03) parts.add('بہت کم منسوخی کا خطرہ');
+      if (p.disputeCount == 0) parts.add('کوئی شکایت نہیں');
+      if (p.isVerified) parts.add('تصدیق شدہ');
+      if (p.skills.length >= 4) parts.add('انتہائی ماہر');
+      if (surge > 1.2 && p.surgeAcceptor) parts.add('سرج ریڈی');
+      if (dist < 2) parts.add('${dist.toStringAsFixed(1)} کلومیٹر دور');
+      if (p.cancellationRate > 0.1) parts.add('منسوخی کا زیادہ خطرہ');
+      if (p.disputeCount > 5) parts.add('کئی پرانی شکایات');
+      return parts.isEmpty ? 'بہترین انتخاب۔' : parts.join(' · ');
+    } else {
+      if (p.onTimeRate >= 0.95) parts.add('${(p.onTimeRate * 100).toInt()}% on-time rate');
+      if (p.cancellationRate <= 0.03) parts.add('very low cancellation risk');
+      if (p.disputeCount == 0) parts.add('zero dispute history');
+      if (p.isVerified) parts.add('verified provider');
+      if (p.skills.length >= 4) parts.add('highly specialized');
+      if (surge > 1.2 && p.surgeAcceptor) parts.add('surge-ready');
+      if (dist < 2) parts.add('${dist.toStringAsFixed(1)}km away');
+      if (p.cancellationRate > 0.1) parts.add('higher cancellation rate');
+      if (p.disputeCount > 5) parts.add('multiple past disputes');
+      return parts.isEmpty ? 'Good overall match.' : parts.join(' · ');
+    }
   }
 
   static bool _serviceMatches(String providerCategory, String serviceType) {
@@ -281,15 +348,6 @@ class MatchingService {
   }
 
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
-    // Score formula:
-    // (_priceFitBalanceBase + (1 - abs(rate - _priceFitCenterRate))) * _priceFitBalanceScale
-    // With defaults this yields:
-    // - rate=0.5 => (0.6 + 1.0) * 62.5 = 100
-    // - rate=0.0 or 1.0 => (0.6 + 0.5) * 62.5 = 68.75
-    // Tuned so:
-    // - median-priced providers (~centerRate) score near 100 for flexible users
-    // - very high/very low rates still retain a meaningful mid-band score
-    // - output range stays close to 35..100 for non-budget-constrained flows
     final normalizedRate =
         (p.baseRatePkr / _maxModeledBaseRatePkr).clamp(0.0, 1.0);
     if (budgetSensitivity >= 0.75) return (1 - normalizedRate) * 100;

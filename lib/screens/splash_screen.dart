@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
           final route = auth.currentUser!.isWorker ? '/dashboard' : '/home';
           Navigator.of(context).pushReplacementNamed(route);
         } else {
-          Navigator.of(context).pushReplacementNamed('/login');
+          Navigator.of(context).pushReplacementNamed('/lang');
         }
       }
     });
