@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.KaamYaab">
+    package="com.kaamyaab">
 
     <!-- Internet permission for Gemini API + Firebase -->
     <uses-permission android:name="android.permission.INTERNET"/>

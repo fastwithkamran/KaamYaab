@@ -26,6 +26,10 @@ dependencies:
 
   # Location
   geolocator: ^11.1.0
+<<<<<<< HEAD
+=======
+  google_maps_flutter: ^2.14.2
+>>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
 
   # Animations & UI
   lottie: ^3.1.2
@@ -52,7 +56,7 @@ dependencies:
   google_fonts: ^6.2.1
 
   cupertino_icons: ^1.0.6
-  google_maps_flutter: ^2.14.2
+
   speech_to_text: ^6.6.2
 
 dev_dependencies:
