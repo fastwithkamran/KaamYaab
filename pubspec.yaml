@@ -26,10 +26,7 @@ dependencies:
 
   # Location
   geolocator: ^11.1.0
-<<<<<<< HEAD
-=======
   google_maps_flutter: ^2.14.2
->>>>>>> cbb51c88c7537750323fa764b26eeb3f9ab41613
 
   # Animations & UI
   lottie: ^3.1.2
