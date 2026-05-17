@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'map_picker_screen.dart';
 
 import '../theme/app_theme.dart';
 
@@ -158,6 +160,34 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       )
                     : const Icon(Icons.my_location_rounded),
                 label: const Text('Use My Current GPS Location'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final currentLat = double.tryParse(_latCtrl.text);
+                  final currentLng = double.tryParse(_lngCtrl.text);
+                  final LatLng? result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MapPickerScreen(
+                        initialPosition: (currentLat != null && currentLng != null)
+                            ? LatLng(currentLat, currentLng)
+                            : null,
+                      ),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      _latCtrl.text = result.latitude.toStringAsFixed(6);
+                      _lngCtrl.text = result.longitude.toStringAsFixed(6);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Select from Map'),
               ),
             ),
             const Spacer(),

@@ -106,20 +106,20 @@ class BookingStep {
   static List<BookingStep> initialSteps() => [
     const BookingStep(
       stepNumber: 1,
-      title: 'Slot Lock',
-      description: "Reserving provider's calendar slot",
+      title: 'Notifying Workers',
+      description: 'Sending task details to nearby verified workers',
       status: 'pending',
     ),
     const BookingStep(
       stepNumber: 2,
-      title: 'Confirmation',
-      description: 'Sending in-app confirmation notification',
+      title: 'Worker Acceptance',
+      description: 'Waiting for worker to accept & confirm time slot',
       status: 'pending',
     ),
     const BookingStep(
       stepNumber: 3,
-      title: 'Receipt Generated',
-      description: 'Booking receipt with price breakdown',
+      title: 'Deal Finalized',
+      description: 'Contact details exchanged securely',
       status: 'pending',
     ),
     const BookingStep(

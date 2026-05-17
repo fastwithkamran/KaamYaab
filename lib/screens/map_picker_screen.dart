@@ -15,6 +15,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   GoogleMapController? _controller;
   LatLng _currentPosition = const LatLng(33.6844, 73.0479); // Default to Islamabad
   bool _isLoading = true;
+  bool _showMap = false;
 
   @override
   void initState() {
@@ -22,8 +23,16 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     if (widget.initialPosition != null) {
       _currentPosition = widget.initialPosition!;
       _isLoading = false;
+      _initMapDelay();
     } else {
       _determinePosition();
+    }
+  }
+
+  void _initMapDelay() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) {
+      setState(() => _showMap = true);
     }
   }
 
@@ -33,7 +42,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _showMap = true;
+      });
       return;
     }
 
@@ -41,25 +53,39 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _showMap = true;
+        });
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _showMap = true;
+      });
       return;
     }
 
     try {
       Position position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _currentPosition = LatLng(position.latitude, position.longitude);
-        _isLoading = false;
-      });
-      _controller?.animateCamera(CameraUpdate.newLatLngZoom(_currentPosition, 14.0));
+      if (mounted) {
+        setState(() {
+          _currentPosition = LatLng(position.latitude, position.longitude);
+          _isLoading = false;
+        });
+        _initMapDelay();
+        _controller?.animateCamera(CameraUpdate.newLatLngZoom(_currentPosition, 14.0));
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showMap = true;
+        });
+      }
     }
   }
 
@@ -70,6 +96,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       appBar: AppBar(
         title: const Text('Select Location', style: TextStyle(color: AppTheme.textPrimary)),
         backgroundColor: AppTheme.surfaceDark,
+        elevation: 0,
         iconTheme: const IconThemeData(color: AppTheme.tealPrimary),
         actions: [
           TextButton(
@@ -80,20 +107,24 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           )
         ],
       ),
-      body: _isLoading
+      body: _isLoading || !_showMap
           ? const Center(child: CircularProgressIndicator(color: AppTheme.tealPrimary))
           : Stack(
               children: [
-                GoogleMap(
-                  initialCameraPosition: CameraPosition(target: _currentPosition, zoom: 14.0),
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  onMapCreated: (GoogleMapController controller) {
-                    _controller = controller;
-                  },
-                  onCameraMove: (CameraPosition position) {
-                    _currentPosition = position.target;
-                  },
+                Positioned.fill(
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(target: _currentPosition, zoom: 14.0),
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    onMapCreated: (GoogleMapController controller) {
+                      _controller = controller;
+                    },
+                    onCameraMove: (CameraPosition position) {
+                      _currentPosition = position.target;
+                    },
+                  ),
                 ),
                 Center(
                   child: Padding(

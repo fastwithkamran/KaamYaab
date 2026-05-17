@@ -150,4 +150,26 @@ class ProviderMatch {
     required this.rankRationale,
     required this.scoreBreakdown,
   });
+
+  ProviderMatch copyWith({
+    ServiceProvider? provider,
+    double? distanceKm,
+    int? etaMinutes,
+    double? matchScore,
+    double? quotePkr,
+    String? recommendedSlot,
+    String? rankRationale,
+    Map<String, double>? scoreBreakdown,
+  }) {
+    return ProviderMatch(
+      provider: provider ?? this.provider,
+      distanceKm: distanceKm ?? this.distanceKm,
+      etaMinutes: etaMinutes ?? this.etaMinutes,
+      matchScore: matchScore ?? this.matchScore,
+      quotePkr: quotePkr ?? this.quotePkr,
+      recommendedSlot: recommendedSlot ?? this.recommendedSlot,
+      rankRationale: rankRationale ?? this.rankRationale,
+      scoreBreakdown: scoreBreakdown ?? this.scoreBreakdown,
+    );
+  }
 }

@@ -5,7 +5,6 @@ import '../theme/app_theme.dart';
 import '../models/provider_model.dart';
 import '../models/booking_model.dart';
 import '../models/service_request_model.dart';
-import '../services/gemini_service.dart';
 import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
 import '../services/booking_history_service.dart';
@@ -209,9 +208,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   String _stepNote(int step) {
     final p = widget.match.provider;
     switch (step) {
-      case 0: return '${p.name}\'s slot at ${widget.match.recommendedSlot} locked for ${widget.request.area}';
-      case 1: return 'In-app booking notification sent to ${p.phone}';
-      case 2: return 'Receipt #KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)} generated';
+      case 0: return 'Task sent to ${p.name} and 2 others near ${widget.request.area}';
+      case 1: return '${p.name} accepted! Time confirmed for ${widget.match.recommendedSlot}';
+      case 2: return 'Phone numbers exchanged. Call ${p.name} at ${p.phone} if needed.';
       case 3: return 'Reminders set: T-24h, T-1h, T-15min';
       case 4: return '${p.name} is en-route — ETA ${widget.match.etaMinutes} minutes';
       case 5: return 'Service completion logged with photo checklist';

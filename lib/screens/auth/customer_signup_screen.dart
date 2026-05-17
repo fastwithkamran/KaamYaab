@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../services/language_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/otp_service.dart';
 import '../../models/user_model.dart';
 import '../../utils/cnic_utils.dart';
 import '../../widgets/auth_widgets.dart';
 import 'otp_screen.dart';
-import '../map_picker_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'login_screen.dart';
 
 class CustomerSignupScreen extends StatefulWidget {
   const CustomerSignupScreen({super.key});
@@ -23,14 +23,10 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _cnicCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
-  final _confirmPassCtrl = TextEditingController();
   final _areaCtrl = TextEditingController();
 
   String? _selectedCity;
-  LatLng? _selectedLocation;
   bool _loading = false;
-  bool _obscurePass = true;
   String? _error;
 
   final List<String> _cities = [
@@ -41,7 +37,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose(); _phoneCtrl.dispose();
-    _cnicCtrl.dispose(); _passCtrl.dispose(); _confirmPassCtrl.dispose(); _areaCtrl.dispose();
+    _cnicCtrl.dispose(); _areaCtrl.dispose();
     super.dispose();
   }
 
@@ -77,11 +73,9 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
       uid: '', name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim(),
       cnic: _cnicCtrl.text.trim(), city: _selectedCity ?? '', area: _areaCtrl.text.trim(),
       role: UserRole.customer, createdAt: DateTime.now(),
-      latitude: _selectedLocation?.latitude,
-      longitude: _selectedLocation?.longitude,
     );
 
-    final result = await AuthService().register(user, _passCtrl.text);
+    final result = await AuthService().register(user);
     if (!mounted) return;
     setState(() => _loading = false);
 
@@ -95,6 +89,7 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isUrdu = LanguageService().isUrdu;
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       body: Container(
@@ -119,118 +114,85 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                             padding: EdgeInsets.zero,
                           ),
                           const SizedBox(height: 24),
-                          const Text('🏠  Create Customer Account',
-                            style: TextStyle(color: AppTheme.tealPrimary, fontSize: 26, fontWeight: FontWeight.w800),
+                          Text(isUrdu ? '🏠 گاہک اکاؤنٹ بنائیں' : '🏠  Create Customer Account',
+                            style: const TextStyle(color: AppTheme.tealPrimary, fontSize: 26, fontWeight: FontWeight.w800),
                           ).animate().fadeIn(duration: 400.ms),
                           const SizedBox(height: 6),
-                          const Text('Find and book trusted workers near you.',
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          Text(isUrdu ? 'اپنے قریب بھروسہ مند کارکن تلاش کریں اور بک کریں۔' : 'Find and book trusted workers near you.',
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                           ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
                           const SizedBox(height: 32),
 
-                          AuthGlassInput(controller: _nameCtrl, label: 'Full Name', hint: 'Ali Hassan',
+                          AuthGlassInput(controller: _nameCtrl, label: isUrdu ? 'پورا نام' : 'Full Name', hint: isUrdu ? 'علی حسن' : 'Ali Hassan',
                             prefixIcon: Icons.person_outline, accentColor: AppTheme.tealPrimary,
-                            validator: (v) => v == null || v.isEmpty ? 'Name is required' : null),
+                            validator: (v) => v == null || v.isEmpty ? (isUrdu ? 'نام درکار ہے' : 'Name is required') : null),
                           const SizedBox(height: 16),
 
-                          AuthGlassInput(controller: _phoneCtrl, label: 'Phone Number', hint: '03XX XXXXXXX',
+                          AuthGlassInput(controller: _phoneCtrl, label: isUrdu ? 'فون نمبر' : 'Phone Number', hint: '03XX XXXXXXX',
                             prefixIcon: Icons.phone_outlined, accentColor: AppTheme.tealPrimary,
                             keyboardType: TextInputType.phone,
                             inputFormatters: pakistanPhoneInputFormatters,
                             maxLength: 11,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Phone is required';
+                              if (v == null || v.isEmpty) return isUrdu ? 'فون نمبر درکار ہے' : 'Phone is required';
                               if (!pakistanPhoneRegex.hasMatch(v)) {
-                                return 'Enter a valid 11-digit number starting with 03';
+                                return isUrdu ? 'درست فون نمبر درج کریں' : 'Enter a valid 11-digit number starting with 03';
                               }
                               return null;
                             }),
                           const SizedBox(height: 16),
 
-                          AuthGlassInput(controller: _cnicCtrl, label: 'CNIC Number', hint: '13 digits without dashes',
+                          AuthGlassInput(controller: _cnicCtrl, label: isUrdu ? 'شناختی کارڈ نمبر' : 'CNIC Number', hint: isUrdu ? 'بغیر ڈیش کے 13 ہندسے' : '13 digits without dashes',
                             prefixIcon: Icons.badge_outlined, accentColor: AppTheme.tealPrimary,
                             keyboardType: TextInputType.number,
                             inputFormatters: CnicUtils.inputFormatters,
                             validator: CnicUtils.validator),
                           const SizedBox(height: 16),
 
-                          AuthDropdownField(label: 'City', hint: 'Select your city', value: _selectedCity,
+                          AuthDropdownField(label: isUrdu ? 'شہر' : 'City', hint: isUrdu ? 'اپنا شہر منتخب کریں' : 'Select your city', value: _selectedCity,
                             items: _cities, accentColor: AppTheme.tealPrimary,
                             prefixIcon: Icons.location_city_outlined,
                             onChanged: (v) => setState(() => _selectedCity = v),
-                            validator: (v) => v == null ? 'Please select your city' : null),
+                            validator: (v) => v == null ? (isUrdu ? 'براہ کرم اپنا شہر منتخب کریں' : 'Please select your city') : null),
                           const SizedBox(height: 16),
 
-                          AuthGlassInput(controller: _areaCtrl, label: 'Locality / Area',
-                            hint: 'e.g. DHA, Gulshan, Model Town',
+                          AuthGlassInput(controller: _areaCtrl, label: isUrdu ? 'علاقہ / محلہ' : 'Locality / Area',
+                            hint: isUrdu ? 'مثلاً ڈی ایچ اے، گلشن، ماڈل ٹاؤن' : 'e.g. DHA, Gulshan, Model Town',
                             prefixIcon: Icons.location_on_outlined, accentColor: AppTheme.tealPrimary,
-                            validator: (v) => v == null || v.isEmpty ? 'Area is required' : null),
+                            validator: (v) => v == null || v.isEmpty ? (isUrdu ? 'علاقہ درکار ہے' : 'Area is required') : null),
                           const SizedBox(height: 16),
 
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceDark.withValues(alpha: 0.5),
-                              borderRadius: AppTheme.radiusMd,
-                              border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.map_outlined, color: AppTheme.tealPrimary, size: 22),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('Exact Location', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                                      Text(
-                                        _selectedLocation != null ? 'Location selected' : 'Tap to pin on map',
-                                        style: TextStyle(color: _selectedLocation != null ? AppTheme.greenSuccess : AppTheme.textMuted, fontSize: 11),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    final LatLng? result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => MapPickerScreen(initialPosition: _selectedLocation)),
-                                    );
-                                    if (result != null) {
-                                      setState(() => _selectedLocation = result);
-                                    }
-                                  },
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: AppTheme.tealPrimary.withValues(alpha: 0.1),
-                                    foregroundColor: AppTheme.tealPrimary,
-                                  ),
-                                  child: const Text('Pick'),
-                                )
-                              ],
+                          if (_error != null) ...[
+                            const SizedBox(height: 16),
+                            AuthErrorBox(message: _error!),
+                          ],
+                          const SizedBox(height: 28),
+
+                          SizedBox(
+                            width: double.infinity, height: 54,
+                            child: ElevatedButton(
+                              onPressed: _loading ? null : _sendOtpAndContinue,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.tealPrimary, foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd), elevation: 0),
+                              child: _loading
+                                  ? const SizedBox(width: 22, height: 22,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : Text(isUrdu ? 'تصدیقی کوڈ بھیجیں' : 'Send Verification Code',
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                             ),
                           ),
                           const SizedBox(height: 16),
-
-                          AuthGlassInput(controller: _passCtrl, label: 'Password', hint: '••••••••',
-                            prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
-                            obscureText: _obscurePass,
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility,
-                                  color: AppTheme.textMuted, size: 20),
-                              onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginScreen(role: UserRole.customer)),
+                              ),
+                              child: Text(isUrdu ? 'پہلے سے اکاؤنٹ ہے؟ سائن ان کریں' : 'Already have an account? Sign In',
+                                  style: const TextStyle(color: AppTheme.tealLight, fontSize: 13)),
                             ),
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Password is required';
-                              if (v.length < 6) return 'At least 6 characters';
-                              return null;
-                            }),
-                          const SizedBox(height: 16),
-
-                          AuthGlassInput(controller: _confirmPassCtrl, label: 'Confirm Password', hint: '••••••••',
-                            prefixIcon: Icons.lock_outline, accentColor: AppTheme.tealPrimary,
-                            obscureText: _obscurePass,
-                            validator: (v) => v != _passCtrl.text ? 'Passwords do not match' : null),
+                          ),
 
                           if (_error != null) ...[
                             const SizedBox(height: 16),
@@ -255,7 +217,10 @@ class _CustomerSignupScreenState extends State<CustomerSignupScreen> {
                           const SizedBox(height: 16),
                           Center(
                             child: TextButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginScreen(role: UserRole.customer)),
+                              ),
                               child: const Text('Already have an account? Sign In',
                                   style: TextStyle(color: AppTheme.tealLight, fontSize: 13)),
                             ),

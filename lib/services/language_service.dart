@@ -36,7 +36,7 @@ class S {
   static String get needService   => _l.t("I need a service", "مجھے خدمت چاہیے");
   static String get needServiceSub => _l.t("Find plumbers, electricians &\nmore near you", "اپنے قریب پلمبر، بجلی کار\nاور مزید تلاش کریں");
   static String get offerService  => _l.t("I offer a service", "میں خدمت دیتا ہوں");
-  static String get offerServiceSub => _l.t("Register as a worker and\nget more customers", "کارکن کے طور پر رجسٹر ہوں\naور زیادہ گاہک پائیں");
+  static String get offerServiceSub => _l.t("Register as a worker and\nget more customers", "کارکن کے طور پر رجسٹر ہوں\nاور زیادہ گاہک پائیں");
 
   // ── Login ────────────────────────────────────────────────────────────────
   static String get loginTitle    => _l.t("Welcome Back!", "خوش آمدید!");

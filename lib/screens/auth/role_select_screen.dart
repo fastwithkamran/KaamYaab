@@ -4,7 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../services/language_service.dart';
-import 'login_screen.dart';
+import 'worker_signup_screen.dart';
+import 'customer_signup_screen.dart';
 
 /// Role-selection landing screen with Urdu / English language toggle.
 class RoleSelectScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
     Future.delayed(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       Navigator.push(context, MaterialPageRoute(
-        builder: (_) => LoginScreen(role: role),
+        builder: (_) => role == UserRole.worker ? const WorkerSignupScreen() : const CustomerSignupScreen(),
       ));
     });
   }
@@ -97,12 +98,13 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
                           ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
                           const SizedBox(height: 8),
                           Text(
-                            _t(
-                              "Pakistan's Smartest Home Services App",
-                              "پاکستان کی سب سے ذہین گھریلو خدمت",
+                            _t("Pakistan's Smartest Home Services", "پاکستان کی سب سے ذہین گھریلو خدمت"),
+                            style: TextStyle(
+                              color: AppTheme.tealLight.withValues(alpha: 0.8),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
                             ),
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                            textAlign: TextAlign.center,
                           ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
                         ]),
 

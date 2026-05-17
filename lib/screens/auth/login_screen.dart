@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../services/language_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/auth_widgets.dart';
@@ -19,13 +20,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
   bool _loading = false;
-  bool _obscurePass = true;
   String? _error;
 
   bool get _isWorker => widget.role == UserRole.worker;
   String get _roleLabel => _isWorker ? 'Worker' : 'Customer';
+  String get _roleUrdu => _isWorker ? 'کارکن' : 'گاہک';
   Color get _accentColor =>
       _isWorker ? AppTheme.purpleAgent : AppTheme.tealPrimary;
   String get _emoji => _isWorker ? '🔧' : '🏠';
@@ -37,7 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final result = await AuthService().login(
       _phoneCtrl.text.trim(),
-      _passCtrl.text,
     );
 
     if (!mounted) return;
@@ -45,9 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result.isSuccess) {
       if (result.user!.role != widget.role) {
-        setState(() => _error =
-            'This account is registered as a ${result.user!.roleLabel}. '
-            'Please go back and select the correct role.');
+        setState(() => _error = LanguageService().isUrdu 
+            ? 'یہ اکاؤنٹ $_roleUrdu کے طور پر رجسٹرڈ نہیں ہے۔'
+            : 'This account is registered as a ${result.user!.roleLabel}. '
+              'Please go back and select the correct role.');
         return;
       }
       HapticFeedback.heavyImpact();
@@ -69,12 +69,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _phoneCtrl.dispose();
-    _passCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isUrdu = LanguageService().isUrdu;
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
       body: Container(
@@ -102,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 24),
 
                           Text(
-                            '$_emoji  $_roleLabel Sign In',
+                            isUrdu ? '$_emoji $_roleUrdu سائن ان' : '$_emoji  $_roleLabel Sign In',
                             style: TextStyle(
                               color: _accentColor,
                               fontSize: 28,
@@ -111,9 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ).animate().fadeIn(duration: 400.ms),
 
                           const SizedBox(height: 8),
-                          const Text(
-                            'Welcome back! Enter your details below.',
-                            style: TextStyle(
+                          Text(
+                            isUrdu ? 'واپس خوش آمدید! اپنی تفصیلات نیچے درج کریں۔' : 'Welcome back! Enter your details below.',
+                            style: const TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 14),
                           ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
 
@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           AuthGlassInput(
                             controller: _phoneCtrl,
-                            label: 'Phone Number',
+                            label: isUrdu ? 'فون نمبر' : 'Phone Number',
                             hint: '03XX XXXXXXX',
                             prefixIcon: Icons.phone_outlined,
                             accentColor: _accentColor,
@@ -129,42 +129,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             inputFormatters: pakistanPhoneInputFormatters,
                             maxLength: 11,
                             validator: (v) {
-                              if (v == null || v.isEmpty) return 'Phone is required';
+                              if (v == null || v.isEmpty) return isUrdu ? 'فون نمبر درکار ہے' : 'Phone is required';
                               if (!pakistanPhoneRegex.hasMatch(v)) {
-                                return 'Enter a valid 11-digit number starting with 03';
+                                return isUrdu ? 'درست فون نمبر درج کریں' : 'Enter a valid 11-digit number starting with 03';
                               }
                               return null;
                             },
                           ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-
-                          const SizedBox(height: 16),
-
-                          AuthGlassInput(
-                            controller: _passCtrl,
-                            label: 'Password',
-                            hint: '••••••••',
-                            prefixIcon: Icons.lock_outline,
-                            accentColor: _accentColor,
-                            obscureText: _obscurePass,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePass
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                                color: AppTheme.textMuted,
-                                size: 20,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _obscurePass = !_obscurePass),
-                            ),
-                            validator: (v) {
-                              if (v == null || v.isEmpty)
-                                return 'Password is required';
-                              if (v.length < 6)
-                                return 'Password must be at least 6 characters';
-                              return null;
-                            },
-                          ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
 
                           if (_error != null) ...[
                             const SizedBox(height: 16),
@@ -195,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: Colors.white, strokeWidth: 2),
                                     )
                                   : Text(
-                                      'Sign In as $_roleLabel',
+                                      isUrdu ? 'بطور $_roleUrdu سائن ان کریں' : 'Sign In as $_roleLabel',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.w700, fontSize: 16),
                                     ),
@@ -210,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: Colors.white.withValues(alpha: 0.1))),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('New to KaamYaab?',
+                              child: Text(isUrdu ? 'کامیاب میں نئے ہیں؟' : 'New to KaamYaab?',
                                   style: TextStyle(
                                       color: AppTheme.textMuted, fontSize: 13)),
                             ),
@@ -242,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     borderRadius: AppTheme.radiusMd),
                               ),
                               child: Text(
-                                'Create $_roleLabel Account',
+                                isUrdu ? '$_roleUrdu اکاؤنٹ بنائیں' : 'Create $_roleLabel Account',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 16),
                               ),

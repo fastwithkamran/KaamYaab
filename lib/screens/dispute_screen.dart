@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
-import '../services/gemini_service.dart';
+import '../services/ai_service.dart';
 
 class DisputeScreen extends StatefulWidget {
   const DisputeScreen({super.key});
@@ -82,7 +82,7 @@ class _DisputeScreenState extends State<DisputeScreen>
     setState(() { _isAnalyzing = true; _result = null; _progressStep = 2; });
     _verdictCtrl.reset();
 
-    final result = await GeminiService.analyzeDispute(
+    final result = await AiService.analyzeDispute(
       disputeType: _selectedType!,
       description: _description,
       quotedPrice: _quotedPrice,

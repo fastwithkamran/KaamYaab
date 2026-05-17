@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../models/provider_model.dart';
 import 'dna_score_chart.dart';
-import '../services/gemini_service.dart';
+import '../services/ai_service.dart';
 
 class ProviderCard extends StatefulWidget {
   final ProviderMatch match;
@@ -81,9 +81,7 @@ class _ProviderCardState extends State<ProviderCard>
   Future<void> _negotiatePrice() async {
     setState(() => _negotiating = true);
     
-    // Dynamically import GeminiService only when needed to prevent circular dependencies
-    // Alternatively, we can assume it's imported at the top, but let's import it safely
-    final result = await GeminiService.negotiatePrice(
+    final result = await AiService.negotiatePrice(
       providerName: widget.match.provider.name,
       originalQuote: widget.match.quotePkr,
       userOffer: widget.match.quotePkr * 0.88,
@@ -98,7 +96,7 @@ class _ProviderCardState extends State<ProviderCard>
       _negotiating = false;
       _negotiated = true;
       _negotiatedPrice = counterOffer;
-      _negotiationNote = result['reasoning'] as String?; // mock uses reasoning
+      _negotiationNote = result['reasoning'] as String?;
     });
     HapticFeedback.mediumImpact();
   }
@@ -132,7 +130,6 @@ class _ProviderCardState extends State<ProviderCard>
         ),
         child: Stack(
           children: [
-            // Shimmer sweep on top-ranked card
             if (isTop)
               Positioned.fill(
                 child: ClipRRect(
@@ -159,12 +156,10 @@ class _ProviderCardState extends State<ProviderCard>
 
             Column(
               children: [
-                // ─── Card Header ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      // Rank badge
                       Container(
                         width: 36,
                         height: 36,
@@ -185,7 +180,6 @@ class _ProviderCardState extends State<ProviderCard>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Avatar
                       CircleAvatar(
                         radius: 24,
                         backgroundColor: AppTheme.tealPrimary.withValues(alpha: 0.2),
@@ -199,7 +193,6 @@ class _ProviderCardState extends State<ProviderCard>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Name + info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +223,6 @@ class _ProviderCardState extends State<ProviderCard>
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
                             ),
                             const SizedBox(height: 4),
-                            // Availability badge
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -264,7 +256,6 @@ class _ProviderCardState extends State<ProviderCard>
                           ],
                         ),
                       ),
-                      // DNA score pill
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -301,7 +292,6 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // ─── Quick Stats Row ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Row(
@@ -324,7 +314,6 @@ class _ProviderCardState extends State<ProviderCard>
                         color: AppTheme.tealPrimary,
                       ),
                       const Spacer(),
-                      // Match score bar
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -355,7 +344,6 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // ─── AI Rationale Banner ────────────────────────────────────
                 Container(
                   margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -382,7 +370,6 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
-                // ─── Expanded: DNA Chart + Book Button ─────────────────────
                 AnimatedSize(
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeOutCubic,
@@ -394,7 +381,6 @@ class _ProviderCardState extends State<ProviderCard>
                               padding: const EdgeInsets.all(16),
                               child: DnaScoreChart(provider: p, size: 200),
                             ),
-                            // Skills
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                               child: Wrap(
@@ -416,7 +402,6 @@ class _ProviderCardState extends State<ProviderCard>
                                 )).toList(),
                               ),
                             ),
-                            // Certifications
                             if (p.certifications.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -438,7 +423,6 @@ class _ProviderCardState extends State<ProviderCard>
                                   ],
                                 ),
                               ),
-                            // Negotiation UI
                             if (_negotiated && _negotiationNote != null) ...[
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -478,7 +462,6 @@ class _ProviderCardState extends State<ProviderCard>
                                 ),
                               ),
                             ],
-                            // Book button
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                               child: SizedBox(
@@ -509,11 +492,11 @@ class _ProviderCardState extends State<ProviderCard>
                             ),
                           ],
                         )
-                      : Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      : const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               Icon(Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.textMuted, size: 16),
                               SizedBox(width: 4),

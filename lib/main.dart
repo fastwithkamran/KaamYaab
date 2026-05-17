@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/worker_home_screen.dart';
 import 'screens/customer_hub_screen.dart';
 import 'screens/auth/role_select_screen.dart';
+import 'screens/auth/language_selection_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/workers_browse_screen.dart';
 import 'screens/voice_booking_agent.dart';
@@ -60,6 +61,7 @@ class KaamYaabApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
+        '/lang': (context) => const LanguageSelectionScreen(),
         '/login': (context) => const RoleSelectScreen(),
         '/home': (context) => const MainShell(),
         '/dashboard': (context) => const WorkerHomeScreen(),
