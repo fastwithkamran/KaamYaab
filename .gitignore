@@ -65,3 +65,4 @@ yarn-error.log
 # Android/Local SDK paths
 local.properties
 android/local.properties
+android/.gradle/

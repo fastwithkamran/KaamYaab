@@ -187,7 +187,6 @@ Analyze and return JSON:
     return _mockDisputeAnalysis(disputeType, quotedPrice, chargedPrice, providerDnaScore);
   }
 
-<<<<<<< HEAD
   // ── Worker Settings Agent ──────────────────────────────────────────────────
   static Future<List<String>> processWorkerSettings(String input, List<String> currentRules) async {
     if (!_hasApiKey) {
@@ -230,10 +229,7 @@ Only return the JSON array.
     return updated;
   }
 
-  // ── Mock Fallbacks (for demo without API key) ───────────────────────────
-=======
   // ─── Mock Fallbacks (for demo without API key) ───────────────────────────────
->>>>>>> b4f0fa9c3e57262e70d950cf3742e48be789eb33
   static Map<String, dynamic> _mockIntentParse(String rawInput) {
     final lower = rawInput.toLowerCase();
 

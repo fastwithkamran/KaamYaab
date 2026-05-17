@@ -51,6 +51,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
 
   String _status = 'En-Route'; // En-Route → Arriving → Arrived
   bool _arrived = false;
+  bool _mapLoadFailed = false; // BUG-3 FIX: graceful Maps API fallback
 
   late AnimationController _pulseCtrl;
   late AnimationController _statusCtrl;
@@ -212,19 +213,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     });
 
     // Keep camera focused between worker and user
-    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(
-        southwest: LatLng(
-          math.min(_workerPos.latitude, _userPos.latitude) - 0.005,
-          math.min(_workerPos.longitude, _userPos.longitude) - 0.005,
+    try {
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(
+            math.min(_workerPos.latitude, _userPos.latitude) - 0.005,
+            math.min(_workerPos.longitude, _userPos.longitude) - 0.005,
+          ),
+          northeast: LatLng(
+            math.max(_workerPos.latitude, _userPos.latitude) + 0.005,
+            math.max(_workerPos.longitude, _userPos.longitude) + 0.005,
+          ),
         ),
-        northeast: LatLng(
-          math.max(_workerPos.latitude, _userPos.latitude) + 0.005,
-          math.max(_workerPos.longitude, _userPos.longitude) + 0.005,
-        ),
-      ),
-      80,
-    ));
+        80,
+      ));
+    } catch (_) {
+      // Maps camera update failed — non-fatal, simulation continues
+    }
   }
 
   double _bearing(LatLng from, LatLng to) {
@@ -267,28 +272,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
       backgroundColor: AppTheme.backgroundDark,
       body: Stack(
         children: [
-          // ── Google Map ───────────────────────────────────────────────────
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(
-                (_userPos.latitude + _workerStart.latitude) / 2,
-                (_userPos.longitude + _workerStart.longitude) / 2,
-              ),
-              zoom: 13.5,
-            ),
-            markers: _markers,
-            polylines: _polylines,
-            mapType: MapType.normal,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            compassEnabled: false,
-            style: _darkMapStyle,
-            onMapCreated: (controller) {
-              _mapController = controller;
-            },
-          ),
+          // BUG-3 FIX: Google Maps with graceful fallback
+          if (_mapLoadFailed)
+            _buildMapFallback()
+          else
+            _buildGoogleMap(),
 
-          // ── Top bar overlay ──────────────────────────────────────────────
+          // ── Top bar overlay ────────────────────────────────────────────────────
           SafeArea(
             child: Column(
               children: [
@@ -299,6 +289,85 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleMap() {
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: LatLng(
+          (_userPos.latitude + _workerStart.latitude) / 2,
+          (_userPos.longitude + _workerStart.longitude) / 2,
+        ),
+        zoom: 13.5,
+      ),
+      markers: _markers,
+      polylines: _polylines,
+      mapType: MapType.normal,
+      myLocationButtonEnabled: false,
+      zoomControlsEnabled: false,
+      compassEnabled: false,
+      style: _darkMapStyle,
+      onMapCreated: (controller) {
+        try {
+          _mapController = controller;
+        } catch (e) {
+          setState(() => _mapLoadFailed = true);
+        }
+      },
+    );
+  }
+
+  /// Fallback shown when Maps API is unavailable (no key, no internet, emulator)
+  Widget _buildMapFallback() {
+    final progress = (1.0 - _etaSeconds / _totalSeconds).clamp(0.0, 1.0);
+    return Container(
+      decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _pulseCtrl,
+              builder: (_, __) => Container(
+                width: 160 + _pulseCtrl.value * 20,
+                height: 160 + _pulseCtrl.value * 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.06 + _pulseCtrl.value * 0.04),
+                  border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.directions_car_rounded,
+                          color: AppTheme.tealPrimary, size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(widget.match.distanceKm * (1.0 - progress)).toStringAsFixed(1)} km',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Text('remaining',
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Live Tracking (Simulated)',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
