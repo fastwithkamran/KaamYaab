@@ -167,7 +167,7 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
           ),
           child: Center(
             child: Text(
-              _workerName.isNotEmpty ? _workerName.substring(0, 2).toUpperCase() : 'W',
+              (_workerName.length >= 2 ? _workerName.substring(0, 2) : _workerName).toUpperCase(),
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
             ),
           ),

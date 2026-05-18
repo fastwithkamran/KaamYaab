@@ -21,9 +21,23 @@ class OtpService {
   final Map<String, _OtpRecord> _otpStore = {};
   final Map<String, _FirebaseOtpSession> _firebaseStore = {};
   final Set<String> _autoVerifiedPhones = {};
+  bool _isSendingOtp = false; // debounce: prevents concurrent send races
 
-  /// Sends an OTP to [phone].
+  /// Sends an OTP to [phone]. Returns immediately with an error if a send
+  /// is already in progress (prevents race conditions on rapid taps).
   Future<OtpSendResult> sendOtp(String phone) async {
+    if (_isSendingOtp) {
+      return const OtpSendResult.error('OTP already being sent. Please wait a moment.');
+    }
+    _isSendingOtp = true;
+    try {
+      return await _doSendOtp(phone);
+    } finally {
+      _isSendingOtp = false;
+    }
+  }
+
+  Future<OtpSendResult> _doSendOtp(String phone) async {
     final normalized = _normalizePhone(phone);
     if (normalized == null) {
       return const OtpSendResult.error(

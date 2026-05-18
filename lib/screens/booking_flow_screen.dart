@@ -42,17 +42,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
 
   PriceQuote? _quote;
   double _finalPrice = 0;
+  late String _receiptNumber; // generated once in initState
 
   double _rating = 0;
-  // ignore: unused_field
   String _feedback = ''; // collected post-booking
   bool _feedbackSubmitted = false;
   bool _bookingPersisted = false;
 
   // GPS — auto-detect customer location for better worker dispatch
-  // ignore: unused_field
   LocationData? _customerLocation;
-  // ignore: unused_field
   bool _workerVerified = false;
   late AnimationController _successCtrl;
   late Animation<double> _successAnim;
@@ -61,6 +59,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   void initState() {
     super.initState();
     _finalPrice = widget.negotiatedPrice;
+    _receiptNumber = 'KY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _quote = _buildQuote();
 
     _successCtrl = AnimationController(
@@ -167,6 +166,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       });
 
       if (i == 1) {
+        if (!mounted) return;
         await InAppNotificationService.showMessage(
           context,
           title: 'Booking Confirmation',
@@ -177,6 +177,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       }
 
       if (i == 4) {
+        if (!mounted) return;
         await InAppNotificationService.showMessage(
           context,
           title: 'En-Route Update',
@@ -211,7 +212,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     switch (step) {
       case 0: return 'Task sent to ${p.name} and 2 others near ${widget.request.area}';
       case 1: return '${p.name} accepted! Time confirmed for ${widget.match.recommendedSlot}';
-      case 2: return 'Phone numbers exchanged. Call ${p.name} at ${p.phone} if needed.';
+      case 2: return 'Contact details exchanged. Receipt #$_receiptNumber. Call ${p.name} at ${p.phone} if needed.';
       case 3: return 'Reminders set: T-24h, T-1h, T-15min';
       case 4: return '${p.name} is en-route — ETA ${widget.match.etaMinutes} minutes';
       case 5: return 'Service completion logged with photo checklist';
@@ -253,7 +254,6 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     final date = DateTime.now();
     final scheduledDate =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final receipt = _extractReceiptNumber();
 
     try {
       await BookingHistoryService().saveCompletedBooking(
@@ -267,7 +267,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         quotedPricePkr: _quote!.totalPkr,
         finalPricePkr: _finalPrice,
         status: 'completed',
-        receiptNumber: receipt,
+        receiptNumber: _receiptNumber,
         surgeMultiplier: widget.surgeMultiplier,
         negotiatedNote: widget.negotiationNote,
       );
@@ -277,23 +277,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     }
   }
 
-  String _extractReceiptNumber() {
-    String? note;
-    for (final step in _steps) {
-      if (step.stepNumber == 3 && (step.agentNote?.contains('Receipt #') ?? false)) {
-        note = step.agentNote;
-        break;
-      }
-    }
-    if (note == null) {
-      return 'KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-    }
-    final idx = note.indexOf('Receipt #');
-    if (idx == -1) {
-      return 'KG-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-    }
-    return note.substring(idx + 'Receipt #'.length).trim();
-  }
+  // _extractReceiptNumber() removed — receipt is now generated once in
+  // initState() as _receiptNumber and embedded directly into step 2's note.
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +424,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
           radius: 22,
           backgroundColor: AppTheme.tealPrimary.withValues(alpha: 0.2),
           child: Text(
-            p.name.substring(0, 2),
+            p.name.length >= 2 ? p.name.substring(0, 2) : p.name,
             style: const TextStyle(color: AppTheme.tealPrimary, fontWeight: FontWeight.w700),
           ),
         ),

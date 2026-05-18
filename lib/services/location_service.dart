@@ -86,6 +86,7 @@ class LocationService {
   // Last known location for this session (prevents repeated GPS calls).
   LocationData? _cached;
   DateTime? _cacheTime;
+  bool _watchActive = false;
   static const _cacheDuration = Duration(minutes: 5);
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -135,16 +136,33 @@ class LocationService {
   }
 
   LocationData _toLocationData(double lat, double lng) {
-    final address = '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
-    // Reverse geocoding is intentionally disabled to avoid external Places/Maps API usage.
+    final city = _inferCityFromCoords(lat, lng);
+    final address = city.isNotEmpty
+        ? '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)} ($city)'
+        : '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}';
     return LocationData(
       latitude: lat,
       longitude: lng,
       address: address,
-      city: '',
+      city: city,
       area: '',
       fetchedAt: DateTime.now(),
     );
+  }
+
+  /// Derives a city name from GPS coordinates using rough bounding boxes
+  /// for major Pakistani cities (no external API required).
+  static String _inferCityFromCoords(double lat, double lng) {
+    if (lat >= 33.5 && lat <= 33.9 && lng >= 72.8 && lng <= 73.3) return 'Islamabad';
+    if (lat >= 33.4 && lat <= 33.8 && lng >= 73.0 && lng <= 73.4) return 'Rawalpindi';
+    if (lat >= 31.3 && lat <= 31.8 && lng >= 74.1 && lng <= 74.6) return 'Lahore';
+    if (lat >= 24.7 && lat <= 25.1 && lng >= 66.8 && lng <= 67.5) return 'Karachi';
+    if (lat >= 30.1 && lat <= 30.4 && lng >= 71.4 && lng <= 71.7) return 'Multan';
+    if (lat >= 34.1 && lat <= 34.4 && lng >= 71.4 && lng <= 71.8) return 'Peshawar';
+    if (lat >= 29.3 && lat <= 29.5 && lng >= 71.6 && lng <= 71.8) return 'Bahawalpur';
+    if (lat >= 32.1 && lat <= 32.3 && lng >= 72.6 && lng <= 72.8) return 'Sargodha';
+    if (lat >= 30.6 && lat <= 30.8 && lng >= 73.0 && lng <= 73.2) return 'Faisalabad';
+    return '';
   }
 
   // ── Persist worker/customer location to SharedPreferences ─────────────────
@@ -172,7 +190,11 @@ class LocationService {
   void clearCache() {
     _cached = null;
     _cacheTime = null;
+    _watchActive = false;
   }
+
+  /// Stops the active watchLocation() stream loop.
+  void stopWatchingLocation() => _watchActive = false;
 
   // ── Utility: user-friendly error messages ─────────────────────────────────
 
@@ -194,12 +216,16 @@ class LocationService {
   // ── Stream: watch position (for worker live tracking) ────────────────────
 
   /// Returns a stream that emits location updates every 30 seconds.
-  /// Used by workers who have "Share My Location" enabled.
+  /// Call [stopWatchingLocation] to cleanly cancel the loop and prevent leaks.
   Stream<LocationData> watchLocation() async* {
-    while (true) {
+    _watchActive = true;
+    while (_watchActive) {
       final result = await getCurrentLocation(forceRefresh: true);
       if (result.isSuccess) yield result.data!;
-      await Future.delayed(const Duration(seconds: 30));
+      // Delay with early-exit check so cancel takes effect within 1s.
+      for (var i = 0; i < 30 && _watchActive; i++) {
+        await Future.delayed(const Duration(seconds: 1));
+      }
     }
   }
 }

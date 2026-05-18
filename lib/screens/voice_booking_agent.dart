@@ -33,6 +33,7 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
   bool _speaking = false;
   bool _isMatching = false;
   bool _hasResults = false;
+  double _surgeMult = 1.0; // stored so _openBooking can pass the correct value
 
   List<ProviderMatch> _matches = [];
   List<AgentStep> _agentSteps = [];
@@ -164,6 +165,7 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
 
       final hasSurge = (urgency == 'high' || urgency == 'emergency') && (serviceType == 'AC Repair' || serviceType == 'Electrical');
       final surgeMult = hasSurge ? (urgency == 'emergency' ? 2.1 : 1.6) : 1.0;
+      _surgeMult = surgeMult; // persist so _openBooking can read it
 
       _currentRequest = ServiceRequest(
         id: 'voice_${DateTime.now().millisecondsSinceEpoch}',
@@ -241,7 +243,7 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
       builder: (_) => BookingFlowScreen(
         match: match,
         request: _currentRequest!,
-        surgeMultiplier: 1.0,
+        surgeMultiplier: _surgeMult, // BUG-004 FIX: use actual calculated surge
         negotiatedPrice: finalPrice,
         negotiationNote: note,
       ),

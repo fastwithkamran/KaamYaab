@@ -241,10 +241,7 @@ class AuthService {
 
     existing.addAll(demos);
     await _saveAllUsers(prefs, existing);
-    
-    for (var u in demos) {
-      await prefs.setString('pwd_${u.uid}', 'demo1234');
-    }
+    // Note: plaintext password storage removed (was security anti-pattern).
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
