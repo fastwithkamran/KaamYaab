@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'auth_service.dart';
 
 /// Persists customer booking history in Firestore for end-to-end visibility.
@@ -7,7 +8,11 @@ class BookingHistoryService {
   static final BookingHistoryService _instance = BookingHistoryService._();
   factory BookingHistoryService() => _instance;
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  /// Lazy Firestore accessor — only available when Firebase is initialised.
+  FirebaseFirestore? get _db =>
+      Firebase.apps.isNotEmpty ? FirebaseFirestore.instance : null;
+
+  bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
 
   Future<void> saveCompletedBooking({
     required String requestId,
@@ -24,10 +29,11 @@ class BookingHistoryService {
     required double surgeMultiplier,
     String? negotiatedNote,
   }) async {
+    if (!_isFirebaseReady) return;
     final user = AuthService().currentUser;
     if (user == null) return;
 
-    await _db.collection('bookings').add({
+    await _db!.collection('bookings').add({
       'customer_uid': user.uid,
       'customer_phone': user.phone,
       'request_id': requestId,
@@ -49,12 +55,13 @@ class BookingHistoryService {
   }
 
   Stream<List<Map<String, dynamic>>> watchCurrentUserBookings() {
+    if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
     if (user == null) {
       return Stream.value(const <Map<String, dynamic>>[]);
     }
 
-    return _db
+    return _db!
         .collection('bookings')
         .where('customer_uid', isEqualTo: user.uid)
         .snapshots()
@@ -83,10 +90,11 @@ class BookingHistoryService {
     required double rating,
     required String feedback,
   }) async {
+    if (!_isFirebaseReady) return;
     final user = AuthService().currentUser;
     if (user == null) return;
 
-    final query = await _db
+    final query = await _db!
         .collection('bookings')
         .where('customer_uid', isEqualTo: user.uid)
         .where('request_id', isEqualTo: requestId)
@@ -112,9 +120,10 @@ class BookingHistoryService {
 
   /// Stream of completed bookings where this worker was the provider.
   Stream<List<Map<String, dynamic>>> watchWorkerBookings() {
+    if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
     if (user == null) return Stream.value(const []);
-    return _db
+    return _db!
         .collection('bookings')
         .where('provider_id', isEqualTo: user.uid)
         .snapshots()
@@ -138,9 +147,10 @@ class BookingHistoryService {
 
   /// Stream of reviews (bookings with user_rating set) left for this worker.
   Stream<List<Map<String, dynamic>>> watchWorkerReviews() {
+    if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
     if (user == null) return Stream.value(const []);
-    return _db
+    return _db!
         .collection('bookings')
         .where('provider_id', isEqualTo: user.uid)
         .snapshots()

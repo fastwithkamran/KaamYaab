@@ -12,6 +12,7 @@ class AiService {
   static final String _apiKey = RuntimeConfig.cohereApiKey.trim();
   static bool get _hasApiKey => _apiKey.isNotEmpty;
   static const int _maxRetries = 3;
+  // Actual backoff series: 1s, 2s, 4s, 4s (capped). Total max wait ≈ 11s across 3 retries.
   static const int _maxBackoffSeconds = 4;
 
   // ─── Intent Agent ────────────────────────────────────────────────────────────
@@ -210,9 +211,8 @@ Only return the JSON array.
     if (result != null && result is List) {
       return result.map((e) => e.toString()).toList();
     }
-    if (result != null && result is Map && result.containsKey('rules')) {
-      return (result['rules'] as List).map((e) => e.toString()).toList();
-    }
+    // Note: A Map-with-'rules' branch was previously here but was unreachable
+    // because the model returns a JSON array, not a Map.
 
     final updated = List<String>.from(currentRules);
     updated.add(input);
@@ -295,7 +295,7 @@ Only return the JSON array.
       'counter_offer_pkr': accepted ? offer : original * 0.95,
       'accepted': accepted,
       'reasoning': 'Asking $providerName for the best possible rate.',
-      'discount_applied_pkr': original - (accepted ? offer : original * 0.95),
+      'discount_applied_pkr': (original - (accepted ? offer : original * 0.95)).clamp(0.0, double.maxFinite),
       'discount_reason': 'negotiated',
       'is_final_offer': true,
     };

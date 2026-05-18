@@ -28,8 +28,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollCtrl = ScrollController();
   final _lang = LanguageService();
 
-  // ignore: unused_field
-  bool _agentPanelVisible = true; // reserved for animation toggle
   bool _isSearching = false;
   bool _showSurge = false;
   bool _showShimmer = false;
@@ -46,8 +44,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ignore: unused_element
   String _t(String en, String ur) => _lang.t(en, ur);
-
-
   @override
   void initState() {
     super.initState();
@@ -88,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       agentName: AgentIdentity.intent,
       task: 'Parsing multilingual request',
       reasoning: 'Detecting language, extracting service type, location, urgency, and budget sensitivity...',
-      toolCall: 'gemini.extract_intent(raw_input)',
+      toolCall: 'cohere.extract_intent(raw_input)',
       status: AgentStepStatus.thinking,
       timestamp: DateTime.now(),
     ));
@@ -123,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       urgency: urgency,
       preferredTime: intentResult['preferred_time'] as String? ?? 'flexible',
       preferredDate: intentResult['preferred_date'] as String? ?? 'tomorrow',
-      budgetSensitivity: (intentResult['budget_sensitivity'] as num).toDouble(),
+      budgetSensitivity: (intentResult['budget_sensitivity'] as num?)?.toDouble() ?? 0.5,
       confidence: confidence,
       language: intentResult['language'] as String? ?? 'mixed',
       createdAt: DateTime.now(),
@@ -309,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     HapticFeedback.selectionClick();
     setState(() {
       _matches = [];
-      _agentSteps.clear();
+      _agentSteps = [];
       _showSurge = false;
       _currentRequest = null;
       _expandedCard = -1;

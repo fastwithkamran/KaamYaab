@@ -12,7 +12,7 @@ class ServiceRequest {
   final String language; // urdu | roman_urdu | english | mixed
   final DateTime createdAt;
   final String status;
-  final String jobComplexity; // pending | matched | booked | completed | disputed
+  final String jobComplexity; // basic | intermediate | complex
 
   const ServiceRequest({
     required this.id,

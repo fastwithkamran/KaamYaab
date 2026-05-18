@@ -133,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
                               Text('⚡', style: TextStyle(fontSize: 13)),
                               SizedBox(width: 6),
                               Text(
-                                'Powered by Antigravity',
+                                'Built for AI Seekho Hackathon',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,

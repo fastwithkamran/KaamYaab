@@ -66,3 +66,9 @@ yarn-error.log
 local.properties
 android/local.properties
 android/.gradle/
+
+# Keystore and signing files
+*.jks
+*.keystore
+android/key.properties
+android/app/key.properties

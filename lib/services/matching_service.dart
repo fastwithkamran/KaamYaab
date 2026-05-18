@@ -16,23 +16,32 @@ class MatchingService {
   static const double _priceFitCenterRate = 0.5;
   static const double _priceFitBalanceScale = 62.5;
 
-  static List<ServiceProvider>? _allProviders;
+  // Only the static mock-JSON providers are cached. Live workers are always
+  // re-merged on each call so new registrations and logouts are reflected.
+  static List<ServiceProvider>? _mockProviders;
 
-  /// Load providers from local static JSON dataset.
+  /// Load providers: static JSON is cached; live workers are always re-merged fresh.
   static Future<List<ServiceProvider>> loadProviders() async {
-    if (_allProviders != null) return _allProviders!;
-    try {
-      final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      final list = (decoded['providers'] as List<dynamic>)
-          .cast<Map<String, dynamic>>();
-      _allProviders = list.map(ServiceProvider.fromJson).toList();
+    // Load (and cache) the static mock JSON only once.
+    if (_mockProviders == null) {
+      try {
+        final raw = await rootBundle.loadString('assets/data/providers_mock.json');
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        final list = (decoded['providers'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        _mockProviders = list.map(ServiceProvider.fromJson).toList();
+      } catch (_) {
+        _mockProviders = [];
+      }
+    }
 
-      // Merge live workers
+    // Always re-merge live workers so new registrations & logouts are reflected.
+    final allProviders = List<ServiceProvider>.from(_mockProviders!);
+    try {
       final liveWorkers = await AuthService().getAllWorkers();
       for (var worker in liveWorkers) {
         if (worker.latitude != null && worker.longitude != null) {
-          _allProviders!.add(ServiceProvider(
+          allProviders.add(ServiceProvider(
             id: worker.uid,
             name: worker.name,
             phone: worker.phone,
@@ -64,13 +73,13 @@ class MatchingService {
         }
       }
     } catch (_) {
-      _allProviders = [];
+      // Live worker merge failed — continue with mock providers only.
     }
-    return _allProviders!;
+    return allProviders;
   }
 
-  /// Invalidate cache so fresh data is loaded next query.
-  static void clearCache() => _allProviders = null;
+  /// Invalidate the mock JSON cache (called on logout / major state changes).
+  static void clearCache() => _mockProviders = null;
 
   /// Main matching: filter -> score -> rank -> return top matches with rationale.
   static Future<List<ProviderMatch>> matchProviders({
@@ -332,11 +341,16 @@ class MatchingService {
   static double _availabilityScore(ServiceProvider p, String preferredTime) {
     if (preferredTime == 'flexible') return 95;
     
-    // Simple availability rules check for live workers
+    // Simple availability rules check for live workers.
+    // Use word-boundary regex for 'off' to avoid false positives
+    // (e.g. "Monday off" should match, but "50% off-peak" should not).
     if (p.availability.isNotEmpty) {
       final rulesStr = p.availability.join(' ').toLowerCase();
-      if (rulesStr.contains('off') || rulesStr.contains('not available') || rulesStr.contains('busy')) {
-        return 0; // Filter out if agent memory says they are off
+      if (RegExp(r'\boff\b').hasMatch(rulesStr) ||
+          rulesStr.contains('not available') ||
+          rulesStr.contains('unavailable') ||
+          rulesStr.contains('busy')) {
+        return 0; // Provider's own schedule says they are unavailable
       }
     }
 
@@ -378,10 +392,10 @@ class MatchingService {
   static double _priceFitScore(ServiceProvider p, double budgetSensitivity) {
     final normalizedRate =
         (p.baseRatePkr / _maxModeledBaseRatePkr).clamp(0.0, 1.0);
-    if (budgetSensitivity >= 0.75) return (1 - normalizedRate) * 100;
-    return (_priceFitBalanceBase +
+    if (budgetSensitivity >= 0.75) return ((1 - normalizedRate) * 100).clamp(0.0, 100.0);
+    return ((_priceFitBalanceBase +
             (1 - (normalizedRate - _priceFitCenterRate).abs())) *
-        _priceFitBalanceScale;
+        _priceFitBalanceScale).clamp(0.0, 100.0);
   }
 
   static double _cancellationRiskScore(ServiceProvider p) {
@@ -390,8 +404,11 @@ class MatchingService {
   }
 
   static double _capacityScore(ServiceProvider p) {
-    final load = (p.totalJobs / 500.0).clamp(0.0, 1.0);
-    return (100 - (load * 40)).clamp(60.0, 100.0);
+    // Use completion rate as a proxy for reliable capacity.
+    // High totalJobs is an experience/trust signal, NOT a load penalty.
+    if (p.totalJobs == 0) return 70.0; // Neutral score for new workers
+    final completionRate = p.completionRate.clamp(0.0, 1.0);
+    return (completionRate * 100).clamp(60.0, 100.0);
   }
 
   static double _userPreferenceScore(ServiceProvider p, ServiceRequest req) {

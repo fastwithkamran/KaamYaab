@@ -8,8 +8,6 @@ class EnvConfig {
   // Cohere — https://dashboard.cohere.com/api-keys
   static const String cohereApiKey = 'YOUR_COHERE_API_KEY_HERE';
 
-  // Google Gemini — https://aistudio.google.com/app/apikey
-  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
 
   // Google Maps — https://console.cloud.google.com/apis/credentials
   static const String mapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY_HERE';

@@ -5,11 +5,6 @@ import 'env_config.dart';
 class RuntimeConfig {
   const RuntimeConfig._();
 
-  /// Gemini 1.5 Flash API key
-  static const String geminiApiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
-    defaultValue: EnvConfig.geminiApiKey,
-  );
 
   /// Cohere API key — primary AI backend
   static const String cohereApiKey = String.fromEnvironment(
