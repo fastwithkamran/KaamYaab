@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/language_service.dart';
 import '../services/auth_service.dart';
 import '../services/booking_history_service.dart';
+import '../services/provider_data_service.dart';
 import 'simulation_dashboard_screen.dart';
 
 class CustomerHubScreen extends StatefulWidget {
@@ -450,23 +451,22 @@ class _SettingsTabState extends State<_SettingsTab> {
         _SettingRow(
           icon: Icons.upload_rounded,
           title: _t('Seed Firestore', 'فائر اسٹور میں ڈیٹا ڈالیں'),
-          subtitle: _t('Upload demo workers to DB', 'ڈیٹا بیس میں ڈیمو کارکن'),
+          subtitle: _t('Upload demo providers + users', 'ڈیمو پرووائیڈر اور یوزرز اپلوڈ کریں'),
           trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
           onTap: () async {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
-            await AuthService().seedDemoData();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firestore Seeded!')));
-          },
-        ),
-        _SettingRow(
-          icon: Icons.upload_rounded,
-          title: _t('Seed Firestore', 'فائر اسٹور میں ڈیٹا ڈالیں'),
-          subtitle: _t('Upload demo workers to DB', 'ڈیٹا بیس میں ڈیمو کارکن'),
-          trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
-          onTap: () async {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
-            await AuthService().seedDemoData();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firestore Seeded!')));
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
+            try {
+              await ProviderDataService().seedProvidersFromMockAsset();
+              await AuthService().seedDemoData();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Firestore Seeded!')),
+              );
+            } catch (_) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Seeding failed. Please try again.')),
+              );
+            }
           },
         ),
 

@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../utils/distance_utils.dart';
-import '../services/auth_service.dart';
 import '../config/runtime_config.dart';
 import 'ai_service.dart';
+import 'provider_data_service.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
@@ -16,70 +14,13 @@ class MatchingService {
   static const double _priceFitCenterRate = 0.5;
   static const double _priceFitBalanceScale = 62.5;
 
-  // Only the static mock-JSON providers are cached. Live workers are always
-  // re-merged on each call so new registrations and logouts are reflected.
-  static List<ServiceProvider>? _mockProviders;
-
-  /// Load providers: static JSON is cached; live workers are always re-merged fresh.
+  /// Load providers from Firestore.
   static Future<List<ServiceProvider>> loadProviders() async {
-    // Load (and cache) the static mock JSON only once.
-    if (_mockProviders == null) {
-      try {
-        final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-        final decoded = jsonDecode(raw) as Map<String, dynamic>;
-        final list = (decoded['providers'] as List<dynamic>)
-            .cast<Map<String, dynamic>>();
-        _mockProviders = list.map(ServiceProvider.fromJson).toList();
-      } catch (_) {
-        _mockProviders = [];
-      }
-    }
-
-    // Always re-merge live workers so new registrations & logouts are reflected.
-    final allProviders = List<ServiceProvider>.from(_mockProviders!);
-    try {
-      final liveWorkers = await AuthService().getAllWorkers();
-      for (var worker in liveWorkers) {
-        if (worker.latitude != null && worker.longitude != null) {
-          allProviders.add(ServiceProvider(
-            id: worker.uid,
-            name: worker.name,
-            phone: worker.phone,
-            serviceCategory: worker.serviceCategory ?? 'General',
-            skills: worker.skills ?? [],
-            lat: worker.latitude!,
-            lng: worker.longitude!,
-            area: worker.area,
-            city: worker.city,
-            dnascore: 800,
-            rating: worker.rating,
-            totalJobs: worker.totalJobs,
-            completedJobs: worker.totalJobs,
-            onTimeRate: 0.9,
-            cancellationRate: 0.05,
-            priceFairnessScore: 0.8,
-            disputeCount: 0,
-            surgeAcceptor: true,
-            baseRatePkr: worker.baseRatePkr ?? 500.0,
-            experienceLevel: 'intermediate',
-            certifications: [],
-            availability: worker.availabilityRules ?? [],
-            availableSlots: ['09:00', '10:00', '14:00', '16:00'],
-            reviewCount: 0,
-            profileImage: worker.profileImageBase64 ?? '',
-            isVerified: true,
-            lastActiveDate: DateTime.now().toIso8601String(),
-          ));
-        }
-      }
-    } catch (_) {
-      // Live worker merge failed — continue with mock providers only.
-    }
-    return allProviders;
+    return ProviderDataService().loadProviders();
   }
 
-  /// Invalidate the mock JSON cache (called on logout / major state changes).
-  static void clearCache() => _mockProviders = null;
+  /// No-op: provider source of truth is Firestore.
+  static void clearCache() {}
 
   /// Main matching: filter -> score -> rank -> return top matches with rationale.
   static Future<List<ProviderMatch>> matchProviders({
