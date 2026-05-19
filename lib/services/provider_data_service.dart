@@ -40,7 +40,9 @@ class ProviderDataService {
 
     final raw = await rootBundle.loadString('assets/data/providers_mock.json');
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    final list = (decoded['providers'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final list = (decoded['providers'] as List<dynamic>)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
 
     final batch = FirebaseFirestore.instance.batch();
     final col = FirebaseFirestore.instance.collection(providersCollection);
