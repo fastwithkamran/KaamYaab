@@ -72,3 +72,6 @@ android/.gradle/
 *.keystore
 android/key.properties
 android/app/key.properties
+
+# Local analysis artifacts
+analyze_output.txt
