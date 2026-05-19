@@ -469,27 +469,6 @@ class _SettingsTabState extends State<_SettingsTab> {
             }
           },
         ),
-        _SettingRow(
-          icon: Icons.upload_rounded,
-          title: _t('Seed Firestore', 'فائر اسٹور میں ڈیٹا ڈالیں'),
-          subtitle: _t('Upload demo providers + users', 'ڈیمو پرووائیڈر اور یوزرز اپلوڈ کریں'),
-          trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
-          onTap: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            messenger.showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
-            try {
-              await ProviderDataService().seedProvidersFromMockAsset();
-              await AuthService().seedDemoData();
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Firestore Seeded!')),
-              );
-            } catch (_) {
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Seeding failed. Please try again.')),
-              );
-            }
-          },
-        ),
 
         const SizedBox(height: 32),
         // Sign out
