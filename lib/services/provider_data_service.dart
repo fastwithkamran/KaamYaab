@@ -39,12 +39,12 @@ class ProviderDataService {
     if (!_isFirebaseReady) return;
 
     final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) {
+    final jsonRoot = jsonDecode(raw);
+    if (jsonRoot is! Map<String, dynamic>) {
       throw const FormatException('Invalid providers JSON: top-level object expected.');
     }
 
-    final providersRaw = decoded['providers'];
+    final providersRaw = jsonRoot['providers'];
     if (providersRaw is! List) {
       throw const FormatException('Invalid providers JSON: "providers" list missing.');
     }
