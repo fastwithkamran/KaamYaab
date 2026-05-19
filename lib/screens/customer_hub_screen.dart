@@ -454,10 +454,19 @@ class _SettingsTabState extends State<_SettingsTab> {
           subtitle: _t('Upload demo providers + users', 'ڈیمو پرووائیڈر اور یوزرز اپلوڈ کریں'),
           trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
           onTap: () async {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
-            await ProviderDataService().seedProvidersFromMockAsset();
-            await AuthService().seedDemoData();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firestore Seeded!')));
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
+            try {
+              await ProviderDataService().seedProvidersFromMockAsset();
+              await AuthService().seedDemoData();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Firestore Seeded!')),
+              );
+            } catch (_) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Seeding failed. Please try again.')),
+              );
+            }
           },
         ),
         _SettingRow(
@@ -466,10 +475,19 @@ class _SettingsTabState extends State<_SettingsTab> {
           subtitle: _t('Upload demo providers + users', 'ڈیمو پرووائیڈر اور یوزرز اپلوڈ کریں'),
           trailing: const Icon(Icons.chevron_right, color: AppTheme.tealPrimary),
           onTap: () async {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
-            await ProviderDataService().seedProvidersFromMockAsset();
-            await AuthService().seedDemoData();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firestore Seeded!')));
+            final messenger = ScaffoldMessenger.of(context);
+            messenger.showSnackBar(const SnackBar(content: Text('Seeding Firestore...')));
+            try {
+              await ProviderDataService().seedProvidersFromMockAsset();
+              await AuthService().seedDemoData();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Firestore Seeded!')),
+              );
+            } catch (_) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Seeding failed. Please try again.')),
+              );
+            }
           },
         ),
 

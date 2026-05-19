@@ -39,10 +39,24 @@ class ProviderDataService {
     if (!_isFirebaseReady) return;
 
     final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    final list = (decoded['providers'] as List<dynamic>)
-        .map((e) => e as Map<String, dynamic>)
-        .toList();
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid providers JSON: top-level object expected.');
+    }
+
+    final providersRaw = decoded['providers'];
+    if (providersRaw is! List) {
+      throw const FormatException('Invalid providers JSON: "providers" list missing.');
+    }
+
+    final list = providersRaw.map<Map<String, dynamic>>((e) {
+      if (e is! Map<String, dynamic>) {
+        throw const FormatException(
+          'Invalid providers JSON: every provider must be an object.',
+        );
+      }
+      return e;
+    }).toList();
 
     final batch = FirebaseFirestore.instance.batch();
     final col = FirebaseFirestore.instance.collection(providersCollection);
