@@ -1,5 +1,5 @@
 plugins {
-    id "com.android.application" version "8.7.0" apply false
+    id "com.android.application" version "8.3.2" apply false
     // org.jetbrains.kotlin.android is intentionally omitted here.
     // Flutter's includeBuild (settings.gradle) already puts it on the
     // classpath via flutter_tools/gradle — declaring it again with an
