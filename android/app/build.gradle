@@ -1,6 +1,6 @@
 plugins {
     id "com.android.application"
-    id "com.google.gms.google-services"
+    // id "com.google.gms.google-services"
     id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
@@ -27,7 +27,7 @@ if (flutterVersionName == null) { flutterVersionName = '1.0' }
 android {
     namespace "com.kaamyaab"
     compileSdkVersion 34
-    ndkVersion flutter.ndkVersion
+    // ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -50,7 +50,8 @@ android {
         versionName flutterVersionName
         multiDexEnabled true
         manifestPlaceholders = [
-            mapsApiKey: localProperties.getProperty('MAPS_API_KEY') ?: "YOUR_GOOGLE_MAPS_API_KEY"
+            mapsApiKey: localProperties.getProperty('MAPS_API_KEY') ?: "YOUR_GOOGLE_MAPS_API_KEY",
+            applicationName: "android.app.Application"
         ]
     }
 
@@ -58,7 +59,12 @@ android {
         release {
             signingConfig signingConfigs.debug
             minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }
@@ -69,6 +75,6 @@ flutter {
 
 dependencies {
     implementation 'com.google.firebase:firebase-messaging:23.4.0'
-    implementation platform('com.google.firebase:firebase-bom:34.13.0')
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'androidx.multidex:multidex:2.0.1'
 }
