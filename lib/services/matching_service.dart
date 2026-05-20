@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../utils/distance_utils.dart';
-import '../services/auth_service.dart';
 import '../config/runtime_config.dart';
 import 'ai_service.dart';
+import 'provider_data_service.dart';
 
 /// Core matching engine - computes README-aligned 10-factor provider ranking.
 class MatchingService {
@@ -16,6 +14,7 @@ class MatchingService {
   static const double _priceFitCenterRate = 0.5;
   static const double _priceFitBalanceScale = 62.5;
 
+<<<<<<< HEAD
   // Only the static mock-JSON providers are cached. Live workers are always
   // re-merged on each call so new registrations and logouts are reflected.
   static List<ServiceProvider>? _mockProviders;
@@ -116,6 +115,15 @@ class MatchingService {
     _mockProviders = null;
     _bookedSlots.clear();
   }
+=======
+  /// Load providers from Firestore.
+  static Future<List<ServiceProvider>> loadProviders() async {
+    return ProviderDataService().loadProviders();
+  }
+
+  /// No-op: provider source of truth is Firestore.
+  static void clearCache() {}
+>>>>>>> 83508150ad595600898b4e2bf81b004d195db7d8
 
   /// Main matching: filter -> score -> rank -> return top matches with rationale.
   static Future<List<ProviderMatch>> matchProviders({
