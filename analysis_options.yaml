@@ -1,0 +1,9 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Performance hints — suppressed project-wide to keep output clean.
+    # These are style suggestions only; they do not affect correctness.
+    prefer_const_constructors: false
+    prefer_const_declarations: false
+    prefer_const_literals_to_create_immutables: false
