@@ -1,6 +1,6 @@
 # KaamYaab — AI Service Orchestrator for the Informal Economy
 
-> **KaamYaab** is an agentic, end-to-end service lifecycle platform for informal-economy professionals — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, and local service providers — built in Flutter and powered by **Google Antigravity** (via Gemini) as the core orchestrator.
+> **KaamYaab** is an agentic, end-to-end service lifecycle platform for informal-economy professionals — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, and local service providers — built in Flutter and powered by **Google Antigravity** (the hackathon's multi-agent orchestration framework, implemented via Gemini 2.0 Flash) as the core orchestrator.
 
 ---
 
@@ -117,7 +117,7 @@ The app supports two user roles:
 | Layer | Technology / Service | Cost |
 |---|---|---|
 | **Orchestration** | Google Antigravity / Gemini 2.0 Flash — free tier | Free |
-| **Secondary AI** | Cohere command-r — free tier (primary in AiService; Gemini is fallback and vice-versa) | Free |
+| **Secondary AI** | Cohere command-r — free tier (primary for provider ranking and negotiation; Gemini is fallback for those calls) | Free |
 | **Mobile App** | Flutter (Android, iOS, Web) with Riverpod state management | Free |
 | **NLU / LLM** | Gemini 2.0 Flash (15 req/min free) + Cohere command-r (free tier) | Free |
 | **Provider Discovery** | Firestore-backed provider collection seeded from `assets/data/providers_mock.json`; live registered workers merged at runtime | Free |
