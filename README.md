@@ -1,6 +1,6 @@
-# AI Service Orchestrator for the Informal Economy
+# KaamYaab — AI Service Orchestrator for the Informal Economy
 
-> An agentic, end-to-end service lifecycle platform for informal-economy professionals — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, and local service providers — powered by **Google Antigravity** as the core orchestrator.
+> **KaamYaab** is an agentic, end-to-end service lifecycle platform for informal-economy professionals — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, and local service providers — built in Flutter and powered by **Google Antigravity** (via Gemini) as the core orchestrator.
 
 ---
 
@@ -9,25 +9,27 @@
 1. [Project Overview](#1-project-overview)
 2. [Architecture Overview](#2-architecture-overview)
 3. [Tech Stack and APIs](#3-tech-stack-and-apis)
-4. [Google Antigravity Integration and Workflow](#4-google-antigravity-integration-and-workflow)
-5. [Provider Dataset Schema](#5-provider-dataset-schema)
-6. [Multilingual and Noisy Input Handling](#6-multilingual-and-noisy-input-handling)
-7. [Advanced Provider Matching Algorithm](#7-advanced-provider-matching-algorithm)
-8. [Job Complexity Classification](#8-job-complexity-classification)
-9. [Scheduling Intelligence](#9-scheduling-intelligence)
-10. [Dynamic Pricing Engine](#10-dynamic-pricing-engine)
-11. [Booking Simulation](#11-booking-simulation)
-12. [Service-Quality Loop](#12-service-quality-loop)
-13. [Dispute and Escalation Workflow](#13-dispute-and-escalation-workflow)
-14. [Provider-Side Optimization](#14-provider-side-optimization)
-15. [Robustness and Fallback Mechanisms](#15-robustness-and-fallback-mechanisms)
-16. [Stress-Test Scenarios](#16-stress-test-scenarios)
-17. [Assumptions](#17-assumptions)
-18. [Cost and Latency Analysis](#18-cost-and-latency-analysis)
-19. [Baseline Comparison](#19-baseline-comparison)
-20. [Privacy Note](#20-privacy-note)
-21. [Limitations](#21-limitations)
-22. [Judge Verification: Proving Antigravity Usage](#22-judge-verification-proving-antigravity-usage)
+4. [App Screens and Features](#4-app-screens-and-features)
+5. [Google Antigravity Integration and Workflow](#5-google-antigravity-integration-and-workflow)
+6. [Provider Dataset Schema](#6-provider-dataset-schema)
+7. [Multilingual and Noisy Input Handling](#7-multilingual-and-noisy-input-handling)
+8. [Advanced Provider Matching Algorithm](#8-advanced-provider-matching-algorithm)
+9. [Job Complexity Classification](#9-job-complexity-classification)
+10. [Scheduling Intelligence](#10-scheduling-intelligence)
+11. [Dynamic Pricing Engine](#11-dynamic-pricing-engine)
+12. [Booking Simulation](#12-booking-simulation)
+13. [Service-Quality Loop](#13-service-quality-loop)
+14. [Dispute and Escalation Workflow](#14-dispute-and-escalation-workflow)
+15. [Provider-Side Optimization](#15-provider-side-optimization)
+16. [Robustness and Fallback Mechanisms](#16-robustness-and-fallback-mechanisms)
+17. [Stress-Test Scenarios](#17-stress-test-scenarios)
+18. [Assumptions](#18-assumptions)
+19. [Cost and Latency Analysis](#19-cost-and-latency-analysis)
+20. [Baseline Comparison](#20-baseline-comparison)
+21. [Privacy Note](#21-privacy-note)
+22. [Limitations](#22-limitations)
+23. [Setup and Running](#23-setup-and-running)
+24. [Judge Verification: Proving Antigravity Usage](#24-judge-verification-proving-antigravity-usage)
 
 ---
 
@@ -41,7 +43,11 @@ The informal service economy in South Asia and similar markets relies on fragmen
 - No dispute resolution mechanism
 - Complete exclusion of low-literacy or non-English-speaking users
 
-This system automates the **entire service lifecycle** — from a natural-language request in Urdu, Roman Urdu, or mixed code-switched text, through provider matching, dynamic pricing, booking, live tracking simulation, feedback collection, reputation update, and dispute handling — all orchestrated by **Google Antigravity**.
+**KaamYaab** automates the **entire service lifecycle** — from a natural-language request in Urdu, Roman Urdu, or mixed code-switched text, through AI-powered provider matching, dynamic pricing, booking, live Google Maps tracking, feedback collection, reputation update, and dispute handling — all orchestrated by **Google Antigravity** (Gemini 2.0 Flash) with **Cohere command-r** as an additional AI backbone.
+
+The app supports two user roles:
+- **Customers** — find, book, track, and rate service providers via an AI chat agent and voice booking.
+- **Workers (Service Providers)** — register, set availability, and receive bookings through a dedicated provider dashboard.
 
 ---
 
@@ -50,47 +56,57 @@ This system automates the **entire service lifecycle** — from a natural-langua
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                             │
-│   Mobile App (React Native / Flutter)  ·  Web App (optional)   │
+│         Flutter Mobile App (KaamYaab) — Android / iOS / Web    │
 └───────────────────────────┬─────────────────────────────────────┘
-                            │  Natural-language input
+                            │  Natural-language / voice input
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              GOOGLE ANTIGRAVITY ORCHESTRATOR                    │
+│           AI AGENT LAYER  (Flutter AiService + Python agents)   │
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐ │
-│  │ Intent Agent │  │ Matching     │  │ Scheduling Agent      │ │
-│  │ (NLU + lang  │  │ Agent        │  │ (calendar, buffers,   │ │
-│  │  detection)  │  │ (6+ factors) │  │  conflict detection)  │ │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬────────────┘ │
-│         │                 │                      │              │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────────▼────────────┐ │
-│  │ Pricing      │  │ Booking      │  │ Quality & Dispute      │ │
-│  │ Agent        │  │ Agent        │  │ Agent                  │ │
-│  │ (dynamic     │  │ (confirm,    │  │ (feedback, escalation, │ │
-│  │  quotes)     │  │  notify,     │  │  refund, blacklist)    │ │
-│  └──────────────┘  │  receipt)    │  └───────────────────────┘ │
-│                    └──────────────┘                             │
+│  │ Chat / Intent│  │ Ranking      │  │ Negotiation Agent     │ │
+│  │ Agent        │  │ Agent        │  │ (price counter-offer, │ │
+│  │ (NLU, lang   │  │ (top-3 match │  │  surge awareness,     │ │
+│  │  detection,  │  │  with DNA    │  │  loyalty tiers)       │ │
+│  │  slot-fill)  │  │  reasoning)  │  └───────────────────────┘ │
+│  └──────┬───────┘  └──────┬───────┘                            │
+│         │                 │                                     │
+│  ┌──────▼────────────────────────────────────────────────────┐  │
+│  │       Python Orchestrator  (functions/agents/)            │  │
+│  │  SurgeAgent · PricingAgent · SchedulingAgent · BookingAgent│  │
+│  │  DisputeAgent · ProviderOptimizationAgent                 │  │
+│  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────┬───────────────────────────────────┘
-                              │  Tool calls
+                              │  Tool calls / data queries
           ┌───────────────────┼──────────────────────┐
           ▼                   ▼                      ▼
   ┌───────────────┐  ┌────────────────┐  ┌──────────────────────┐
-  │ Haversine     │  │ Provider DB /  │  │ In-App Notification  │
-  │ Distance Calc │  │ Mock Dataset   │  │ (Toast / Modal sim)  │
-  │ (no Maps API) │  │ (static JSON)  │  │ (in-app only)        │
-  └───────────────┘  └────────────────┘  └──────────────────────┘
+  │ Haversine     │  │ Firebase       │  │ In-App Notification  │
+  │ Distance Calc │  │ Firestore DB   │  │ (Toast / Bottom-sheet│
+  │ (no Maps API  │  │ (providers,    │  │  — no 3rd-party API) │
+  │  for matching)│  │  bookings)     │  └──────────────────────┘
+  └───────────────┘  └────────────────┘
+          │                   │
+  ┌───────▼───────┐  ┌────────▼────────────────────────────────┐
+  │ Google Maps   │  │ SharedPreferences                       │
+  │ (live tracking│  │ (auth: users, session, bans)            │
+  │  screen only) │  └─────────────────────────────────────────┘
+  └───────────────┘
 ```
 
 ### Component Responsibilities
 
 | Component | Responsibility |
 |---|---|
-| **Intent Agent** | Language detection, entity extraction, confidence scoring, confirmation dialogs |
-| **Matching Agent** | Multi-factor provider ranking, tie-breaking, fallback discovery |
-| **Scheduling Agent** | Slot availability, conflict detection, travel-time buffers, waitlists |
-| **Pricing Agent** | Dynamic quote generation, discount application, transparent breakdown |
-| **Booking Agent** | Confirmation, assignment, calendar update, in-app notification simulation, receipt |
-| **Quality & Dispute Agent** | En-route simulation, feedback collection, rating update, dispute resolution |
+| **Chat / Intent Agent** | Language detection, entity extraction, confidence scoring, conversational slot-filling, confirmation dialogs |
+| **Ranking Agent** | Multi-factor provider ranking with DNA score, tie-breaking, and fallback discovery |
+| **Negotiation Agent** | Price counter-offer logic with surge awareness, loyalty tiers, and repeat-customer discounts |
+| **SurgeAgent (Python)** | Demand/provider ratio detection, tiered surge multiplier, off-peak incentives |
+| **PricingAgent (Python)** | 5-tier urgency, per-km tiered distance charge, complexity multiplier, min-floor guard |
+| **SchedulingAgent (Python)** | Slot availability, same-day job cap, travel-time buffer, conflict detection |
+| **BookingAgent (Python)** | 7-step booking chain with Antigravity trace, en-route ETA, photo evidence step |
+| **DisputeAgent (Python)** | 5 dispute types, blacklist threshold, structured support ticket |
+| **ProviderOptimizationAgent (Python)** | Workload balance, demand forecast, recommended availability slots |
 
 ---
 
@@ -100,85 +116,141 @@ This system automates the **entire service lifecycle** — from a natural-langua
 
 | Layer | Technology / Service | Cost |
 |---|---|---|
-| **Orchestration** | Google Antigravity (hackathon-provided) | Free |
-| **Mobile App** | React Native (mandatory) / Flutter | Free |
-| **Web App** | React + Next.js (optional) | Free |
-| **NLU / LLM** | Google Gemini 1.5 Flash — free tier (15 req/min, 1M tokens/day) | Free |
-| **Provider Discovery** | Static mock dataset (JSON) + local Haversine distance calculation — no Maps API calls | Free |
-| **Distance / Travel Time** | Haversine formula on provider `GeoPoint` coordinates stored in mock data — no external maps API | Free |
-| **Notifications** | Fully simulated in-app (toast / bottom-sheet modal) — no third-party notification API | Free |
+| **Orchestration** | Google Antigravity / Gemini 2.0 Flash — free tier | Free |
+| **Secondary AI** | Cohere command-r — free tier (primary in AiService; Gemini is fallback and vice-versa) | Free |
+| **Mobile App** | Flutter (Android, iOS, Web) with Riverpod state management | Free |
+| **NLU / LLM** | Gemini 2.0 Flash (15 req/min free) + Cohere command-r (free tier) | Free |
+| **Provider Discovery** | Firestore-backed provider collection seeded from `assets/data/providers_mock.json`; live registered workers merged at runtime | Free |
+| **Distance / Travel Time** | Haversine formula on provider `lat/lng` stored in Firestore — no external maps API for matching | Free |
+| **Live Tracking** | Google Maps Flutter — animates worker marker toward customer in real time | Free (SDK bundled) |
+| **Voice Booking** | `speech_to_text` (STT) + `flutter_tts` (TTS) — fully on-device | Free |
+| **Notifications** | In-app simulation (toast / bottom-sheet) — no third-party notification API | Free |
 | **Database** | Firebase Firestore — Spark free plan (50K reads/day, 20K writes/day) | Free |
-| **Spreadsheet Logging** | Google Sheets API — included free with GCP | Free |
-| **Auth** | Firebase Auth — free tier | Free |
+| **Auth** | SharedPreferences (local) + Firebase Phone Auth for OTP verification | Free |
+| **Booking History** | Firebase Firestore `bookings` collection | Free |
 | **Hosting** | Google Cloud Run — 2M requests/month free tier | Free |
 | **GCP Budget** | Not required for this prototype | $0 |
 
-### Why no Google Maps API?
-For the prototype, all 50–200 providers have pre-seeded `GeoPoint` coordinates. Distance between user and provider is calculated client-side using the Haversine formula (accurate to ~0.5%). This removes the need for external maps API calls entirely, costs nothing, and works offline.
+### Why Haversine (not Google Maps) for matching?
+For the prototype, all providers have pre-seeded `lat/lng` coordinates. Distance between user and provider is calculated locally using the Haversine formula (accurate to ~0.5%). This removes the need for external Maps API calls during the matching phase, costs nothing, and works offline. Google Maps is only used in the **live tracking screen**, where an animated map is shown post-booking.
 
 ---
 
-## 4. Google Antigravity Integration and Workflow
+## 4. App Screens and Features
 
-Google Antigravity acts as the **sole decision-making spine** of the system. Every major agentic action is triggered, reasoned about, and logged through Antigravity. External LLMs, APIs, and databases are tools that Antigravity calls — they do not control workflow logic.
+### 4.1 Customer Flow
 
-### 4.1 Antigravity Agent Workflow (Step-by-Step)
+| Screen | Route | Description |
+|---|---|---|
+| **Splash** | `/` | Animated logo → auto-navigates after init |
+| **Language Selection** | `/lang` | Choose English or Urdu (persisted) |
+| **Role Selection** | `/login` | Customer vs. Worker entry point |
+| **Customer Sign-up** | — | Name, phone, CNIC, city/area, password + OTP verification |
+| **Login** | — | Phone + password; super-admin phone unlocks admin panel |
+| **Home** | `/home` | AI chat agent + live provider matching cards + surge banner |
+| **Voice Booking** | `/voice-booking` | Microphone-based booking with STT → AI → TTS response loop |
+| **Browse Workers** | `/workers` | Filterable worker grid with DNA score and distance |
+| **Booking Flow** | Navigator.push | 7-step animated booking pipeline with price quote and receipt |
+| **Live Tracking** | Navigator.push | Google Maps screen with animated worker-to-customer movement and ETA |
+| **Dispute** | Navigator.push | File and track a dispute from the Customer Hub |
+| **Customer Hub** | `/hub` | Tabs: Booking History · Settings (language, logout) · Disputes |
+| **Agent Logs** | `/agent-logs` | Hackathon simulator — trigger notification demos |
+
+### 4.2 Worker Flow
+
+| Screen | Route | Description |
+|---|---|---|
+| **Worker Sign-up** | — | Name, phone, CNIC, city/area, service category, skills, base rate, experience, bio, availability rules, location pin |
+| **Worker Dashboard** | `/dashboard` | Online/offline toggle, availability rules display, AI chat for schedule help |
+
+### 4.3 Admin Flow
+
+| Screen | Route | Description |
+|---|---|---|
+| **Admin Dashboard** | `/admin` | Three tabs: All Users · Workers · Customers — with search, ban/unban controls |
+
+### 4.4 Key Features
+
+- **Bilingual UI** — all user-visible strings available in English and Urdu (`LanguageService`)
+- **Conversational AI chat** — multi-turn context-aware chat using `ChatHistoryService`
+- **Voice booking** — speak your request, get a spoken AI response, confirm and book
+- **Surge pricing banner** — live multiplier shown when high-demand threshold is crossed
+- **Price negotiation** — customer can counter-offer; AI Negotiation Agent decides fair counter
+- **Double-booking prevention** — `MatchingService.bookSlot()` locks a provider's slot atomically
+- **Firestore seeding** — Admin can seed Firestore with `providers_mock.json` via Customer Hub
+- **Persistent booking history** — completed bookings saved to Firestore `bookings` collection
+- **Live map tracking** — Uber-style animated provider marker on Google Maps post-booking
+
+---
+
+## 5. Google Antigravity Integration and Workflow
+
+Google Antigravity (via Gemini 2.0 Flash) acts as the **sole decision-making spine** of the system. Every major agentic action is triggered, reasoned about, and logged through Antigravity. External LLMs, databases, and services are tools that agents call — they do not control workflow logic.
+
+### 5.1 Antigravity Agent Workflow (Step-by-Step)
 
 ```
 Step 1  USER INPUT
-        │  Raw text → Antigravity Intent Agent
-        │  Output: structured intent JSON + confidence score
+        │  Raw text or voice → KaamYaab Chat / Intent Agent (AiService.chat)
+        │  Output: structured intent JSON + confidence score + action (CHAT | SEARCH | CLARIFY)
         ▼
 Step 2  CONFIRMATION GATE
         │  If confidence < 0.75 → agent issues clarification question
         │  If confidence ≥ 0.75 → proceed
         ▼
 Step 3  PROVIDER DISCOVERY
-        │  Intent Agent hands off to Matching Agent
-        │  Matching Agent queries static mock Provider DB
+        │  Intent Agent hands off to Ranking Agent (AiService.rankProviders)
+        │  Ranking Agent queries Firestore-backed provider pool + live registered workers
         │  Haversine distance calculated locally for each candidate
-        │  Builds candidate list (up to 20 providers)
+        │  Builds candidate list (filtered by category, disputes, cancellations)
         ▼
-Step 4  MULTI-FACTOR RANKING
-        │  Matching Agent scores each candidate across 10 factors
-        │  Generates ranking rationale trace (see §4.2)
+Step 4  AI RANKING
+        │  Ranking Agent scores each candidate using DNA score, reliability, distance
+        │  Returns ranked_ids + reasoning in Roman Urdu/English
+        │  Flutter MatchingService applies 10-factor composite fallback if AI unavailable
         │  Selects top-3 recommendations
         ▼
 Step 5  COMPLEXITY CLASSIFICATION
         │  Job classified as Basic / Intermediate / Complex
-        │  Matching Agent verifies provider certification/tools match complexity
+        │  Matching Agent verifies provider certifications/experience match complexity
         ▼
-Step 6  SCHEDULING CHECK
-        │  Scheduling Agent queries provider calendars
-        │  Checks travel-time buffers from previous appointment
+Step 6  SURGE CHECK
+        │  SurgeAgent detects demand/provider ratio
+        │  Applies tiered surge multiplier (0–35%)
+        │  Surge banner shown to user if active
+        ▼
+Step 7  PRICE NEGOTIATION (optional)
+        │  User can counter-offer the quoted price
+        │  NegotiationAgent returns fair counter-offer with reasoning
+        ▼
+Step 8  SCHEDULING CHECK
+        │  SchedulingAgent queries provider available slots
+        │  Checks travel-time buffers (travel_time + 45 min) from previous appointment
+        │  Double-booking prevention: MatchingService.bookSlot() locks the slot
         │  Confirms or suggests alternate slots
         ▼
-Step 7  DYNAMIC PRICING
-        │  Pricing Agent computes quote with full breakdown
-        │  Applies surge, urgency, loyalty adjustments
-        │  Presents user-facing and provider-facing figures
-        ▼
-Step 8  BOOKING EXECUTION
-        │  Booking Agent confirms slot, locks provider calendar
+Step 9  BOOKING EXECUTION (7-step animated pipeline)
+        │  BookingAgent confirms slot, locks provider calendar
         │  Dispatches in-app notifications to user and provider
-        │  Writes booking record to DB + audit sheet
+        │  Writes booking record to Firestore bookings collection
+        │  Generates receipt number (KY-XXXXXXXX)
         ▼
-Step 9  SERVICE EXECUTION LOOP
-        │  En-route simulation → arrival → checklist → completion
-        │  Evidence placeholder (photo/video upload prompt)
+Step 10 SERVICE EXECUTION LOOP
+        │  En-route simulation → Google Maps live tracking → arrival → checklist → completion
+        │  Evidence placeholder (photo upload prompt)
         ▼
-Step 10 FEEDBACK AND REPUTATION
+Step 11 FEEDBACK AND REPUTATION
         │  User submits rating (1–5) + text
-        │  Quality Agent updates provider score
+        │  Quality Agent updates provider DNA score
         │  Future match scores recalculated
         ▼
-Step 11 DISPUTE HANDLING (if triggered)
-        │  Dispute Agent classifies dispute type
+Step 12 DISPUTE HANDLING (if triggered)
+        │  Dispute Agent classifies dispute type (5 types)
         │  Applies resolution policy
         │  Escalates to human operator if unresolved
 ```
 
-### 4.2 Antigravity Reasoning Trace Format
+### 5.2 Antigravity Reasoning Trace Format
 
 Every major decision emits a structured trace log:
 
@@ -233,66 +305,65 @@ Traces are produced for: **language parsing, provider ranking, scheduling confli
 
 ---
 
-## 5. Provider Dataset Schema
+## 6. Provider Dataset Schema
 
-### 5.1 Provider Record
+### 6.1 Provider Record (Firestore `providers` collection)
+
+The `ServiceProvider` model used in the Flutter app maps to these fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `provider_id` | `string` | Unique identifier (e.g., `PRV-0041`) |
+| `id` | `string` | Unique identifier (e.g., `PRV-0041`) |
 | `name` | `string` | Full business or individual name |
-| `phone` | `string` | WhatsApp-capable contact number |
-| `services` | `string[]` | List of offered services (e.g., `["AC Repair", "AC Installation"]`) |
-| `specializations` | `object` | Per-service specialization score `0.0–1.0` |
-| `location` | `GeoPoint` | GPS coordinates of base location |
-| `service_radius_km` | `float` | Maximum travel radius |
-| `base_rate_pkr` | `float` | Starting hourly or per-job rate (PKR) |
+| `phone` | `string` | Contact number |
+| `service_category` | `string` | Primary service (e.g., `AC Repair`) |
+| `skills` | `string[]` | List of specific skills |
+| `lat` | `float` | GPS latitude of base location |
+| `lng` | `float` | GPS longitude of base location |
+| `area` | `string` | Neighbourhood/area name |
+| `city` | `string` | City |
+| `dna_score` | `int` | Composite trust/quality score (0–1000) |
+| `base_rate_pkr` | `float` | Starting per-job rate (PKR) |
 | `rating` | `float` | Weighted average rating `1.0–5.0` |
-| `review_count` | `int` | Total reviews received |
-| `last_review_date` | `date` | Date of most recent review |
-| `on_time_rate` | `float` | Fraction of jobs completed on time `0.0–1.0` |
+| `total_jobs` | `int` | Total jobs performed |
+| `completed_jobs` | `int` | Successfully completed jobs |
+| `on_time_rate` | `float` | Fraction of on-time arrivals `0.0–1.0` |
 | `cancellation_rate` | `float` | Fraction of accepted jobs later cancelled `0.0–1.0` |
-| `experience_years` | `int` | Years of active service |
-| `certifications` | `string[]` | Relevant certifications (e.g., `["HVAC Level 2"]`) |
-| `tools_owned` | `string[]` | Key tools/equipment available |
-| `availability` | `object` | Weekly schedule with time slots |
-| `active_bookings` | `int` | Current confirmed bookings (capacity check) |
-| `max_daily_jobs` | `int` | Self-reported daily job cap |
-| `risk_score` | `float` | Composite risk indicator `0.0–1.0` (lower = safer) |
-| `loyalty_tier` | `enum` | `new / standard / preferred / elite` |
-| `preferred_by_users` | `string[]` | User IDs who have marked this provider as preferred |
-| `blacklisted` | `boolean` | Whether provider is currently suspended |
+| `price_fairness_score` | `float` | User-reported price fairness `0.0–1.0` |
 | `dispute_count` | `int` | Total disputes raised against provider |
-| `last_dispute_date` | `date` | Date of most recent dispute |
-| `demand_forecast_score` | `float` | Predicted demand in provider's area for next 7 days |
-| `created_at` | `timestamp` | Profile creation date |
-| `updated_at` | `timestamp` | Last profile update |
+| `surge_acceptor` | `boolean` | Whether provider accepts surge-price bookings |
+| `experience_level` | `enum` | `basic / intermediate / complex` |
+| `certifications` | `string[]` | Relevant certifications (e.g., `["HVAC Level 2"]`) |
+| `availability` | `string[]` | Available days (e.g., `["Mon","Tue",...]`) |
+| `available_slots` | `string[]` | Time slots (e.g., `["09:00","10:00",...]`) |
+| `review_count` | `int` | Total reviews received |
+| `is_verified` | `boolean` | Whether provider has been verified |
+| `last_active_date` | `string` | ISO timestamp of last activity |
 
-### 5.2 Booking Record
+> **Data source:** `assets/data/providers_mock.json` is bundled with the app. Admins can seed Firestore via the Customer Hub "Seed Firestore" button. Live registered workers (role = `worker`) are merged into the provider pool at runtime with computed DNA scores and parsed availability.
+
+### 6.2 Booking Record (Firestore `bookings` collection)
 
 | Field | Type | Description |
 |---|---|---|
-| `booking_id` | `string` | Unique booking reference (e.g., `BK-20240515-0091`) |
-| `user_id` | `string` | Customer identifier |
+| `customer_uid` | `string` | Customer identifier (from AuthService) |
+| `customer_phone` | `string` | Customer phone |
+| `request_id` | `string` | Linked service request |
 | `provider_id` | `string` | Assigned provider |
+| `provider_name` | `string` | Provider name for display |
 | `service_type` | `string` | Service requested |
-| `complexity` | `enum` | `basic / intermediate / complex` |
-| `location` | `GeoPoint + string` | Service address |
-| `scheduled_start` | `datetime` | Confirmed appointment start |
-| `scheduled_end` | `datetime` | Estimated appointment end |
-| `status` | `enum` | `pending / confirmed / en_route / in_progress / completed / cancelled / disputed` |
+| `user_area` | `string` | Customer area |
+| `scheduled_date` | `string` | Confirmed appointment date |
+| `scheduled_time` | `string` | Confirmed appointment time slot |
 | `quoted_price_pkr` | `float` | Price shown to user at booking |
-| `final_price_pkr` | `float` | Actual price after completion |
-| `pricing_breakdown` | `object` | Itemized pricing components |
-| `confirmation_sent` | `boolean` | Whether confirmation SMS/WhatsApp was dispatched |
-| `reminder_sent` | `boolean` | Whether reminder was dispatched |
-| `user_rating` | `int` | Post-service rating `1–5` |
-| `user_feedback_text` | `string` | Free-text review |
-| `dispute_id` | `string` | Linked dispute record (if any) |
-| `antigravity_trace_id` | `string` | Reference to Antigravity reasoning trace |
+| `final_price_pkr` | `float` | Actual price after negotiation |
+| `status` | `string` | e.g. `completed` |
+| `receipt_number` | `string` | Unique receipt (e.g., `KY-12345678`) |
+| `surge_multiplier` | `float` | Surge multiplier applied at booking time |
+| `negotiated_note` | `string` | Optional note from Negotiation Agent |
 | `created_at` | `timestamp` | Booking creation time |
 
-### 5.3 Dispute Record
+### 6.3 Dispute Record
 
 | Field | Type | Description |
 |---|---|---|
@@ -309,50 +380,56 @@ Traces are produced for: **language parsing, provider ranking, scheduling confli
 | `created_at` | `timestamp` | Dispute raised time |
 | `resolved_at` | `timestamp` | Resolution time |
 
-### 5.4 Sample Provider Records (Mock Dataset Extract)
+### 6.4 Sample Provider Records (Mock Dataset Extract)
 
 ```json
 [
   {
-    "provider_id": "PRV-0041",
+    "id": "PRV-0041",
     "name": "Zia AC Services",
-    "services": ["AC Repair", "AC Installation", "AC Gas Refill"],
-    "specializations": { "AC Repair": 0.96, "AC Installation": 0.88 },
-    "location": { "lat": 33.6938, "lng": 73.0651 },
-    "service_radius_km": 12,
+    "service_category": "AC Repair",
+    "skills": ["AC Repair", "AC Installation", "AC Gas Refill"],
+    "lat": 33.6938,
+    "lng": 73.0651,
+    "area": "G-13",
+    "city": "Islamabad",
+    "dna_score": 920,
     "base_rate_pkr": 1200,
     "rating": 4.7,
     "on_time_rate": 0.94,
     "cancellation_rate": 0.03,
-    "experience_years": 9,
+    "experience_level": "complex",
     "certifications": ["HVAC Level 2"],
-    "risk_score": 0.07,
-    "blacklisted": false
+    "dispute_count": 0,
+    "is_verified": true
   },
   {
-    "provider_id": "PRV-0019",
+    "id": "PRV-0019",
     "name": "Quick Cool Tech",
-    "services": ["AC Repair", "Refrigerator Repair"],
-    "specializations": { "AC Repair": 0.74 },
-    "location": { "lat": 33.7100, "lng": 73.0550 },
-    "service_radius_km": 8,
+    "service_category": "AC Repair",
+    "skills": ["AC Repair", "Refrigerator Repair"],
+    "lat": 33.7100,
+    "lng": 73.0550,
+    "area": "F-10",
+    "city": "Islamabad",
+    "dna_score": 720,
     "base_rate_pkr": 900,
     "rating": 4.1,
     "on_time_rate": 0.71,
     "cancellation_rate": 0.12,
-    "experience_years": 4,
+    "experience_level": "intermediate",
     "certifications": [],
-    "risk_score": 0.28,
-    "blacklisted": false
+    "dispute_count": 1,
+    "is_verified": true
   }
 ]
 ```
 
 ---
 
-## 6. Multilingual and Noisy Input Handling
+## 7. Multilingual and Noisy Input Handling
 
-### 6.1 Supported Input Modes
+### 7.1 Supported Input Modes
 
 | Mode | Example |
 |---|---|
@@ -362,7 +439,7 @@ Traces are produced for: **language parsing, provider ranking, scheduling confli
 | Code-switched | `AC bilkul kaam nahi kar raha, kal subah G-13 mein technician chahiye, budget zyada nahi hai` |
 | Noisy / misspelled | `ac thecnician chal gya g13 kl subha plss` |
 
-### 6.2 Intent Extraction Fields
+### 7.2 Intent Extraction Fields
 
 The Intent Agent extracts and returns:
 
@@ -383,7 +460,7 @@ The Intent Agent extracts and returns:
 }
 ```
 
-### 6.3 Confidence Score Thresholds
+### 7.3 Confidence Score Thresholds
 
 | Score | Action |
 |---|---|
@@ -392,7 +469,7 @@ The Intent Agent extracts and returns:
 | 0.60 – 0.74 | Mandatory confirmation with slot selection shown |
 | < 0.60 | Full re-prompt: "ہم آپ کی request سمجھ نہیں پائے — براہ کرم دوبارہ بتائیں" |
 
-### 6.4 Handling Strategies for Noise
+### 7.4 Handling Strategies for Noise
 
 - **Phonetic normalization:** `thecnician → technician`, `kl → kal`, `plss → please`
 - **Transliteration mapping:** Roman Urdu tokens mapped to canonical Urdu intent labels
@@ -401,9 +478,9 @@ The Intent Agent extracts and returns:
 
 ---
 
-## 7. Advanced Provider Matching Algorithm
+## 8. Advanced Provider Matching Algorithm
 
-### 7.1 Scoring Factors (10 Factors)
+### 8.1 Scoring Factors (10 Factors)
 
 | # | Factor | Weight | Description |
 |---|---|---|---|
@@ -418,7 +495,7 @@ The Intent Agent extracts and returns:
 | 9 | **Capacity** | 4% | Available slots relative to max daily jobs |
 | 10 | **User Preference** | 4% | Boost if user has used this provider before or marked as preferred |
 
-### 7.2 Composite Score Formula
+### 8.2 Composite Score Formula
 
 ```
 composite_score = Σ (factor_score_i × weight_i)   for i = 1..10
@@ -426,13 +503,13 @@ composite_score = Σ (factor_score_i × weight_i)   for i = 1..10
 Where factor_score_i ∈ [0, 100]
 ```
 
-### 7.3 Tie-Breaking Rules
+### 8.3 Tie-Breaking Rules
 
 1. Higher on-time reliability wins
 2. If equal, lower cancellation rate wins
 3. If equal, more recent positive review wins
 
-### 7.4 Override Conditions
+### 8.4 Override Conditions
 
 - Provider is **blacklisted** → excluded from all results
 - Provider has **≥3 disputes in last 30 days** → excluded
@@ -441,7 +518,7 @@ Where factor_score_i ∈ [0, 100]
 
 ---
 
-## 8. Job Complexity Classification
+## 9. Job Complexity Classification
 
 | Complexity | Criteria | Provider Requirements |
 |---|---|---|
@@ -453,16 +530,16 @@ The Matching Agent verifies that the shortlisted provider's `certifications` and
 
 ---
 
-## 9. Scheduling Intelligence
+## 10. Scheduling Intelligence
 
-### 9.1 Slot Validation Rules
+### 10.1 Slot Validation Rules
 
 - No overlapping bookings for the same provider
 - Minimum **30-minute travel buffer** inserted between consecutive jobs (using local Haversine travel-time estimates)
 - Provider must not exceed `max_daily_jobs` cap
 - Scheduled end time includes a **15-minute buffer** for handover
 
-### 9.2 Conflict Scenarios and Responses
+### 10.2 Conflict Scenarios and Responses
 
 | Scenario | System Response |
 |---|---|
@@ -472,15 +549,15 @@ The Matching Agent verifies that the shortlisted provider's `certifications` and
 | Two simultaneous bookings for same provider | First-commit wins (DB transaction lock); second user is offered next best provider |
 | Provider running late | Send updated ETA notification; offer user option to reschedule |
 
-### 9.3 Waitlist Management
+### 10.3 Waitlist Management
 
 If no provider is available in the requested window, the user is added to a **priority waitlist** for that service type and area. When a cancellation or new provider availability opens up, Antigravity's Scheduling Agent automatically re-evaluates and notifies the next user on the waitlist.
 
 ---
 
-## 10. Dynamic Pricing Engine
+## 11. Dynamic Pricing Engine
 
-### 10.1 Pricing Formula
+### 11.1 Pricing Formula
 
 ```
 final_quote = base_rate
@@ -492,7 +569,7 @@ final_quote = base_rate
             - budget_adjustment
 ```
 
-### 10.2 Component Definitions
+### 11.2 Component Definitions
 
 | Component | Calculation |
 |---|---|
@@ -504,7 +581,7 @@ final_quote = base_rate
 | `loyalty_discount` | New: 0% · Standard: −5% · Preferred: −10% · Elite: −15% |
 | `budget_adjustment` | If `budget_sensitivity = high`, system surfaces lowest-scoring acceptable provider as budget alternative |
 
-### 10.3 User-Facing Breakdown (Sample)
+### 11.3 User-Facing Breakdown (Sample)
 
 ```
 Zia AC Services — Quote for AC Repair
@@ -520,45 +597,43 @@ TOTAL ESTIMATE                   PKR  1,692
 Range: PKR 1,500 – 2,100 (final depends on parts)
 ```
 
-### 10.4 Provider-Facing Payout
+### 11.4 Provider-Facing Payout
 
 The system also shows the provider their expected net payout, platform fee deduction, and any bonus for high-demand slots — ensuring pricing transparency for both parties.
 
 ---
 
-## 11. Booking Simulation
+## 12. Booking Simulation
 
-### 11.1 Booking Flow
+### 12.1 Booking Flow
 
 ```
 1. User confirms quote and slot
-2. Booking Agent acquires DB transaction lock on provider's calendar slot
-3. Booking record created with status: confirmed
-4. Provider calendar updated (slot blocked)
-5. In-app notification dispatched to user (booking ID, provider name, time, price)
-6. In-app notification dispatched to provider (job details, location pin, user contact)
-7. PDF/text receipt generated and sent to user
-8. Booking entry written to Google Sheets audit log
-9. Reminder scheduled (24h before and 1h before)
-10. Antigravity Booking Agent emits confirmation trace
+2. MatchingService.bookSlot() locks the provider's calendar slot (double-booking prevention)
+3. BookingAgent runs 7-step animated pipeline: Verifying → Pricing → Scheduling → Confirming → Notifying → Saving → Complete
+4. Booking record saved to Firestore bookings collection
+5. In-app notification (toast) dispatched to user: booking ID, provider name, time, price
+6. In-app notification (bottom-sheet) dispatched to provider: job details, location, user contact
+7. Receipt generated with unique KY-XXXXXXXX number
+8. User can proceed to Live Tracking screen (Google Maps animated route)
 ```
 
-### 11.2 Confirmation Notification (Simulated In-App)
+### 12.2 Confirmation Notification (Simulated In-App)
 
 ```
-[SAAS Platform] Booking Confirmed!
+[KaamYaab] Booking Confirmed!
 Service: AC Repair
 Provider: Zia AC Services
 Date: 16 May 2024, 10:00 AM
 Location: G-13, Islamabad
 Estimate: PKR 1,692
-Booking ID: BK-20240515-0091
-Track your booking: [link]
+Receipt: KY-91234567
+Track your booking: → Live Tracking (Google Maps)
 ```
 
 ---
 
-## 12. Service-Quality Loop
+## 13. Service-Quality Loop
 
 | Stage | Action |
 |---|---|
@@ -573,9 +648,9 @@ Track your booking: [link]
 
 ---
 
-## 13. Dispute and Escalation Workflow
+## 14. Dispute and Escalation Workflow
 
-### 13.1 Dispute Types and Initial Responses
+### 14.1 Dispute Types and Initial Responses
 
 | Dispute Type | Automated Response |
 |---|---|
@@ -587,7 +662,7 @@ Track your booking: [link]
 | **Cancellation (user, late)** | PKR 200 cancellation fee applied if within 2h of appointment |
 | **Refund request** | Assessed by Quality Agent; refund issued via original payment method within 48h |
 
-### 13.2 Escalation Ladder
+### 14.2 Escalation Ladder
 
 ```
 Level 1: Antigravity Quality Agent automated resolution (0–4 hours)
@@ -598,7 +673,7 @@ Level 2: AI-assisted human review (4–24 hours) — triggered if:
 Level 3: Senior operator + possible blacklist decision (24–72 hours)
 ```
 
-### 13.3 Blacklist and Reinstatement
+### 14.3 Blacklist and Reinstatement
 
 - Providers with `cancellation_rate > 0.25` AND `dispute_count ≥ 5` in 60 days are automatically flagged for review
 - Blacklist decision requires human confirmation at Level 3
@@ -606,27 +681,27 @@ Level 3: Senior operator + possible blacklist decision (24–72 hours)
 
 ---
 
-## 14. Provider-Side Optimization
+## 15. Provider-Side Optimization
 
-### 14.1 Workload Balancing
+### 15.1 Workload Balancing
 
 The Matching Agent enforces a **fair opportunity score** — providers with fewer recent bookings receive a small composite-score boost (up to +5 points) to prevent monopolization by top-rated providers. This decays as bookings accumulate.
 
-### 14.2 Demand Forecasting
+### 15.2 Demand Forecasting
 
 Antigravity's Pricing Agent maintains a rolling 7-day demand signal per service type and area. Providers are notified of predicted high-demand windows with a push notification: *"High AC repair demand expected in G-13 on Saturday morning — set your availability to capture bookings."*
 
-### 14.3 Recommended Availability Slots
+### 15.3 Recommended Availability Slots
 
 Based on historical booking patterns, the system recommends optimal working-hour slots to providers each week, maximizing utilization and reducing idle time.
 
-### 14.4 Earnings Transparency
+### 15.4 Earnings Transparency
 
 Each provider's dashboard shows: confirmed earnings this week, pending jobs, expected payout for each slot, platform fee, and comparison to their own 30-day average — promoting trust and long-term engagement.
 
 ---
 
-## 15. Robustness and Fallback Mechanisms
+## 16. Robustness and Fallback Mechanisms
 
 | Failure Mode | Fallback Strategy |
 |---|---|
@@ -642,7 +717,7 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 
 ---
 
-## 16. Stress-Test Scenarios
+## 17. Stress-Test Scenarios
 
 ### Scenario 1 — Zero Provider Availability
 
@@ -694,45 +769,40 @@ Each provider's dashboard shows: confirmed earnings this week, pending jobs, exp
 
 ---
 
-## 17. Assumptions
+## 18. Assumptions
 
-- Provider data is seeded from a mock dataset of 50–200 providers covering Islamabad, Rawalpindi, Karachi, and Lahore.
-- Distance between user and provider is calculated using the **Haversine formula** on pre-seeded `GeoPoint` coordinates. No external maps API is called. Travel time is estimated as `distance_km / 30 km/h` (average urban speed).
-- Notifications are **fully simulated** as in-app toasts and modals. No third-party notification API is used in the prototype.
-- Payments are simulated (no real payment gateway integrated in the prototype). A payment confirmation webhook stub is used.
-- Provider GPS location during en-route simulation is mocked with a linear interpolation between provider base and job address.
+- Provider data is seeded from a mock dataset of 50–200 providers covering Islamabad, Rawalpindi, Karachi, and Lahore, stored in `assets/data/providers_mock.json` and seeded into Firestore via `ProviderDataService.seedProvidersFromMockAsset()`.
+- Live registered workers (role = `worker`) are merged into the provider pool at runtime via `AuthService.getAllWorkers()`, with computed DNA scores and parsed availability slots.
+- Distance between user and provider is calculated using the **Haversine formula** on pre-seeded `lat/lng` coordinates. No external maps API is called during matching. Travel time is estimated as `distance_km / 30 km/h` (average urban speed).
+- Provider live tracking uses **Google Maps Flutter** with animated linear interpolation of the worker's position from base to customer. No live GPS from the worker's device is required.
+- Notifications are **fully simulated** as in-app toasts and bottom-sheet modals. No third-party notification API (SMS, WhatsApp, FCM) is used in the prototype.
+- Payments are simulated (no real payment gateway). Price negotiation uses the AI Negotiation Agent to determine a fair counter-offer.
 - The prototype assumes mobile users have a stable internet connection; offline mode is not supported in v1.
 - All prices are in Pakistani Rupees (PKR).
-- The system assumes the user's device can provide GPS location for accurate distance calculation; manual area entry is the fallback.
-- Provider onboarding (ID verification, background check) is outside the scope of this prototype and is represented as a `verified: true/false` flag.
-- Antigravity agent timeout threshold is set at 8 seconds per reasoning step.
-- All LLM calls use **Gemini 1.5 Flash** (free tier, 15 requests/min, 1M tokens/day) — no paid Gemini tier is used.
-- Firebase Firestore is used on the **Spark free plan**. The prototype's demo load (< 500 bookings) stays well within the 50K reads/day and 20K writes/day limits.
-- Google Cloud Run free tier (2M requests/month) covers all prototype traffic. The $5 GCP credit is held as a safety buffer only.
+- Authentication uses **SharedPreferences** as the local data store (not Firebase Auth). OTP verification uses Firebase Phone Auth when available, with an in-app simulation fallback.
+- The super-admin phone is set via `--dart-define=SUPER_ADMIN_PHONE=<number>` (defaults to `03000000000`).
+- AI calls use **Gemini 2.0 Flash** (via `GEMINI_API_KEY`) and/or **Cohere command-r** (via `COHERE_API_KEY`) — both free tiers. The system tries Gemini first, then Cohere, then falls back to deterministic local scoring.
+- Firebase Firestore is used on the **Spark free plan**. The prototype's demo load stays well within the 50K reads/day and 20K writes/day limits.
+- Google Cloud Run free tier (2M requests/month) covers all Python agent traffic.
 
 ---
 
-## 18. Cost and Latency Analysis
+## 19. Cost and Latency Analysis
 
-### 18.1 Prototype Cost — $0 (Demo / Hackathon)
+### 19.1 Prototype Cost — $0 (Demo / Hackathon)
 
 | Operation | How It's Handled | Cost |
 |---|---|---|
-| Intent extraction + NLU | Gemini 1.5 Flash — free tier | $0 |
+| Intent extraction + NLU | Gemini 2.0 Flash + Cohere command-r — free tiers | $0 |
 | Distance calculation | Haversine formula — runs locally, no API | $0 |
-| Provider lookup | Static JSON mock dataset — no API | $0 |
-| Provider DB query | Firebase Firestore Spark free plan | $0 |
-| Notifications | In-app simulation (toast / modal) | $0 |
-| Booking audit log | Google Sheets API — free with GCP | $0 |
+| Provider lookup | Firestore (Spark free plan) + bundled mock JSON | $0 |
+| Notifications | In-app simulation (toast / bottom-sheet) | $0 |
+| Live tracking map | Google Maps Flutter SDK — no per-request billing | $0 |
 | Hosting | Google Cloud Run free tier | $0 |
 | **Total prototype cost** | | **$0** |
 | **GCP credit ($5)** | Held as safety buffer, not expected to be used | $5 reserved |
 
-### 18.2 Production Cost Estimate
-
-This repository intentionally avoids paid service dependencies. All flows are designed for free-tier or local-only operation (Gemini 1.5 Flash free tier, static provider JSON, local Haversine distance, and in-app notifications).
-
-### 18.2 Latency Breakdown (P50 / P95)
+### 19.2 Latency Breakdown (P50 / P95)
 
 | Stage | P50 Latency | P95 Latency |
 |---|---|---|
@@ -743,7 +813,7 @@ This repository intentionally avoids paid service dependencies. All flows are de
 | Booking confirmation + notifications | 1,100 ms | 2,200 ms |
 | **End-to-end (intent → confirmation)** | **~4.0 s** | **~8.5 s** |
 
-### 18.3 Scalability Notes
+### 19.3 Scalability Notes
 
 - Antigravity agents are stateless and horizontally scalable via Cloud Run
 - Firestore scales automatically; no manual sharding required for < 10,000 concurrent users
@@ -751,7 +821,7 @@ This repository intentionally avoids paid service dependencies. All flows are de
 
 ---
 
-## 19. Baseline Comparison
+## 20. Baseline Comparison
 
 | Capability | Informal Network (WhatsApp/Calls) | Basic Directory App (e.g., OLX, Zameen Services) | This System |
 |---|---|---|---|
@@ -771,7 +841,7 @@ This repository intentionally avoids paid service dependencies. All flows are de
 
 ---
 
-## 20. Privacy Note
+## 21. Privacy Note
 
 - **User data collected:** Phone number, service request text, location (GPS or manual entry), booking history, ratings given.
 - **Provider data collected:** Phone number, business name, location, availability, performance metrics, earnings.
@@ -786,25 +856,120 @@ This repository intentionally avoids paid service dependencies. All flows are de
 
 ---
 
-## 21. Limitations
+## 22. Limitations
 
 - **No real payment processing:** Payments are simulated. Production would require PCI-compliant payment gateway integration (e.g., JazzCash, EasyPaisa, Stripe).
 - **Mock provider dataset:** The 50–200 provider dataset is synthetic. Real deployment requires a provider onboarding pipeline with identity verification.
-- **GPS simulation:** En-route provider tracking uses linear interpolation, not live GPS. Real deployment would require a provider-side mobile SDK with background location permission.
+- **GPS simulation:** En-route provider tracking uses linear interpolation on Google Maps, not live GPS. Real deployment would require a provider-side mobile SDK with background location permission.
 - **Haversine distance accuracy:** The prototype uses Haversine straight-line distance with an estimated travel speed of 30 km/h. This approximates travel time but does not account for traffic, road layout, or one-way streets.
-- **No external notification gateways:** Notifications are simulated as in-app toasts/modals to keep the prototype fully free-tier and local-first.
-- **Antigravity availability:** The system's core reasoning capability is dependent on Google Antigravity's uptime and API quota. No non-Antigravity fallback orchestrator exists in v1.
-- **Gemini free tier rate limits:** Gemini 1.5 Flash free tier allows 15 requests/minute. Under concurrent load (e.g., multiple simultaneous bookings), requests may be queued. A retry-with-backoff strategy is implemented.
+- **No external notification gateways:** Notifications are simulated as in-app toasts/bottom-sheets to keep the prototype fully free-tier and local-first.
+- **Auth storage:** User accounts and sessions are stored in SharedPreferences (device-local). This is intentional for the hackathon prototype; production would use Firestore-backed server-side auth.
+- **AI rate limits:** Gemini 2.0 Flash free tier allows 15 requests/minute; Cohere free tier has similar caps. Under concurrent load, requests may be queued. A deterministic fallback scoring path is always available.
 - **Urdu NLU accuracy:** While Gemini handles multilingual input well, highly dialectal or heavily slang-laden input may still produce low-confidence parses requiring manual confirmation.
 - **Review sentiment analysis:** Review recency scoring currently uses star ratings only. Full sentiment analysis of free-text reviews is planned for v2.
 - **No offline mode:** The app requires internet connectivity throughout the booking flow.
-- **Provider app not in scope:** This prototype focuses on the customer-facing flow. A dedicated provider-side app for availability management and job acceptance is a future deliverable.
 - **Demand forecasting accuracy:** The 7-day demand forecast is based on historical booking patterns from the mock dataset. Real accuracy depends on volume of production data.
 - **Multi-city coverage:** The prototype covers Islamabad, Rawalpindi, Karachi, and Lahore. Expansion to smaller cities requires additional provider onboarding and local demand calibration.
 
 ---
 
-## 22. Judge Verification: Proving Antigravity Usage
+## 23. Setup and Running
+
+### 23.1 Prerequisites
+
+- Flutter SDK ≥ 3.0 (`flutter --version`)
+- A Firebase project with Firestore enabled (Spark / free plan)
+- A Google Cloud project with the Maps SDK enabled (for live tracking)
+
+### 23.2 Configuration
+
+Copy `lib/config/env_config.example.dart` to `lib/config/env_config.dart` and fill in your keys:
+
+```dart
+// lib/config/env_config.dart  (git-ignored)
+class EnvConfig {
+  static const String cohereApiKey  = 'YOUR_COHERE_API_KEY';
+  static const String geminiApiKey  = 'YOUR_GEMINI_API_KEY';
+  static const String mapsApiKey    = 'YOUR_GOOGLE_MAPS_API_KEY';
+}
+```
+
+Alternatively, pass keys at build time with `--dart-define`:
+
+```bash
+flutter run \
+  --dart-define=COHERE_API_KEY=<key> \
+  --dart-define=GEMINI_API_KEY=<key> \
+  --dart-define=GOOGLE_MAPS_API_KEY=<key> \
+  --dart-define=SUPER_ADMIN_PHONE=<phone> \
+  --dart-define=OTP_EXPIRY_SECONDS=150
+```
+
+All available `--dart-define` keys:
+
+| Key | Default | Description |
+|---|---|---|
+| `COHERE_API_KEY` | `EnvConfig.cohereApiKey` | Cohere command-r API key (primary AI) |
+| `GEMINI_API_KEY` | `EnvConfig.geminiApiKey` | Gemini 2.0 Flash API key (secondary AI) |
+| `GOOGLE_MAPS_API_KEY` | `EnvConfig.mapsApiKey` | Google Maps SDK key (live tracking screen) |
+| `SUPER_ADMIN_PHONE` | `03000000000` | Phone number that unlocks the admin panel |
+| `OTP_EXPIRY_SECONDS` | `150` | OTP validity window in seconds |
+| `OTP_SEND_TIMEOUT_SECONDS` | `35` | Timeout for Firebase OTP send |
+| `OTP_AUTO_RETRIEVAL_TIMEOUT_SECONDS` | `60` | Auto-retrieval timeout |
+| `DEFAULT_COUNTRY_DIAL_CODE` | `92` | Country dial code prefix |
+
+### 23.3 Firebase Setup
+
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
+2. Enable Firestore Database (Spark plan, start in test mode for development).
+3. Enable Phone Authentication.
+4. Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) and place them in the standard Flutter locations (`android/app/` and `ios/Runner/`).
+
+### 23.4 Running the App
+
+```bash
+# Get dependencies
+flutter pub get
+
+# Run on connected device / emulator
+flutter run
+
+# Build release APK
+flutter build apk --release
+```
+
+### 23.5 Seeding Provider Data
+
+After the app is running:
+1. Log in with the super-admin phone number.
+2. Navigate to **Account → Seed Firestore** (in the Customer Hub).
+3. This uploads all providers from `assets/data/providers_mock.json` to the Firestore `providers` collection.
+
+### 23.6 Running the Python Agents
+
+```bash
+cd functions
+
+# Install dependencies
+pip install -r requirements.txt  # or: pip install google-generativeai
+
+# Export Antigravity traces
+python3 tests/export_traces.py
+
+# Run stress tests
+python3 tests/stress_test.py
+```
+
+Set `GEMINI_API_KEY` in the environment before running:
+
+```bash
+export GEMINI_API_KEY=<your_key>
+python3 tests/export_traces.py
+```
+
+---
+
+## 24. Judge Verification: Proving Antigravity Usage
 
 To make Antigravity usage auditable during judging, provide all three artifacts below:
 
