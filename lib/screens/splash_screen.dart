@@ -13,31 +13,23 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _helixCtrl;
   late AnimationController _revealCtrl;
-  late Animation<double> _helixAnim;
   late Animation<double> _revealAnim;
 
   @override
   void initState() {
     super.initState();
 
-    _helixCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
-    _helixAnim = CurvedAnimation(parent: _helixCtrl, curve: Curves.easeOutCubic);
-
     _revealCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
     _revealAnim = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
 
-    _helixCtrl.forward().then((_) => _revealCtrl.forward());
+    _revealCtrl.forward();
 
     // Navigate to login/home based on auth state
-    Future.delayed(const Duration(milliseconds: 2800), () {
+    Future.delayed(const Duration(milliseconds: 3000), () {
       if (mounted) {
         final auth = AuthService();
         if (auth.isLoggedIn) {
@@ -52,7 +44,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _helixCtrl.dispose();
     _revealCtrl.dispose();
     super.dispose();
   }
@@ -73,14 +64,17 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // DNA Helix animation
-                  AnimatedBuilder(
-                    animation: _helixAnim,
-                    builder: (_, __) => CustomPaint(
-                      size: const Size(120, 160),
-                      painter: _DnaHelixPainter(_helixAnim.value),
-                    ),
-                  ),
+                  // Custom Logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 160,
+                    height: 160,
+                  ).animate().scale(
+                        duration: 1000.ms,
+                        curve: Curves.elasticOut,
+                        begin: const Offset(0.3, 0.3),
+                        end: const Offset(1.0, 1.0),
+                      ).fadeIn(duration: 800.ms),
 
                   const SizedBox(height: 32),
 
@@ -103,42 +97,49 @@ class _SplashScreenState extends State<SplashScreen>
                             'KaamYaab',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 38,
+                              fontSize: 42,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -1.0,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         const Text(
                           'AI Service Orchestrator',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w400,
-                            letterSpacing: 1.5,
+                            letterSpacing: 2.0,
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                              horizontal: 18, vertical: 10),
                           decoration: BoxDecoration(
                             gradient: AppTheme.agentGradient,
                             borderRadius: AppTheme.radiusXl,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.purpleAgent.withValues(alpha: 0.3),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              )
+                            ],
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('⚡', style: TextStyle(fontSize: 13)),
-                              SizedBox(width: 6),
+                              Text('⚡', style: TextStyle(fontSize: 14)),
+                              SizedBox(width: 8),
                               Text(
-                                'Built for AI Seekho Hackathon',
+                                'AI SEEKHO HACKATHON',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
                                 ),
                               ),
                             ],
@@ -166,84 +167,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-}
-
-// ── DNA Helix Painter ──────────────────────────────────────────────────────────
-class _DnaHelixPainter extends CustomPainter {
-  final double progress;
-  _DnaHelixPainter(this.progress);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final amplitude = size.width * 0.35;
-    final wavelength = size.height / 2.5;
-    final totalPoints = 60;
-    final drawnPoints = (totalPoints * progress).round();
-
-    final strand1Paint = Paint()
-      ..color = AppTheme.tealPrimary
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final strand2Paint = Paint()
-      ..color = AppTheme.purpleAgent
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final rungPaint = Paint()
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-
-    final path1 = Path();
-    final path2 = Path();
-
-    for (int i = 0; i <= drawnPoints; i++) {
-      final t = i / totalPoints;
-      final y = t * size.height;
-      final x1 = cx + amplitude * sin(2 * pi * y / wavelength);
-      final x2 = cx - amplitude * sin(2 * pi * y / wavelength);
-
-      if (i == 0) {
-        path1.moveTo(x1, y);
-        path2.moveTo(x2, y);
-      } else {
-        path1.lineTo(x1, y);
-        path2.lineTo(x2, y);
-      }
-
-      // Draw rungs every ~8 points
-      if (i % 8 == 0 && i > 0) {
-        final rungProgress = (i / drawnPoints).clamp(0.0, 1.0);
-        rungPaint.color = Color.lerp(
-          AppTheme.tealPrimary,
-          AppTheme.purpleAgent,
-          sin(2 * pi * y / wavelength) * 0.5 + 0.5,
-        )!.withValues(alpha: 0.6 * rungProgress);
-        canvas.drawLine(Offset(x1, y), Offset(x2, y), rungPaint);
-
-        // Dots at rung ends
-        canvas.drawCircle(
-          Offset(x1, y),
-          3.5,
-          Paint()..color = AppTheme.tealPrimary.withValues(alpha: rungProgress),
-        );
-        canvas.drawCircle(
-          Offset(x2, y),
-          3.5,
-          Paint()..color = AppTheme.purpleAgent.withValues(alpha: rungProgress),
-        );
-      }
-    }
-
-    canvas.drawPath(path1, strand1Paint);
-    canvas.drawPath(path2, strand2Paint);
-  }
-
-  @override
-  bool shouldRepaint(_DnaHelixPainter old) => old.progress != progress;
 }
 
 // ── Particle Background Dot ────────────────────────────────────────────────────

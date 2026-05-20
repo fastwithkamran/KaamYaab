@@ -8,6 +8,7 @@ class AgentStep {
   final String? output;
   final AgentStepStatus status;
   final DateTime timestamp;
+  final bool isMocked;
 
   const AgentStep({
     required this.agentName,
@@ -18,9 +19,10 @@ class AgentStep {
     this.output,
     required this.status,
     required this.timestamp,
+    this.isMocked = false,
   });
 
-  AgentStep copyWith({AgentStepStatus? status, String? output, String? decision}) {
+  AgentStep copyWith({AgentStepStatus? status, String? output, String? decision, bool? isMocked}) {
     return AgentStep(
       agentName: agentName,
       task: task,
@@ -30,6 +32,7 @@ class AgentStep {
       output: output ?? this.output,
       status: status ?? this.status,
       timestamp: timestamp,
+      isMocked: isMocked ?? this.isMocked,
     );
   }
 }

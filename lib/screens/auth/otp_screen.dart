@@ -10,7 +10,7 @@ import '../../config/runtime_config.dart';
 class OtpScreen extends StatefulWidget {
   final String phone;
   final String demoOtp; // Only populated in demo mode
-  final VoidCallback onVerified;
+  final Future<String?> Function() onVerified;
 
   const OtpScreen({
     super.key,
@@ -66,22 +66,35 @@ class _OtpScreenState extends State<OtpScreen> {
     final result = await OtpService().verify(widget.phone, _enteredCode);
 
     if (!mounted) return;
-    setState(() => _loading = false);
 
     switch (result) {
       case OtpResult.verified:
         HapticFeedback.heavyImpact();
-        widget.onVerified();
+        final registerError = await widget.onVerified();
+        if (!mounted) return;
+        setState(() => _loading = false);
+        if (registerError != null) {
+          setState(() => _error = registerError);
+        }
         break;
       case OtpResult.expired:
-        setState(() => _error = 'OTP expired. Please request a new one.');
+        setState(() {
+          _loading = false;
+          _error = 'OTP expired. Please request a new one.';
+        });
         break;
       case OtpResult.invalid:
-        setState(() => _error = 'Incorrect code. Please try again.');
+        setState(() {
+          _loading = false;
+          _error = 'Incorrect code. Please try again.';
+        });
         _shakeInputs();
         break;
       case OtpResult.noRecord:
-        setState(() => _error = 'Something went wrong. Please resend OTP.');
+        setState(() {
+          _loading = false;
+          _error = 'Something went wrong. Please resend OTP.';
+        });
         break;
     }
   }

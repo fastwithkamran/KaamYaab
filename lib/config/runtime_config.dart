@@ -12,6 +12,12 @@ class RuntimeConfig {
     defaultValue: EnvConfig.cohereApiKey,
   );
 
+  /// Gemini API key — New primary AI backend
+  static const String geminiApiKey = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: EnvConfig.geminiApiKey,
+  );
+
   /// Google Maps API key
   static const String mapsApiKey = String.fromEnvironment(
     'GOOGLE_MAPS_API_KEY',

@@ -286,6 +286,21 @@ class _AgentStepTile extends StatelessWidget {
                             letterSpacing: 0.3,
                           ),
                         ),
+                        if (step.isMocked) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: const Text(
+                              'SIMULATION',
+                              style: TextStyle(color: AppTheme.textMuted, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                            ),
+                          ),
+                        ],
                         const Spacer(),
                         Text(
                           _formatTime(step.timestamp),

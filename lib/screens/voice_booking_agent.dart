@@ -2,15 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/ai_service.dart';
 import '../services/matching_service.dart';
 import '../services/language_service.dart';
+import '../services/chat_history_service.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../widgets/provider_card.dart';
-import '../widgets/live_agent_panel.dart';
-import '../models/agent_model.dart';
 import 'booking_flow_screen.dart';
 
 class VoiceBookingAgent extends StatefulWidget {
@@ -21,46 +22,27 @@ class VoiceBookingAgent extends StatefulWidget {
   State<VoiceBookingAgent> createState() => _VoiceBookingAgentState();
 }
 
-class _VoiceBookingAgentState extends State<VoiceBookingAgent>
-    with TickerProviderStateMixin {
+class _VoiceBookingAgentState extends State<VoiceBookingAgent> with TickerProviderStateMixin {
   late FlutterTts _tts;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final _chatHistory = ChatHistoryService();
+  
   late AnimationController _pulseCtrl;
-  late AnimationController _waveCtrl;
 
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
 
   bool _speaking = false;
-  bool _isMatching = false;
-  bool _hasResults = false;
-  double _surgeMult = 1.0; // stored so _openBooking can pass the correct value
-
+  bool _isListening = false;
+  bool _isAILoading = false;
   List<ProviderMatch> _matches = [];
-  List<AgentStep> _agentSteps = [];
   int _expandedCard = -1;
   ServiceRequest? _currentRequest;
-
-  static const _welcomeEn =
-      'Welcome to KaamYaab — Pakistan\'s first AI-powered service marketplace. '
-      'Simply describe what you need in one sentence — in English, Urdu, or Roman Urdu. '
-      'Tell us the service, your area, and when you need it.';
-
-  static const _welcomeUr =
-      'کامیاب میں خوش آمدید۔ '
-      'پاکستان کا پہلا AI سے چلنے والا سروس مارکیٹ پلیس۔ '
-      'بس ایک جملے میں بتائیں کہ آپ کو کیا چاہیے — اردو میں، رومن اردو میں، یا انگریزی میں۔';
-
-  static const _hints = [
-    'e.g. "Plumber chahiye G-13 mein kal subah, budget 1500"',
-    'e.g. "AC repair urgently in F-10, available today"',
-    'e.g. "گھر کی صفائی چاہیے اتوار کو، G-11"',
-  ];
-  int _hintIndex = 0;
-  Timer? _hintTimer;
 
   @override
   void initState() {
     super.initState();
+    _chatHistory.init();
     if (widget.initialService != null) {
       _inputCtrl.text = widget.initialService!;
     }
@@ -70,18 +52,8 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
 
-    _waveCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat();
-
     _initTts();
-
-    _hintTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted && !_isMatching) {
-        setState(() { _hintIndex = (_hintIndex + 1) % _hints.length; });
-      }
-    });
+    _initSpeech();
   }
 
   Future<void> _initTts() async {
@@ -91,27 +63,40 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
     _tts.setStartHandler(() { if (mounted) setState(() => _speaking = true); });
     _tts.setCompletionHandler(() { if (mounted) setState(() => _speaking = false); });
     _tts.setCancelHandler(() { if (mounted) setState(() => _speaking = false); });
-    await Future.delayed(const Duration(milliseconds: 700));
-    _speakWelcome();
-  }
-
-  Future<void> _speakWelcome() async {
-    await _tts.stop();
+    
     final isUrdu = LanguageService().isUrdu;
-    if (isUrdu) {
-      await _tts.setLanguage('ur-PK');
-      await _tts.setSpeechRate(0.38);
-      await _tts.speak(_welcomeUr);
-    } else {
-      await _tts.setLanguage('en-US');
-      await _tts.setSpeechRate(0.44);
-      await _tts.speak(_welcomeEn);
-    }
+    final welcome = isUrdu 
+        ? 'Salam! Main aapki kia madad kar sakta hoon?' 
+        : 'Salam! How can I help you today?';
+    await _tts.speak(welcome);
   }
 
-  Future<void> _stopSpeaking() async {
-    await _tts.stop();
-    if (mounted) setState(() => _speaking = false);
+  Future<void> _initSpeech() async {
+    await _speech.initialize();
+    if (mounted) setState(() {});
+  }
+
+  void _toggleListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        HapticFeedback.mediumImpact();
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) {
+            setState(() { _inputCtrl.text = val.recognizedWords; });
+            if (val.finalResult) {
+              setState(() => _isListening = false);
+              _submit();
+            }
+          },
+          localeId: LanguageService().isUrdu ? 'ur_PK' : 'en_US',
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
   }
 
   Future<void> _submit() async {
@@ -119,131 +104,85 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
     if (input.isEmpty) return;
     HapticFeedback.mediumImpact();
     _focusNode.unfocus();
-    await _stopSpeaking();
-    await _runAiPipeline(input);
-  }
+    await _tts.stop();
 
-  Future<void> _runAiPipeline(String raw) async {
-    final isUrdu = LanguageService().isUrdu;
-    setState(() {
-      _isMatching = true;
-      _hasResults = false;
-      _agentSteps = [];
-      _matches = [];
-    });
-
+    setState(() => _isAILoading = true);
+    await _chatHistory.addMessage('USER', input);
+    
     try {
-      _addStep(AgentStep(
-        agentName: AgentIdentity.intent,
-        task: isUrdu ? 'درخواست کا تجزیہ' : 'Multi-layered intent analysis',
-        reasoning: isUrdu ? 'زبان کی شناخت اور خدمت نکالی جا رہی ہے...' : 'Analyzing user nuance and slang...',
-        toolCall: 'cohere.chat(message=input)',
-        status: AgentStepStatus.thinking,
-        timestamp: DateTime.now(),
-      ));
-      await Future.delayed(const Duration(milliseconds: 1000));
-
-      final intentResult = await AiService.extractIntent(raw);
-      final serviceType = intentResult['service_type'] as String? ?? 'General';
-      final area       = intentResult['area']         as String? ?? 'G-13';
-      final urgency    = intentResult['urgency']       as String? ?? 'medium';
-
-      _updateLast(
-        status: AgentStepStatus.done,
-        decision: isUrdu ? 'نتیجہ: $serviceType ($area)' : 'Result: $serviceType in $area',
+      final response = await AiService.chat(
+        userMessage: input,
+        geminiHistory: _chatHistory.toGeminiFormat(),
+        cohereHistory: _chatHistory.toCohereFormat(),
+        userArea: _currentRequest?.area ?? 'Islamabad',
+        userLanguage: LanguageService().isUrdu ? 'urdu' : 'english',
       );
 
-      _addStep(AgentStep(
-        agentName: AgentIdentity.matching,
-        task: isUrdu ? 'AI انتخاب' : 'Agentic Selection',
-        reasoning: isUrdu ? 'بہترین کارکن کا انتخاب کیا جا رہا ہے...' : 'Evaluating provider DNA and pricing...',
-        toolCall: 'cohere.rank_providers(intent, providers)',
-        status: AgentStepStatus.thinking,
-        timestamp: DateTime.now(),
-      ));
-      await Future.delayed(const Duration(milliseconds: 1500));
+      final reply = response['reply'] as String;
+      final action = response['action'] as String;
+      final searchParams = response['search_params'] as Map<String, dynamic>?;
 
-      final hasSurge = (urgency == 'high' || urgency == 'emergency') && (serviceType == 'AC Repair' || serviceType == 'Electrical');
-      final surgeMult = hasSurge ? (urgency == 'emergency' ? 2.1 : 1.6) : 1.0;
-      _surgeMult = surgeMult; // persist so _openBooking can read it
+      await _chatHistory.addMessage('CHATBOT', reply);
+      await _tts.speak(reply);
 
-      _currentRequest = ServiceRequest(
-        id: 'voice_${DateTime.now().millisecondsSinceEpoch}',
-        rawInput: raw,
-        serviceType: serviceType,
-        location: 'Islamabad',
-        area: area,
-        urgency: urgency,
-        preferredTime: intentResult['preferred_time'] as String? ?? 'flexible',
-        preferredDate: intentResult['preferred_date'] as String? ?? 'tomorrow',
-        budgetSensitivity: (intentResult['budget_sensitivity'] as num?)?.toDouble() ?? 0.5,
-        confidence: (intentResult['confidence'] as num?)?.toDouble() ?? 0.8,
-        language: intentResult['language'] as String? ?? 'mixed',
-        createdAt: DateTime.now(),
-        status: 'pending',
-        jobComplexity: intentResult['job_complexity'] as String? ?? 'basic',
-      );
-
-      final results = await MatchingService.matchProviders(
-        request: _currentRequest!,
-        userLat: 33.7215,
-        userLng: 73.0433,
-        surgeMult: surgeMult,
-        isUrdu: isUrdu,
-      );
-
-      _updateLast(
-        status: results.isEmpty ? AgentStepStatus.failed : AgentStepStatus.done,
-        decision: results.isEmpty ? (isUrdu ? 'کوئی کارکن نہیں ملا۔' : 'No providers found.') : (isUrdu ? 'بہترین میچ ملا۔' : 'Top match found.'),
-      );
-
-      if (results.isNotEmpty) {
-        final name = results.first.provider.name;
-        if (isUrdu) {
-          await _tts.setLanguage('ur-PK');
-          await _tts.setSpeechRate(0.38);
-          await _tts.speak('مجھے آپ کے لیے بہترین کارکن مل گئے ہیں۔ ٹاپ میچ $name ہیں۔');
-        } else {
-          await _tts.setLanguage('en-US');
-          await _tts.setSpeechRate(0.44);
-          await _tts.speak('I have found the best professionals. Top match is $name.');
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _matches = results;
-          _isMatching = false;
-          _hasResults = true;
-          if (results.isNotEmpty) _expandedCard = 0;
-        });
+      if (action == 'SEARCH' && searchParams != null) {
+        await _performSearch(searchParams);
       }
     } catch (e) {
-      if (mounted) setState(() => _isMatching = false);
+      debugPrint('Voice Chat Error: $e');
+    } finally {
+      if (mounted) setState(() => _isAILoading = false);
     }
   }
 
-  void _addStep(AgentStep step) {
-    if (mounted) setState(() => _agentSteps = [..._agentSteps, step]);
-  }
+  Future<void> _performSearch(Map<String, dynamic> params) async {
+    final service = params['service'] as String? ?? 'General';
+    final area = params['area'] as String? ?? 'Islamabad';
+    
+    _currentRequest = ServiceRequest(
+      id: 'voice_${DateTime.now().millisecondsSinceEpoch}',
+      rawInput: "Voice search for $service",
+      serviceType: service,
+      location: 'Islamabad',
+      area: area,
+      urgency: params['urgency'] ?? 'medium',
+      preferredTime: 'flexible',
+      preferredDate: 'today',
+      budgetSensitivity: 0.5,
+      confidence: 1.0,
+      language: 'mixed',
+      createdAt: DateTime.now(),
+      status: 'pending',
+    );
 
-  void _updateLast({required AgentStepStatus status, String? decision}) {
+    final results = await MatchingService.matchProviders(
+      request: _currentRequest!,
+      userLat: 33.7215,
+      userLng: 73.0433,
+      surgeMult: 1.0,
+    );
+
     if (mounted) {
       setState(() {
-        if (_agentSteps.isEmpty) return;
-        final last = _agentSteps.last;
-        _agentSteps = [..._agentSteps.sublist(0, _agentSteps.length - 1), last.copyWith(status: status, decision: decision)];
+        _matches = results;
+        if (results.isNotEmpty) _expandedCard = 0;
       });
+      if (results.isNotEmpty) {
+        final resText = LanguageService().isUrdu 
+            ? "Bhai, mujhe aap ke liye behtreen workers mil gaye hain. Neeche check karein."
+            : "Bhai, I found the best workers for you. Check them out below.";
+        await _tts.speak(resText);
+      }
     }
   }
 
   void _openBooking(ProviderMatch match, double finalPrice, String? note) {
-    _stopSpeaking();
+    _tts.stop();
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => BookingFlowScreen(
         match: match,
         request: _currentRequest!,
-        surgeMultiplier: _surgeMult, // BUG-004 FIX: use actual calculated surge
+        surgeMultiplier: 1.0,
         negotiatedPrice: finalPrice,
         negotiationNote: note,
       ),
@@ -253,110 +192,145 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent>
   @override
   void dispose() {
     _tts.stop();
+    _speech.stop();
     _pulseCtrl.dispose();
-    _waveCtrl.dispose();
     _inputCtrl.dispose();
     _focusNode.dispose();
-    _hintTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isUrdu = LanguageService().isUrdu;
     return Scaffold(
       backgroundColor: AppTheme.backgroundDark,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(isUrdu ? 'کامیاب آواز' : 'KaamYaab Voice', style: const TextStyle(fontWeight: FontWeight.w800)),
+        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-        child: SafeArea(
-          child: Column(children: [
-            _buildHeader(),
-            Expanded(child: _hasResults ? _buildResults() : _buildInputPane()),
-          ]),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    // Visualizer
+                    GestureDetector(
+                      onTap: _toggleListening,
+                      child: AnimatedBuilder(
+                        animation: _pulseCtrl,
+                        builder: (_, __) => Container(
+                          width: 140, height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isListening 
+                                ? AppTheme.redAlert.withValues(alpha: 0.1) 
+                                : (_speaking ? AppTheme.tealPrimary.withValues(alpha: 0.2) : AppTheme.tealPrimary.withValues(alpha: 0.1)),
+                            border: Border.all(
+                              color: _isListening ? AppTheme.redAlert : AppTheme.tealPrimary,
+                              width: 3,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_isListening ? AppTheme.redAlert : AppTheme.tealPrimary).withValues(alpha: 0.3 * _pulseCtrl.value),
+                                blurRadius: 30,
+                                spreadRadius: 10 * _pulseCtrl.value,
+                              )
+                            ],
+                          ),
+                          child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white, size: 60),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Text(
+                      _isListening ? (isUrdu ? 'Main sun raha hoon...' : 'Listening...') : (isUrdu ? 'Bolne ke liye tap karein' : 'Tap to speak'),
+                      style: TextStyle(color: _isListening ? AppTheme.redAlert : AppTheme.textMuted, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 40),
+                    
+                    // Transcript
+                    if (_inputCtrl.text.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: Text(
+                          _inputCtrl.text,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontStyle: FontStyle.italic),
+                        ),
+                      ).animate().fadeIn().slideY(begin: 0.1),
+
+                    const SizedBox(height: 30),
+                    if (_isAILoading)
+                      const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.tealPrimary)),
+                        SizedBox(width: 12),
+                        Text('Bhai soch raha hai...', style: TextStyle(color: AppTheme.textMuted)),
+                      ]),
+
+                    // Results
+                    if (_matches.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: Colors.white12),
+                      ),
+                      ..._matches.asMap().entries.map((e) => ProviderCard(
+                        match: e.value, rank: e.key + 1, isExpanded: _expandedCard == e.key,
+                        serviceType: _currentRequest?.serviceType ?? 'Unknown',
+                        surgeMultiplier: 1.0,
+                        onTap: () => setState(() => _expandedCard = _expandedCard == e.key ? -1 : e.key),
+                        onBook: (p, n) => _openBooking(e.value, p, n),
+                      )),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            
+            // Manual Input Fallback
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: isUrdu ? 'Ya yahan likhein...' : 'Or type here...',
+                        hintStyle: const TextStyle(color: Colors.white38),
+                        filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      ),
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _submit,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.tealPrimary),
+                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final isUrdu = LanguageService().isUrdu;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)))),
-      child: Row(children: [
-        IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white)),
-        const SizedBox(width: 8),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(isUrdu ? 'کامیاب اسسٹنٹ' : 'KaamYaab Assistant', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          Text(_speaking ? (isUrdu ? 'بول رہا ہے...' : 'Speaking...') : (isUrdu ? 'اپنی ضرورت بتائیں' : 'Describe your need'), style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-        ])),
-      ]),
-    );
-  }
-
-  Widget _buildInputPane() {
-    final isUrdu = LanguageService().isUrdu;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(children: [
-        AnimatedBuilder(
-          animation: _pulseCtrl,
-          builder: (_, __) => Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _speaking ? AppTheme.tealPrimary.withValues(alpha: 0.2) : AppTheme.cardDark,
-              border: Border.all(color: _speaking ? AppTheme.tealPrimary : Colors.white12),
-            ),
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 36),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(isUrdu ? 'میں آپ کی کیسے مدد کر سکتا ہوں؟' : 'How can I help you today?', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 32),
-        TextField(
-          controller: _inputCtrl,
-          focusNode: _focusNode,
-          style: const TextStyle(color: Colors.white),
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: isUrdu ? 'اپنی درخواست یہاں لکھیں...' : 'Type your request here...',
-            filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
-            border: OutlineInputBorder(borderRadius: AppTheme.radiusMd),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isMatching ? null : _submit,
-            child: Text(isUrdu ? 'تلاش کریں' : 'Find Worker'),
-          ),
-        ),
-        if (_isMatching) ...[
-          const SizedBox(height: 24),
-          LiveAgentPanel(steps: _agentSteps, isVisible: true, onToggle: () {}),
-        ],
-      ]),
-    );
-  }
-
-  Widget _buildResults() {
-    final isUrdu = LanguageService().isUrdu;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        TextButton.icon(onPressed: () => setState(() => _hasResults = false), icon: const Icon(Icons.arrow_back), label: Text(isUrdu ? 'نئی تلاش' : 'New Search')),
-        const SizedBox(height: 16),
-        if (_agentSteps.isNotEmpty) LiveAgentPanel(steps: _agentSteps, isVisible: true, onToggle: () {}),
-        const SizedBox(height: 24),
-        ..._matches.asMap().entries.map((e) => ProviderCard(
-          match: e.value, rank: e.key + 1, isExpanded: _expandedCard == e.key,
-          serviceType: _currentRequest?.serviceType ?? 'Unknown',
-          surgeMultiplier: 1.0,
-          onTap: () => setState(() => _expandedCard = _expandedCard == e.key ? -1 : e.key),
-          onBook: (p, n) => _openBooking(e.value, p, n),
-        )),
-      ],
     );
   }
 }

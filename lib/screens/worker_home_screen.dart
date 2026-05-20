@@ -81,12 +81,16 @@ class _WorkerHomeScreenState extends State<WorkerHomeScreen>
     
     if (newStatus) {
       // Auto-save location when going online to help matching
+      final user = AuthService().currentUser;
+      if (user == null) return; // Guard: no crash if session expired
       try {
         final loc = await LocationService().getCurrentLocation();
         if (loc.isSuccess && loc.data != null) {
-          await LocationService().saveUserLocation(AuthService().currentUser!.uid, loc.data!);
+          await LocationService().saveUserLocation(user.uid, loc.data!);
         }
-      } catch (_) {}
+      } catch (_) {
+        // GPS unavailable — location will be updated next time
+      }
     }
   }
 

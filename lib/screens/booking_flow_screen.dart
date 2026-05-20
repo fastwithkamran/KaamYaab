@@ -8,6 +8,7 @@ import '../models/service_request_model.dart';
 import '../services/in_app_notification_service.dart';
 import '../services/location_service.dart';
 import '../services/booking_history_service.dart';
+import '../services/matching_service.dart';
 import 'live_tracking_screen.dart';
 import 'dispute_screen.dart';
 
@@ -68,7 +69,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     );
     _successAnim = CurvedAnimation(parent: _successCtrl, curve: Curves.elasticOut);
 
-    Future.delayed(const Duration(milliseconds: 600), _runBookingFlow);
+    Future.delayed(const Duration(milliseconds: 600), () {
+      // Lock this provider's slot to prevent double-booking
+      MatchingService.bookSlot(widget.match.provider.id, widget.match.recommendedSlot);
+      _runBookingFlow();
+    });
   }
 
   @override

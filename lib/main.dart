@@ -99,14 +99,13 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       HomeScreen(),
       WorkersBrowseScreen(),
       CustomerHubScreen(),
-      SimulationDashboardScreen(),
     ];
     _navAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
     _itemCtrls = List.generate(
-      4,
+      3,
       (_) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 200),
@@ -165,7 +164,6 @@ class _GlassNavBar extends StatelessWidget {
     _NavItemData(Icons.home_rounded, Icons.home_outlined, 'Home'),
     _NavItemData(Icons.people_rounded, Icons.people_outlined, 'Browse'),
     _NavItemData(Icons.account_circle_rounded, Icons.account_circle_outlined, 'Account'),
-    _NavItemData(Icons.hub_rounded, Icons.hub_outlined, 'AI Logs'),
   ];
 
   @override

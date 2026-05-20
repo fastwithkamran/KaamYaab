@@ -31,8 +31,11 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
   bool _isListening = false;
   String _voiceText = '';
   final List<_ChatMessage> _chatLog = [];
+  final List<Map<String, String>> _aiHistory = [];
   bool _isProcessing = false;
-  OnboardingState _onboardingState = OnboardingState.notStarted;
+  
+  // Internal logic states
+  String _agentState = 'idle'; 
   final bool _isUrdu = LanguageService().isUrdu;
 
   late AnimationController _micPulseCtrl;
@@ -57,77 +60,67 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
     final user = AuthService().currentUser;
     final name = user?.name.split(' ').first ?? 'there';
     final category = user?.serviceCategory;
-    final rules = user?.availabilityRules ?? [];
 
     String greeting;
-    String ttsGreeting;
-    final isUrdu = LanguageService().isUrdu;
-
     if (category == 'Unassigned' || category == null) {
-      _onboardingState = OnboardingState.askingService;
+      _agentState = 'asking_service';
       greeting = _t(
-        "Salam $name! 👋 Welcome. Tell me, what services do you offer? (e.g. Plumbing, Electrician)",
-        "اسلام علیکم $name! 👋 خوش آمدید۔ مجھے بتائیں، آپ کیا خدمت فراہم کرتے ہیں؟ (مثلاً پلمبر، بجلی کا کام)"
+        "Salam $name! 👋 I'm your KaamYaab Assistant. Tell me, what kind of work do you do?",
+        "اسلام علیکم $name! 👋 میں آپ کا کامیاب اسسٹنٹ ہوں۔ مجھے بتائیں، آپ کس قسم کا کام کرتے ہیں؟"
       );
-      ttsGreeting = isUrdu 
-        ? "سلام $name! کامیاب میں خوش آمدید۔ براہ کرم مجھے بتائیں کہ آپ کس قسم کی خدمت فراہم کرتے ہیں؟ آپ اردو یا انگریزی میں بول سکتے ہیں۔"
-        : "Salam $name! Welcome to KaamYaab. Please tell me what kind of work you do? You can speak in Urdu or English.";
-    } else if (rules.isEmpty) {
-      _onboardingState = OnboardingState.askingAvailability;
-      greeting = _t(
-        "Salam $name! 👋 Tell me when you're available for service?",
-        "اسلام علیکم $name! 👋 مجھے بتائیں کہ آپ کس وقت خدمت کے لیے دستیاب ہیں؟"
-      );
-      ttsGreeting = isUrdu
-        ? "براہ کرم مجھے اپنے کام کے اوقات یا دن بتائیں جب آپ دستیاب ہوں۔"
-        : "Salam $name! Please tell me your working hours or days when you are available.";
     } else {
-      _onboardingState = OnboardingState.completed;
+      _agentState = 'idle';
       greeting = _t(
-        "Welcome back $name! Your schedule is set. Want to change anything?",
-        "خوش آمدید $name! آپ کا شیڈول سیٹ ہے۔ کیا آپ کچھ تبدیل کرنا چاہتے ہیں؟"
+        "Welcome back $name! 👋 How can I help with your schedule today?",
+        "خوش آمدید $name! 👋 آج میں آپ کے شیڈول میں کیا مدد کر سکتا ہوں؟"
       );
-      ttsGreeting = "Welcome back $name! Your schedule is active. If you want to change your timing, just tell me.";
     }
 
-    _addAgentMessage(greeting);
-    _speak(ttsGreeting);
+    _addAgentMessage(greeting, isMocked: true);
+    _speak(greeting);
+    
+    // Add to AI history for context
+    _aiHistory.add({'role': 'CHATBOT', 'message': greeting});
   }
 
   void _initSpeech() async {
     bool available = await _speech.initialize();
-    if (mounted) {
-      setState(() {
-        if (available && _currentMode == AgentInputMode.voice) {
-          Future.delayed(const Duration(seconds: 4), () {
-            if (mounted && !_isListening) _toggleListening();
-          });
-        }
+    if (mounted) setState(() {});
+    if (available && _currentMode == AgentInputMode.voice) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && !_isListening) _toggleListening();
       });
     }
   }
 
-  void _speak(String text, {bool? isUrdu}) async {
-    final useUrdu = isUrdu ?? LanguageService().isUrdu;
-    if (useUrdu) {
-      await _tts.setLanguage('ur-PK');
-      await _tts.setSpeechRate(0.38);
-    } else {
-      await _tts.setLanguage('en-US');
-      await _tts.setSpeechRate(0.45);
+  void _speak(String text) async {
+    try {
+      final useUrdu = LanguageService().isUrdu;
+      if (useUrdu) {
+        await _tts.setLanguage('ur-PK');
+        await _tts.setSpeechRate(0.38);
+      } else {
+        await _tts.setLanguage('en-US');
+        await _tts.setSpeechRate(0.45);
+      }
+      await _tts.speak(text);
+    } catch (e) {
+      debugPrint('TTS Error: $e');
     }
-    await _tts.setPitch(1.0);
-    await _tts.speak(text);
   }
 
-  void _addAgentMessage(String text) {
-    setState(() => _chatLog.add(_ChatMessage(text: text, isAgent: true)));
-    _scrollToBottom();
+  void _addAgentMessage(String text, {bool isMocked = false}) {
+    if (mounted) {
+      setState(() => _chatLog.add(_ChatMessage(text: text, isAgent: true, isMocked: isMocked)));
+      _scrollToBottom();
+    }
   }
 
   void _addUserMessage(String text) {
-    setState(() => _chatLog.add(_ChatMessage(text: text, isAgent: false)));
-    _scrollToBottom();
+    if (mounted) {
+      setState(() => _chatLog.add(_ChatMessage(text: text, isAgent: false)));
+      _scrollToBottom();
+    }
   }
 
   void _scrollToBottom() {
@@ -149,66 +142,144 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
         HapticFeedback.mediumImpact();
         setState(() { _isListening = true; _voiceText = ''; });
         _micPulseCtrl.repeat(reverse: true);
-        _speech.listen(onResult: (val) => setState(() => _voiceText = val.recognizedWords));
+        _speech.listen(
+          onResult: (val) {
+            setState(() => _voiceText = val.recognizedWords);
+            if (val.finalResult) {
+              _toggleListening();
+              _processInput(_voiceText);
+            }
+          },
+          localeId: _isUrdu ? 'ur_PK' : 'en_US',
+        );
       }
     } else {
       HapticFeedback.lightImpact();
       setState(() => _isListening = false);
       _micPulseCtrl.stop(); _micPulseCtrl.reset();
       _speech.stop();
-      if (_voiceText.isNotEmpty) _processInput(_voiceText);
     }
   }
 
   Future<void> _processInput(String userInput) async {
     if (userInput.isEmpty) return;
     _addUserMessage(userInput);
+    _textController.clear();
     setState(() => _isProcessing = true);
 
-    final user = AuthService().currentUser;
-    final isUrdu = LanguageService().isUrdu;
-    if (user != null) {
-      try {
-        if (_onboardingState == OnboardingState.askingService) {
-          final result = await AiService.extractWorkerService(userInput);
-          final category = result['category'] as String;
-          final skills = (result['skills'] as List).map((e) => e.toString()).toList();
-          await AuthService().updateWorkerService(category, skills);
-          
-          _onboardingState = OnboardingState.askingAvailability;
-          final resp = _t("Great! You are set as a $category. Now, what are your working hours?", 
-                          "بہترین! آپ کو $category کے طور پر سیٹ کر دیا گیا ہے۔ اب بتائیں، آپ کے کام کے اوقات کیا ہیں؟");
-          _addAgentMessage(resp);
-          _speak(isUrdu 
-            ? "بہترین! میں نے آپ کا زمرہ سیٹ کر دیا ہے۔ اب براہ کرم مجھے اپنے کام کے اوقات بتائیں۔"
-            : "Great! I have set your category. Now please tell me your working hours.");
-        } else {
-          final updatedRules = await AiService.processWorkerSettings(userInput, user.availabilityRules ?? []);
-          await AuthService().setAvailabilityRules(updatedRules);
-          await _saveWorkerLocation();
+    try {
+      final result = await AiService.processWorkerChat(
+        message: userInput,
+        chatHistory: _aiHistory,
+        currentState: _agentState,
+      );
 
-          _onboardingState = OnboardingState.completed;
-          final resp = _t("All set! ✅ Your schedule is updated. I will notify you of new jobs nearby.", 
-                          "سب ٹھیک ہے! ✅ آپ کا شیڈول اپ ڈیٹ ہو گیا ہے۔ میں آپ کو قریبی نئے کاموں کے بارے میں مطلع کروں گا۔");
-          _addAgentMessage(resp);
-          _speak(isUrdu
-            ? "سب ٹھیک ہے! آپ کا شیڈول اپ ڈیٹ ہو گیا ہے۔ جب آپ کے قریب کوئی کام ہوگا تو ہم آپ کو مطلع کریں گے۔"
-            : "All done! Your schedule is updated. We will let you know when there is a job near you.");
+      // Defensively parse values to avoid runtime type cast exceptions
+      final reply = result['reply']?.toString() ?? '';
+      
+      bool shouldCommit = false;
+      if (result['should_commit'] != null) {
+        if (result['should_commit'] is bool) {
+          shouldCommit = result['should_commit'] as bool;
+        } else {
+          shouldCommit = result['should_commit'].toString().toLowerCase() == 'true';
         }
-      } catch (e) {
-        _addAgentMessage(isUrdu ? "معذرت، میں سمجھ نہیں سکا۔ براہ کرم دوبارہ کوشش کریں۔" : "Sorry, I didn't get that. Please try again.");
       }
+
+      bool isMocked = true;
+      if (result['is_mock'] != null) {
+        if (result['is_mock'] is bool) {
+          isMocked = result['is_mock'] as bool;
+        } else {
+          isMocked = result['is_mock'].toString().toLowerCase() == 'true';
+        }
+      }
+
+      final nextState = result['next_state']?.toString() ?? _agentState;
+      
+      Map<String, dynamic>? data;
+      if (result['extracted_data'] != null && result['extracted_data'] is Map) {
+        data = Map<String, dynamic>.from(result['extracted_data'] as Map);
+      }
+
+      // 1. Update AI History
+      _aiHistory.add({'role': 'USER', 'message': userInput});
+      _aiHistory.add({'role': 'CHATBOT', 'message': reply});
+      if (_aiHistory.length > 10) _aiHistory.removeRange(0, 2);
+
+      // 2. Decide whether to save (Commit) — with confirmation guard
+      if (shouldCommit && data != null) {
+        final user = AuthService().currentUser;
+        if (user == null) {
+          _addAgentMessage(
+            _isUrdu ? 'سیشن ختم ہو گیا ہے۔ دوبارہ لاگ ان کریں۔' : 'Session expired. Please log in again.',
+            isMocked: true,
+          );
+          return;
+        }
+
+        if (data.containsKey('category')) {
+          final cat = data['category']?.toString() ?? user.serviceCategory ?? 'General';
+          
+          List<String> skills = [];
+          if (data['skills'] != null) {
+            if (data['skills'] is List) {
+              skills = (data['skills'] as List)
+                  .map((e) => e.toString())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+            } else {
+              skills = data['skills'].toString().split(',').map((e) => e.trim()).where((s) => s.isNotEmpty).toList();
+            }
+          } else {
+            skills = user.skills ?? [];
+          }
+          await AuthService().updateWorkerService(cat, skills);
+        }
+        if (data.containsKey('availability_rules')) {
+          List<String> rules = [];
+          if (data['availability_rules'] != null) {
+            if (data['availability_rules'] is List) {
+              rules = (data['availability_rules'] as List)
+                  .map((e) => e.toString())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+            } else {
+              rules = data['availability_rules'].toString().split(',').map((e) => e.trim()).where((s) => s.isNotEmpty).toList();
+            }
+          }
+          if (rules.isNotEmpty) {
+            await AuthService().setAvailabilityRules(rules);
+            await _saveWorkerLocation();
+          }
+        }
+      }
+
+      // 3. Update internal state
+      _agentState = nextState;
+
+      _addAgentMessage(reply, isMocked: isMocked);
+      _speak(reply);
+
+    } catch (e, stack) {
+      debugPrint('WorkerAgentChat ProcessInput Error: $e\n$stack');
+      _addAgentMessage(_isUrdu ? "معذرت، دوبارہ کہیں۔" : "Sorry, could you repeat that?", isMocked: true);
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
-    setState(() => _isProcessing = false);
   }
 
   Future<void> _saveWorkerLocation() async {
+    final user = AuthService().currentUser;
+    if (user == null) return; // Guard: no crash if session expired
     try {
       final loc = await LocationService().getCurrentLocation();
       if (loc.isSuccess && loc.data != null) {
-        await LocationService().saveUserLocation(AuthService().currentUser!.uid, loc.data!);
+        await LocationService().saveUserLocation(user.uid, loc.data!);
       }
-    } catch (_) {}
+    } catch (_) {
+      // GPS unavailable — location will be set next time worker goes online
+    }
   }
 
   @override
@@ -250,63 +321,112 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           if (_isListening)
-            Text(_voiceText.isEmpty ? "Listening... آپ بولیں" : _voiceText,
-                 style: const TextStyle(color: AppTheme.purpleLight, fontSize: 16, fontWeight: FontWeight.w600)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(_voiceText.isEmpty ? "Listening... آپ بولیں" : _voiceText,
+                   style: const TextStyle(color: AppTheme.purpleLight, fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
           
-          const SizedBox(height: 16),
-
-          _buildMainAction(),
-          
-          const SizedBox(height: 12),
-          Text(_isListening ? "Tap to Stop" : "Tap to Speak", style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          _buildInputBar(),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildMainAction() {
-    return GestureDetector(
-      onTap: _toggleListening,
-      child: AnimatedBuilder(
-        animation: _micPulseCtrl,
-        builder: (context, child) => Container(
-          width: 80, height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _isListening ? AppTheme.redAlert : AppTheme.purpleAgent,
-            boxShadow: [
-              BoxShadow(
-                color: (_isListening ? AppTheme.redAlert : AppTheme.purpleAgent).withValues(alpha: 0.4),
-                blurRadius: 20 + 10 * _micPulseCtrl.value, spreadRadius: 2 + 4 * _micPulseCtrl.value,
-              )
-            ],
+  Widget _buildInputBar() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: _textController,
+                    focusNode: _focusNode,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: _isUrdu ? 'یہاں لکھیں...' : 'Type message...',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onSubmitted: _processInput,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send_rounded, color: _textController.text.isNotEmpty ? AppTheme.purpleLight : Colors.white24),
+                  onPressed: () => _processInput(_textController.text),
+                ),
+              ],
+            ),
           ),
-          child: Icon(_isListening ? Icons.stop_rounded : Icons.mic_rounded, color: Colors.white, size: 40),
         ),
-      ),
+        const SizedBox(width: 12),
+        GestureDetector(
+          onTap: _toggleListening,
+          child: AnimatedBuilder(
+            animation: _micPulseCtrl,
+            builder: (context, child) => Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isListening ? AppTheme.redAlert : AppTheme.purpleAgent,
+                boxShadow: _isListening ? [
+                  BoxShadow(
+                    color: AppTheme.redAlert.withValues(alpha: 0.4),
+                    blurRadius: 10 * _micPulseCtrl.value, spreadRadius: 2 * _micPulseCtrl.value,
+                  )
+                ] : null,
+              ),
+              child: Icon(_isListening ? Icons.stop_rounded : Icons.mic_rounded, color: Colors.white, size: 24),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildMessageBubble(_ChatMessage msg) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: msg.isAgent ? MainAxisAlignment.start : MainAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: msg.isAgent ? CrossAxisAlignment.start : CrossAxisAlignment.end,
         children: [
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: msg.isAgent ? AppTheme.purpleAgent.withValues(alpha: 0.15) : AppTheme.tealPrimary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: (msg.isAgent ? AppTheme.purpleAgent : AppTheme.tealPrimary).withValues(alpha: 0.2)),
+          Row(
+            mainAxisAlignment: msg.isAgent ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: msg.isAgent ? AppTheme.purpleAgent.withValues(alpha: 0.15) : AppTheme.tealPrimary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: (msg.isAgent ? AppTheme.purpleAgent : AppTheme.tealPrimary).withValues(alpha: 0.2)),
+                  ),
+                  child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
+                ),
               ),
-              child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
-            ),
+            ],
           ),
+          if (msg.isMocked)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4),
+              child: Text(
+                'SIMULATION MODE',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+            ),
         ],
       ),
     );
@@ -323,5 +443,6 @@ class _WorkerAgentChatBottomSheetState extends State<WorkerAgentChatBottomSheet>
 class _ChatMessage {
   final String text;
   final bool isAgent;
-  const _ChatMessage({required this.text, required this.isAgent});
+  final bool isMocked;
+  const _ChatMessage({required this.text, required this.isAgent, this.isMocked = false});
 }

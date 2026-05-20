@@ -105,6 +105,12 @@ class AuthService {
     return worker != null;
   }
 
+  Future<bool> isPhoneRegistered(String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    return allUsers.any((u) => u.phone == phone);
+  }
+
   // ── All users (for admin panel) ───────────────────────────────────────────
   Future<List<AppUser>> getAllUsers() async {
     final prefs = await SharedPreferences.getInstance();
