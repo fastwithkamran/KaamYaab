@@ -1,0 +1,89 @@
+# ──────────────────────────────────────────────────────────
+# Flutter / Dart
+# ──────────────────────────────────────────────────────────
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+.metadata
+
+# ──────────────────────────────────────────────────────────
+# IDE
+# ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ──────────────────────────────────────────────────────────
+# Firebase & Secrets  ← never commit these
+# ──────────────────────────────────────────────────────────
+google-services.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# ──────────────────────────────────────────────────────────
+# Environment / Config
+# ──────────────────────────────────────────────────────────
+.env
+.env.*
+lib/config/env_config.dart
+
+# ──────────────────────────────────────────────────────────
+# Python (functions/agents)
+# ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.pytest_cache/
+*.egg-info/
+dist/
+*.so
+
+# ──────────────────────────────────────────────────────────
+# Node (Firebase CLI / Cloud Functions)
+# ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+functions/node_modules/
+
+# ──────────────────────────────────────────────────────────
+# Android
+# ──────────────────────────────────────────────────────────
+local.properties
+android/local.properties
+android/.gradle/
+*.jks
+*.keystore
+android/key.properties
+android/app/key.properties
+
+# ──────────────────────────────────────────────────────────
+# macOS
+# ──────────────────────────────────────────────────────────
+.DS_Store
+
+# ──────────────────────────────────────────────────────────
+# Misc
+# ──────────────────────────────────────────────────────────
+*.class
+*.log
+*.swp
+.atom/
+.buildlog/
+.history
+.svn/
+analyze_output.txt
