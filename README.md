@@ -23,7 +23,7 @@ To make it as easy as possible to evaluate and test the KaamYaab application, we
   * **🛠️ Service Provider (Worker) Account:**
     * Phone Number: `+92 331 1234568`
     * Verification OTP Code: `123456`
-
+* **🗺️ Demo Data Coverage:** 40 service providers have been pre-seeded into Firebase Firestore for demo purposes — all providers are currently based in **Karachi** only.
 ---
 
 ## 📖 Table of Contents
