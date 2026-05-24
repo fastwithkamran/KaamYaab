@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: checks if user is authenticated via Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 1. Service Providers Collection
+    match /providers/{providerId} {
+      allow read, write: if true;
+    }
+
+    // 2. Bookings Collection
+    match /bookings/{bookingId} {
+      allow read, write: if true;
+    }
+
+    // 3. Users Collection
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 4. Worker Locations Collection
+    match /worker_locations/{locationId} {
+      allow read, write: if true;
+    }
+
+    // 5. Customer Notifications Collection
+    match /customer_notifications/{customerId} {
+      allow read, write: if true;
+      
+      match /items/{itemId} {
+        allow read, write: if true;
+      }
+    }
+
+    // 6. Worker Notifications Collection
+    match /worker_notifications/{workerId} {
+      allow read, write: if true;
+      
+      match /items/{itemId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
