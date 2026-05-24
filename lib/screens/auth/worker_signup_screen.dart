@@ -49,31 +49,29 @@ class _WorkerSignupScreenState extends State<WorkerSignupScreen> {
   }
 
   // ── Image picker ────────────────────────────────────────────────────────────
-  Future<void> _pickImage(ImageSource source) async {
-    setState(() => _pickingImage = true);
-    try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(
-        source: source,
-        maxWidth: 600,
-        maxHeight: 600,
-        imageQuality: 75,
-      );
-      if (file == null) return;
+Future<void> _pickImage(ImageSource source) async {
+  setState(() => _pickingImage = true);
+  try {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: source, maxWidth: 600, maxHeight: 600, imageQuality: 75,
+    );
+    if (file == null) return;
 
-      late Uint8List bytes;
-      if (kIsWeb) {
-        bytes = await file.readAsBytes();
-      } else {
-        bytes = await File(file.path).readAsBytes();
-      }
-      setState(() => _profileImageBase64 = base64Encode(bytes));
-    } catch (e) {
-      _showError('Could not load image: $e');
-    } finally {
-      if (mounted) setState(() => _pickingImage = false);
+    late Uint8List bytes;
+    if (kIsWeb) {
+      bytes = await file.readAsBytes();
+    } else {
+      bytes = await File(file.path).readAsBytes();
     }
+    if (!mounted) return;                                      // ← add this
+    setState(() => _profileImageBase64 = base64Encode(bytes));
+  } catch (e) {
+    if (mounted) _showError('Could not load image: $e');      // ← add mounted check
+  } finally {
+    if (mounted) setState(() => _pickingImage = false);
   }
+}
 
   void _showImagePicker() {
     final isUrdu = LanguageService().isUrdu;

@@ -26,6 +26,7 @@ class ServiceProvider {
   final String profileImage;
   final bool isVerified;
   final String lastActiveDate;
+  final bool isAvailable;
 
   const ServiceProvider({
     required this.id,
@@ -55,6 +56,7 @@ class ServiceProvider {
     required this.profileImage,
     required this.isVerified,
     required this.lastActiveDate,
+    this.isAvailable = true,
   });
 
   factory ServiceProvider.fromJson(Map<String, dynamic> json) {
@@ -86,6 +88,7 @@ class ServiceProvider {
       profileImage: json['profile_image'] as String,
       isVerified: json['is_verified'] as bool,
       lastActiveDate: json['last_active_date'] as String,
+      isAvailable: json['is_available'] as bool? ?? true,
     );
   }
 
@@ -117,6 +120,7 @@ class ServiceProvider {
     'profile_image': profileImage,
     'is_verified': isVerified,
     'last_active_date': lastActiveDate,
+    'is_available': isAvailable,
   };
 
   double get completionRate =>

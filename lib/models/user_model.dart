@@ -11,10 +11,13 @@ class AppUser {
   final DateTime createdAt;
 
   // Worker-specific fields
-  final String? serviceCategory;  // e.g. "Plumber"
-  final String? subRole;          // e.g. "Emergency Plumber"
+  final String? serviceCategory;   // e.g. "Plumber"
+  final String? subRole;           // e.g. "Emergency Plumber"
   final List<String>? skills;
-  final double? baseRatePkr;
+  final double? baseRatePkr;       // Standard hourly/job rate
+  final double? minRatePkr;        // Negotiation floor — will NOT go below this
+  final double? maxRatePkr;        // Premium / complex-job rate ceiling
+  final String? negotiationStyle;  // "flexible" | "moderate" | "firm"
   final int? experienceYears;
   final bool isAvailable;
   final double rating;
@@ -40,6 +43,9 @@ class AppUser {
     this.subRole,
     this.skills,
     this.baseRatePkr,
+    this.minRatePkr,
+    this.maxRatePkr,
+    this.negotiationStyle = 'moderate',
     this.experienceYears,
     this.isAvailable = true,
     this.rating = 0.0,
@@ -53,7 +59,28 @@ class AppUser {
 
   bool get isWorker => role == UserRole.worker;
   bool get isCustomer => role == UserRole.customer;
-  bool get hasProfileImage => profileImageBase64 != null && profileImageBase64!.isNotEmpty;
+  bool get hasProfileImage =>
+      profileImageBase64 != null && profileImageBase64!.isNotEmpty;
+
+  /// True only when ALL mandatory worker profile fields are filled.
+  bool get isProfileComplete =>
+      isWorker &&
+      serviceCategory != null &&
+      serviceCategory!.isNotEmpty &&
+      serviceCategory != 'Unassigned' &&
+      skills != null &&
+      skills!.isNotEmpty &&
+      baseRatePkr != null &&
+      minRatePkr != null &&
+      availabilityRules != null &&
+      availabilityRules!.isNotEmpty;
+
+  /// The effective negotiation floor. Falls back to 80 % of base rate.
+  double get effectiveMinRate {
+    if (minRatePkr != null && minRatePkr! > 0) return minRatePkr!;
+    if (baseRatePkr != null && baseRatePkr! > 0) return baseRatePkr! * 0.80;
+    return 0;
+  }
 
   String get roleLabel => role == UserRole.worker ? 'Worker' : 'Customer';
   String get skillsDisplay => skills?.join(', ') ?? '';
@@ -62,17 +89,34 @@ class AppUser {
   String get displayRole => subRole ?? serviceCategory ?? '';
   String get starDisplay {
     if (totalJobs == 0) return 'New';
-    final stars = (rating / 5.0 * 5).round();
+    final stars = rating.round(); // rating is already 0–5
     return '⭐' * stars.clamp(0, 5);
+  }
+
+  int get dnaScore {
+    double score = 500.0;
+    score += (rating / 5.0) * 200;
+    score += (totalJobs.clamp(0, 300) / 300.0) * 150;
+    final years = (experienceYears ?? 0).clamp(0, 10);
+    score += (years / 10.0) * 150;
+    return score.round().clamp(100, 1000);
+  }
+
+  String get dnaLabel {
+    final score = dnaScore;
+    if (score >= 800) return 'Excellent';
+    if (score >= 600) return 'Good';
+    if (score >= 400) return 'Average';
+    return 'Poor';
   }
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      uid: json['uid'] as String,
-      name: json['name'] as String,
-      phone: json['phone'] as String,
+      uid: json['uid'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
       cnic: json['cnic'] as String? ?? '',
-      city: json['city'] as String,
+      city: json['city'] as String? ?? '',
       area: json['area'] as String? ?? '',
       role: json['role'] == 'worker' ? UserRole.worker : UserRole.customer,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
@@ -83,6 +127,10 @@ class AppUser {
           ? List<String>.from(json['skills'] as List)
           : null,
       baseRatePkr: (json['base_rate_pkr'] as num?)?.toDouble(),
+      minRatePkr: (json['min_rate_pkr'] as num?)?.toDouble(),
+      maxRatePkr: (json['max_rate_pkr'] as num?)?.toDouble(),
+      negotiationStyle:
+          json['negotiation_style'] as String? ?? 'moderate',
       experienceYears: json['experience_years'] as int?,
       isAvailable: json['is_available'] as bool? ?? true,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
@@ -110,6 +158,9 @@ class AppUser {
         'sub_role': subRole,
         'skills': skills,
         'base_rate_pkr': baseRatePkr,
+        'min_rate_pkr': minRatePkr,
+        'max_rate_pkr': maxRatePkr,
+        'negotiation_style': negotiationStyle,
         'experience_years': experienceYears,
         'is_available': isAvailable,
         'rating': rating,
@@ -122,6 +173,7 @@ class AppUser {
       };
 
   AppUser copyWith({
+    String? uid,
     String? name,
     String? phone,
     String? cnic,
@@ -131,6 +183,9 @@ class AppUser {
     String? subRole,
     List<String>? skills,
     double? baseRatePkr,
+    double? minRatePkr,
+    double? maxRatePkr,
+    String? negotiationStyle,
     int? experienceYears,
     bool? isAvailable,
     double? rating,
@@ -142,7 +197,7 @@ class AppUser {
     double? longitude,
   }) {
     return AppUser(
-      uid: uid,
+      uid: uid ?? this.uid,
       name: name ?? this.name,
       phone: phone ?? this.phone,
       cnic: cnic ?? this.cnic,
@@ -154,6 +209,9 @@ class AppUser {
       subRole: subRole ?? this.subRole,
       skills: skills ?? this.skills,
       baseRatePkr: baseRatePkr ?? this.baseRatePkr,
+      minRatePkr: minRatePkr ?? this.minRatePkr,
+      maxRatePkr: maxRatePkr ?? this.maxRatePkr,
+      negotiationStyle: negotiationStyle ?? this.negotiationStyle,
       experienceYears: experienceYears ?? this.experienceYears,
       isAvailable: isAvailable ?? this.isAvailable,
       rating: rating ?? this.rating,

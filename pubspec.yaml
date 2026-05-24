@@ -63,12 +63,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-flutter_launcher_icons:
-  android: true
-  ios: false
-  image_path: "assets/images/logo.png"  
-
   assets:
     - assets/images/
     - assets/animations/
     - assets/data/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"

@@ -39,6 +39,9 @@ class _OtpScreenState extends State<OtpScreen> {
   void initState() {
     super.initState();
     _demoCode = widget.demoOtp;
+    if (_demoCode.isNotEmpty) {
+      debugPrint('DEVELOPER NOTE (Simulated OTP): $_demoCode');
+    }
     _startCountdown();
   }
 
@@ -109,6 +112,9 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() {
       _resending = false;
       _demoCode = sendResult.demoCode ?? '';
+      if (_demoCode.isNotEmpty) {
+        debugPrint('DEVELOPER NOTE (Simulated OTP Resent): $_demoCode');
+      }
       if (!sendResult.success && sendResult.demoCode == null) {
         _error = sendResult.errorMessage ?? 'Could not resend OTP.';
       }
@@ -200,39 +206,6 @@ class _OtpScreenState extends State<OtpScreen> {
                             ),
                           ]),
                         ).animate().fadeIn(delay: 200.ms),
-
-                        // Demo mode banner
-                        if (_demoCode.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                AppTheme.goldAccent.withValues(alpha: 0.15),
-                                AppTheme.goldAccent.withValues(alpha: 0.05),
-                              ]),
-                              borderRadius: AppTheme.radiusMd,
-                              border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.5)),
-                            ),
-                            child: Row(children: [
-                              const Text('⚡', style: TextStyle(fontSize: 20)),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  const Text('Demo Mode — Your OTP',
-                                      style: TextStyle(color: AppTheme.goldAccent, fontSize: 12, fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 2),
-                                  Text(_demoCode,
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 22,
-                                          fontWeight: FontWeight.w800, letterSpacing: 6)),
-                                   const Text('(In-app OTP simulation active)',
-                                       style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                                ]),
-                              ),
-                            ]),
-                          ).animate().fadeIn(delay: 300.ms),
-                        ],
 
                         const SizedBox(height: 36),
 
