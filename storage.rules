@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// Firebase Storage Rules for KaamYaab
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper: checks if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: checks if the authenticated user is the owner of the path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: check if file is an image and is within a reasonable size (e.g. 5MB)
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // 1. Profile Images: Publicly readable, but writable only by the profile owner
+    match /profile_images/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+
+    // 2. Verification Documents (CNIC scans, certificates, licenses):
+    //    Readable and writable ONLY by the owner (or admin users)
+    match /verification_docs/{userId}/{fileName} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // 3. Chat Media / Booking Attachments:
+    //    Accessible only to authenticated users (e.g. for sharing screenshots during booking/dispute)
+    match /chat_media/{bookingId}/{fileName} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
