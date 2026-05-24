@@ -1,5 +1,5 @@
 """
-KaamYaab — Orchestrator Agents  (v3 — Optimized)
+KaamYaab — Orchestrator Agents  (v4 — Optimized)
 KaamYaab Autonomous Agent System | Cohere-Powered
 
 Agents: SurgeAgent · PricingAgent · NegotiationAgent · SchedulingAgent · BookingAgent · DisputeAgent · ProviderOptimizationAgent
@@ -24,11 +24,33 @@ Bug Fixes (v2 → v3)
 • MIGRATION: Replaced google.generativeai with Cohere (command-r-plus).
   Cohere is used only in NegotiationAgent for complex counter-offer reasoning.
   Set COHERE_API_KEY in your environment.
+
+Bug Fixes (v3 → v4)
+────────────────────
+• FIX-3:  pricing_agent_run() used floor = base × 0.80 but matching_agent.calculate_quote()
+  uses base × 0.85. The mismatch meant NegotiationAgent could accept offers that
+  the matching quote would reject. Both now use _PRICE_FLOOR_RATIO = 0.85.
+• FIX-4:  _booked_slots was module-level mutable state — invisible to tests and broken
+  in multi-process deployments. scheduling_agent_run(), reschedule_on_cancellation(),
+  and provider_optimization_agent_run() now accept an optional booked_slots dict that
+  callers can inject; they fall back to the module-level store for backward compatibility.
+• FIX-7:  scheduling_agent_run() did not normalise requested_time before string
+  comparisons — "9:00" vs a stored "09:00" would never match. Now calls _normalise_slot()
+  (imported from matching_agent) on the incoming time before any lookup or split.
+• FIX-8:  provider_optimization_agent_run() earnings estimate ignored the surge
+  multiplier. Potential earnings during a 1.6x surge are 60% higher than base rate.
+  Added surge_mult parameter; estimated_earnings now multiplies by max(1.0, surge_mult).
+• FIX-10: _MAX_INACTIVE_DAYS (= 14) is now imported from matching_agent rather than
+  being a hidden magic constant duplicated across files.
+• FIX-11: booking_agent_run() step timestamps all fell within seconds of each other
+  (timedelta(seconds=n*2)), making the audit trace look unrealistic. Replaced with
+  stage-appropriate minute offsets that reflect a real booking lifecycle.
 """
 
 import json
 import logging
 import os
+import re
 import time
 import uuid
 import datetime
@@ -39,17 +61,28 @@ try:
 except ImportError:
     cohere = None
 
-# Import canonical distance cost from matching_agent to avoid formula drift
+# Import shared utilities from matching_agent to avoid formula/constant drift.
+# FIX-7:  _normalise_slot — zero-pads slot strings before comparisons in SchedulingAgent.
+# FIX-10: _MAX_INACTIVE_DAYS — single source of truth for staleness cutoff.
 try:
-    from matching_agent import _distance_cost
+    from matching_agent import _distance_cost, _normalise_slot, _MAX_INACTIVE_DAYS
 except ImportError:
-    # Fallback if running standalone
+    # Fallbacks if running standalone (e.g. unit tests without the full package)
     def _distance_cost(dist_km: float) -> int:  # type: ignore[misc]
         if dist_km <= 2.0:
             return 0
         tier1 = min(dist_km, 5.0) - 2.0
         tier2 = max(0.0, dist_km - 5.0)
         return round(tier1 * 20.0 + tier2 * 35.0)
+
+    def _normalise_slot(slot: str) -> str:  # type: ignore[misc]
+        try:
+            h, m = slot.split(":")
+            return f"{int(h):02d}:{m}"
+        except (ValueError, AttributeError):
+            return slot
+
+    _MAX_INACTIVE_DAYS = 14
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +196,9 @@ def _trend(hourly: list, hour: int) -> str:
 
 _URGENCY_RATES = {"emergency": 0.35, "high": 0.20, "medium": 0.08, "low": 0.0}
 _COMPLEX_RATES = {"complex": 0.40, "intermediate": 0.20, "basic": 0.0}
+# FIX-3: mirrors matching_agent.calculate_quote() — both agents must agree on the
+# minimum acceptable price so NegotiationAgent accepts the same floor as the matcher.
+_PRICE_FLOOR_RATIO = 0.85
 
 
 def pricing_agent_run(
@@ -189,7 +225,8 @@ def pricing_agent_run(
     loyalty_pkr  = round(base * 0.07) if is_repeat_customer else 0
     budget_pkr   = round(base * 0.05) if budget >= 0.75 else 0
     total        = base + urgency_pkr + dist_pkr + complex_pkr + surge_pkr - loyalty_pkr - budget_pkr
-    floor        = round(base * 0.80)
+    # FIX-3: was 0.80 — now aligned with matching_agent.calculate_quote() which uses 0.85
+    floor        = round(base * _PRICE_FLOOR_RATIO)
     total        = max(total, floor)
 
     return {
@@ -281,7 +318,6 @@ def negotiation_agent_run(
             )
             resp   = co.chat(model="command-r-plus", message=prompt, temperature=0.1, max_tokens=300)
             text   = resp.text.strip()
-            import re
             text   = re.sub(r'```(?:json)?\s*|\s*```', '', text).strip()
             cohere_result = json.loads(text)
             cohere_result.update({
@@ -349,13 +385,23 @@ def scheduling_agent_run(
     requested_date: str,
     requested_time: str,
     eta_minutes: int,
+    booked_slots: Optional[Dict[str, List[str]]] = None,  # FIX-4: injectable store
 ) -> Dict:
     """
     Prevents double-booking, enforces travel+service buffer (45 min + ETA),
     caps daily jobs at 6, suggests alternates, manages waitlist.
+
+    FIX-4: Pass a booked_slots dict to isolate state in tests or multi-worker
+    deployments. Omit to use the module-level store (backward compatible).
+    FIX-7: requested_time is normalised via _normalise_slot() so "9:00" and
+    "09:00" are treated as the same slot.
     """
+    # FIX-4: use injected store if provided, fall back to module-level state
+    store = booked_slots if booked_slots is not None else _booked_slots
+    # FIX-7: normalise before any comparison or storage so "9:00" == "09:00"
+    requested_time = _normalise_slot(requested_time)
     pid    = provider["id"]
-    booked = _booked_slots.get(pid, [])
+    booked = store.get(pid, [])
 
     if len(booked) >= _MAX_DAILY_JOBS:
         return {
@@ -394,7 +440,7 @@ def scheduling_agent_run(
         except ValueError:
             pass
 
-    _booked_slots.setdefault(pid, []).append(requested_time)
+    store.setdefault(pid, []).append(requested_time)
     booking_id = f"BK-{uuid.uuid4().hex[:8].upper()}"
 
     return {
@@ -405,16 +451,22 @@ def scheduling_agent_run(
         "slot":                  requested_time,
         "date":                  requested_date,
         "travel_buffer_minutes": required_gap,
-        "daily_jobs_booked":     len(_booked_slots[pid]),
+        "daily_jobs_booked":     len(store[pid]),
         "message":               f"Slot {requested_time} on {requested_date} locked for {provider['name']}.",
         "agent":                 "SchedulingAgent",
     }
 
 
-def reschedule_on_cancellation(provider: Dict, cancelled_slot: str, affected_user: str) -> Dict:
+def reschedule_on_cancellation(
+    provider: Dict,
+    cancelled_slot: str,
+    affected_user: str,
+    booked_slots: Optional[Dict[str, List[str]]] = None,  # FIX-4: injectable store
+) -> Dict:
     """Auto-reschedule when provider cancels — returns next available slot."""
+    store  = booked_slots if booked_slots is not None else _booked_slots
     pid    = provider["id"]
-    booked = _booked_slots.get(pid, [])
+    booked = store.get(pid, [])
     if cancelled_slot in booked:
         booked.remove(cancelled_slot)
     alternates = [s for s in provider.get("available_slots", []) if s not in booked]
@@ -463,6 +515,11 @@ def booking_agent_run(
     slot       = scheduling_result.get("slot", "10:00")
     bid        = scheduling_result.get("booking_id", "BK-000000")
 
+    # FIX-11: realistic stage offsets (minutes after booking confirmation):
+    #   0 = instant lock, 1 = push notification, 1 = receipt,
+    #   2 = reminders queued, ~30 = en-route, ~90 = service done, ~120 = feedback sent
+    _STEP_OFFSETS_MIN = [0, 1, 1, 2, 30, 90, 120]
+
     step_defs = [
         (1, "Slot Lock",           f"Calendar slot {slot} locked. Booking ID: {bid}"),
         (2, "Confirmation",        f"Push notification sent to user & {provider['name']} (+{provider['phone'][-7:]})"),
@@ -478,7 +535,7 @@ def booking_agent_run(
             "step":       n,
             "title":      title,
             "agent_note": note,
-            "timestamp":  (now + datetime.timedelta(seconds=n * 2)).isoformat(),
+            "timestamp":  (now + datetime.timedelta(minutes=_STEP_OFFSETS_MIN[n - 1])).isoformat(),
             "status":     "completed",
         }
         for n, title, note in step_defs
@@ -620,21 +677,32 @@ def provider_optimization_agent_run(
     demand_data: Dict,
     area: str,
     service: str,
+    surge_mult: float = 1.0,                               # FIX-8: surge affects earnings
+    booked_slots: Optional[Dict[str, List[str]]] = None,   # FIX-4: injectable store
 ) -> Dict:
     """
     Gives providers workload balancing advice, earnings forecast,
     and recommended time slots based on demand patterns.
+
+    FIX-8: surge_mult is included in the earnings estimate — a 1.6x surge means
+    potential earnings are 60% higher, which is the whole reason to accept jobs
+    during a surge. Defaults to 1.0 (no surge) for backward compatibility.
+    FIX-4: accepts an optional booked_slots store to keep state testable.
     """
+    store            = booked_slots if booked_slots is not None else _booked_slots
     zones            = {z["area"]: z for z in demand_data.get("demand_zones", [])}
     zone             = zones.get(area, {})
     hourly           = zone.get("hourly_demand", {}).get(service, [0] * 24)
-    total_jobs_today = len(_booked_slots.get(provider["id"], []))
+    total_jobs_today = len(store.get(provider["id"], []))
 
     peak_hours = sorted(range(len(hourly)), key=lambda h: hourly[h], reverse=True)[:3]
     peak_strs  = [f"{h:02d}:00" for h in peak_hours]
 
-    potential_jobs      = max(0, _MAX_DAILY_JOBS - total_jobs_today)
-    estimated_earnings  = potential_jobs * provider.get("base_rate_pkr", 1000)
+    potential_jobs = max(0, _MAX_DAILY_JOBS - total_jobs_today)
+    # FIX-8: apply surge multiplier so the forecast reflects actual earning potential
+    estimated_earnings = round(
+        potential_jobs * provider.get("base_rate_pkr", 1000) * max(1.0, surge_mult)
+    )
 
     other_zones = [z for z in demand_data.get("demand_zones", []) if z["area"] != area]
     hotspot = max(
@@ -643,6 +711,7 @@ def provider_optimization_agent_run(
         default=None,
     )
 
+    surge_note = f" (surge {surge_mult}x active)" if surge_mult > 1.1 else ""
     return {
         "provider_id":            provider["id"],
         "provider_name":          provider["name"],
@@ -650,11 +719,12 @@ def provider_optimization_agent_run(
         "capacity_remaining":     potential_jobs,
         "recommended_slots":      peak_strs,
         "estimated_earnings_pkr": estimated_earnings,
+        "surge_multiplier":       surge_mult,
         "hotspot_area":           hotspot["area"] if hotspot else area,
         "advice": (
             f"Peak demand at {', '.join(peak_strs)}. "
             f"You can take {potential_jobs} more jobs today. "
-            f"Estimated earnings: Rs.{estimated_earnings}. "
+            f"Estimated earnings: Rs.{estimated_earnings}{surge_note}. "
             + (f"High demand also in {hotspot['area']} — consider expanding coverage." if hotspot else "")
         ),
         "agent": "ProviderOptimizationAgent",
