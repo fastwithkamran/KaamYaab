@@ -8,6 +8,8 @@ import '../../models/user_model.dart';
 import '../../widgets/auth_widgets.dart';
 import 'customer_signup_screen.dart';
 import 'worker_signup_screen.dart';
+import 'otp_screen.dart';
+import '../../services/otp_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final UserRole role;
@@ -30,39 +32,90 @@ class _LoginScreenState extends State<LoginScreen> {
       _isWorker ? AppTheme.purpleAgent : AppTheme.tealPrimary;
   String get _emoji => _isWorker ? '🔧' : '🏠';
 
-  Future<void> _login() async {
+  Future<void> _sendOtpAndContinue() async {
     if (!_formKey.currentState!.validate()) return;
     HapticFeedback.mediumImpact();
     setState(() { _loading = true; _error = null; });
 
-    final result = await AuthService().login(
-      _phoneCtrl.text.trim(),
-    );
+    final phone = _phoneCtrl.text.trim();
 
+    // Check if the user is registered
+    final user = await AuthService().getUserByPhone(phone);
+    if (user == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = LanguageService().isUrdu
+            ? 'اس فون نمبر کے ساتھ کوئی اکاؤنٹ نہیں ملا۔'
+            : 'No account found with this phone number.';
+      });
+      return;
+    }
+    
+    // Check if user is banned
+    final isBanned = await AuthService().isUserBanned(user.uid);
+    if (isBanned) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = LanguageService().isUrdu
+            ? 'آپ کا اکاؤنٹ معطل کر دیا گیا ہے۔'
+            : 'Your account has been suspended.';
+      });
+      return;
+    }
+
+    // Check if user role matches
+    if (user.role != widget.role) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = LanguageService().isUrdu 
+            ? 'یہ اکاؤنٹ $_roleUrdu کے طور پر رجسٹرڈ نہیں ہے۔'
+            : 'This account is registered as a ${user.roleLabel}. '
+              'Please go back and select the correct role.';
+      });
+      return;
+    }
+
+    // Send OTP
+    final sendResult = await OtpService().sendOtp(phone);
     if (!mounted) return;
+    setState(() => _loading = false);
+    if (sendResult.hasFatalError) {
+      setState(() => _error = sendResult.errorMessage ?? 'Could not send OTP.');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OtpScreen(
+          phone: phone,
+          demoOtp: sendResult.demoCode ?? '',
+          onVerified: () => _doLogin(phone),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _doLogin(String phone) async {
+    setState(() { _loading = true; _error = null; });
+
+    final result = await AuthService().login(phone);
+    if (!mounted) return null;
     setState(() => _loading = false);
 
     if (result.isSuccess) {
-      if (result.user!.role != widget.role) {
-        setState(() => _error = LanguageService().isUrdu 
-            ? 'یہ اکاؤنٹ $_roleUrdu کے طور پر رجسٹرڈ نہیں ہے۔'
-            : 'This account is registered as a ${result.user!.roleLabel}. '
-              'Please go back and select the correct role.');
-        return;
-      }
       HapticFeedback.heavyImpact();
-      // Admin check
-      if (AuthService().isAdmin) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/admin', (r) => false);
-      } else {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          _isWorker ? '/dashboard' : '/home',
-          (r) => false,
-        );
-      }
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        _isWorker ? '/dashboard' : '/home',
+        (r) => false,
+      );
+      return null;
     } else {
       setState(() => _error = result.errorMessage);
+      return result.errorMessage;
     }
   }
 
@@ -150,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             height: 54,
                             child: ElevatedButton(
-                              onPressed: _loading ? null : _login,
+                              onPressed: _loading ? null : _sendOtpAndContinue,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _accentColor,
                                 foregroundColor: Colors.white,

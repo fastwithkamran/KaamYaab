@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../config/runtime_config.dart';
 import '../theme/app_theme.dart';
 
 enum InAppNotificationType { toast, bottomSheet }
@@ -59,6 +59,8 @@ class InAppNotificationService {
       return;
     }
 
+    // Toast (SnackBar) — duration is read from RuntimeConfig so it can be
+    // tuned without touching UI code.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -80,6 +82,7 @@ class InAppNotificationService {
             ),
           ],
         ),
+        duration: RuntimeConfig.snackBarDuration,
         backgroundColor: AppTheme.tealDark,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: AppTheme.radiusMd),

@@ -74,6 +74,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  /// Safely parses the AI response map — never throws, always returns valid strings.
+  Map<String, dynamic> _parseResponse(Map<String, dynamic> response) {
+    // Layer 1: direct key access with null-safe fallbacks
+    String reply = '';
+    String action = 'CHAT';
+    Map<String, dynamic>? searchParams;
+
+    try {
+      final rawReply = response['reply'];
+      final rawAction = response['action'];
+
+      if (rawReply is String && rawReply.isNotEmpty) {
+        reply = rawReply;
+      } else if (rawReply != null) {
+        reply = rawReply.toString();
+      }
+
+      if (rawAction is String && rawAction.isNotEmpty) {
+        action = rawAction.toUpperCase();
+      } else if (rawAction != null) {
+        action = rawAction.toString().toUpperCase();
+      }
+
+      final rawParams = response['search_params'];
+      if (rawParams is Map<String, dynamic>) {
+        searchParams = rawParams;
+      } else if (rawParams is Map) {
+        searchParams = Map<String, dynamic>.from(rawParams);
+      }
+    } catch (e) {
+      debugPrint('Response parse error: $e');
+    }
+
+    // Final fallback if reply is still empty
+    if (reply.isEmpty) {
+      reply = _lang.isUrdu
+          ? 'Maafi chahta hoon, mujhe samajh nahi aaya. Dobara poochein?'
+          : 'Sorry, I did not understand that. Could you rephrase?';
+    }
+
+    return {'reply': reply, 'action': action, 'search_params': searchParams};
+  }
+
   Future<void> _handleChat(String input) async {
     if (input.trim().isEmpty) return;
     HapticFeedback.lightImpact();
@@ -90,13 +133,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final loc = await LocationService().getCurrentLocation();
       final defaultArea = loc.isSuccess ? loc.data!.city : 'Unknown';
       final area = _currentRequest?.area ?? defaultArea;
-      final response = await AiService.chat(
+      final rawResponse = await AiService.chat(
         userMessage: userMessage,
         cohereHistory: _chatHistory.toCohereFormat(),
         userArea: area,
         userLanguage: _lang.isUrdu ? 'urdu' : 'english',
       );
 
+      // ✅ Safe parsing — never throws on malformed Cohere response
+      final response = _parseResponse(rawResponse);
       final reply = response['reply'] as String;
       final action = response['action'] as String;
       final searchParams = response['search_params'] as Map<String, dynamic>?;
@@ -109,15 +154,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     } catch (e) {
       debugPrint('Chat Error: $e');
-      await _chatHistory.addMessage('CHATBOT', "Bhai, thora sa masla aa raha hai. Dubara batayein?");
+      await _chatHistory.addMessage('CHATBOT',
+          _lang.isUrdu
+              ? 'Bhai, thora sa masla aa raha hai. Dubara batayein?'
+              : 'Sorry, something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isAILoading = false);
     }
   }
 
   Future<void> _performSearch(Map<String, dynamic> params) async {
-    final loc = await LocationService().getCurrentLocation();
-    final defaultArea = loc.isSuccess ? loc.data!.city : 'Unknown';
+    // Single location fetch — result is cached for 5 min so calling it twice
+    // was wasteful. Use this one result for both the area label and coordinates.
+    final locResult = await LocationService().getCurrentLocation();
+    final defaultArea = locResult.isSuccess ? locResult.data!.city : 'Unknown';
     final service = params['service'] as String? ?? 'General';
     final area = params['area'] as String? ?? defaultArea;
     final urgency = params['urgency'] as String? ?? 'medium';
@@ -154,8 +204,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _surgeMultiplier = 1.0;
     }
 
-    // Matching
-    final locResult = await LocationService().getCurrentLocation();
     if (!locResult.isSuccess) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       return;
     }
-    
+
     final userLat = locResult.data!.latitude;
     final userLng = locResult.data!.longitude;
 

@@ -7,9 +7,9 @@ import '../utils/distance_utils.dart';
 class LocationData {
   final double latitude;
   final double longitude;
-  final String address;     // Human-readable: "DHA Phase 5, Lahore"
-  final String city;        // Just the city: "Lahore"
-  final String area;        // Locality: "DHA Phase 5"
+  final String address;
+  final String city;
+  final String area;
   final DateTime fetchedAt;
 
   const LocationData({
@@ -21,21 +21,15 @@ class LocationData {
     required this.fetchedAt,
   });
 
-  /// Distance in km from this location to [other].
-  double distanceTo(LocationData other) {
-    return haversineDistanceKm(
-      (lat: latitude, lng: longitude),
-      (lat: other.latitude, lng: other.longitude),
-    );
-  }
+  double distanceTo(LocationData other) => haversineDistanceKm(
+        (lat: latitude, lng: longitude),
+        (lat: other.latitude, lng: other.longitude),
+      );
 
-  /// Distance in km to raw coordinates.
-  double distanceToCoords(double lat, double lng) {
-    return haversineDistanceKm(
-      (lat: latitude, lng: longitude),
-      (lat: lat, lng: lng),
-    );
-  }
+  double distanceToCoords(double lat, double lng) => haversineDistanceKm(
+        (lat: latitude, lng: longitude),
+        (lat: lat, lng: lng),
+      );
 
   String get shortAddress => area.isNotEmpty ? '$area, $city' : city;
 
@@ -58,7 +52,6 @@ class LocationData {
       );
 }
 
-/// Errors that can be returned by [LocationService.getCurrentLocation].
 enum LocationError { disabled, denied, deniedForever, timeout, unknown }
 
 class LocationResult {
@@ -70,30 +63,20 @@ class LocationResult {
   const LocationResult.failure(this.error) : data = null;
 }
 
-/// Singleton GPS service — auto-detects location for customers and workers.
-///
-/// Usage:
-/// ```dart
-/// final result = await LocationService().getCurrentLocation();
-/// if (result.isSuccess) print(result.data!.shortAddress);
-/// ```
+/// Singleton GPS service.
 class LocationService {
   static final LocationService _instance = LocationService._();
   factory LocationService() => _instance;
   LocationService._();
 
-  // Last known location for this session (prevents repeated GPS calls).
   LocationData? _cached;
   DateTime? _cacheTime;
   bool _watchActive = false;
   static const _cacheDuration = Duration(minutes: 5);
 
-  // ── Public API ────────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
 
-  /// Get current GPS location.
-  /// Returns cached result if < 5 minutes old.
   Future<LocationResult> getCurrentLocation({bool forceRefresh = false}) async {
-    // Return cache if fresh enough
     if (!forceRefresh &&
         _cached != null &&
         _cacheTime != null &&
@@ -101,11 +84,9 @@ class LocationService {
       return LocationResult.success(_cached!);
     }
 
-    // Check service
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return const LocationResult.failure(LocationError.disabled);
 
-    // Check / request permission
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -118,8 +99,6 @@ class LocationService {
     }
 
     try {
-      // geolocator 14.x: desiredAccuracy/timeLimit params were removed.
-      // Use LocationSettings + Future.timeout instead.
       const settings = LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 0,
@@ -128,7 +107,7 @@ class LocationService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: settings,
       ).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 25),
         onTimeout: () => throw _LocationTimeoutException(),
       );
 
@@ -158,11 +137,19 @@ class LocationService {
     );
   }
 
-  /// Derives a city name from GPS coordinates using rough bounding boxes
-  /// for major Pakistani cities (no external API required).
+  /// Derives a city name from GPS coordinates using bounding boxes for major
+  /// Pakistani cities.
+  ///
+  /// ORDER MATTERS: Rawalpindi is checked BEFORE Islamabad because their boxes
+  /// overlap at the eastern edge (~73.0–73.3 lng, 33.5–33.8 lat).
+  /// Islamabad's box fully contains the overlap zone, so if Islamabad were
+  /// checked first, users in that boundary would always be mislabelled.
   static String _inferCityFromCoords(double lat, double lng) {
-    if (lat >= 33.5 && lat <= 33.9 && lng >= 72.8 && lng <= 73.3) return 'Islamabad';
+    // Rawalpindi — must come before Islamabad (overlapping bounding boxes)
     if (lat >= 33.4 && lat <= 33.8 && lng >= 73.0 && lng <= 73.4) return 'Rawalpindi';
+    // Islamabad — checked after Rawalpindi
+    if (lat >= 33.5 && lat <= 33.9 && lng >= 72.8 && lng <= 73.3) return 'Islamabad';
+
     if (lat >= 31.3 && lat <= 31.8 && lng >= 74.1 && lng <= 74.6) return 'Lahore';
     if (lat >= 24.7 && lat <= 25.1 && lng >= 66.8 && lng <= 67.5) return 'Karachi';
     if (lat >= 30.1 && lat <= 30.4 && lng >= 71.4 && lng <= 71.7) return 'Multan';
@@ -173,16 +160,13 @@ class LocationService {
     return '';
   }
 
-  // ── Persist worker/customer location to SharedPreferences ─────────────────
+  // ── Persist location ───────────────────────────────────────────────────────
 
-  /// Saves the user's current location to local storage (called by workers on
-  /// "Go Online" and by customers when booking).
   Future<void> saveUserLocation(String uid, LocationData data) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('loc_$uid', jsonEncode(data.toJson()));
   }
 
-  /// Loads the last saved location for a given user (by uid).
   Future<LocationData?> loadUserLocation(String uid) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('loc_$uid');
@@ -194,17 +178,13 @@ class LocationService {
     }
   }
 
-  /// Clears cached GPS result (forces fresh fetch next time).
   void clearCache() {
     _cached = null;
     _cacheTime = null;
     _watchActive = false;
   }
 
-  /// Stops the active watchLocation() stream loop.
   void stopWatchingLocation() => _watchActive = false;
-
-  // ── Utility: user-friendly error messages ─────────────────────────────────
 
   static String errorMessage(LocationError error) {
     switch (error) {
@@ -221,16 +201,13 @@ class LocationService {
     }
   }
 
-  // ── Stream: watch position (for worker live tracking) ────────────────────
+  // ── Stream ─────────────────────────────────────────────────────────────────
 
-  /// Returns a stream that emits location updates every 30 seconds.
-  /// Call [stopWatchingLocation] to cleanly cancel the loop and prevent leaks.
   Stream<LocationData> watchLocation() async* {
     _watchActive = true;
     while (_watchActive) {
       final result = await getCurrentLocation(forceRefresh: true);
       if (result.isSuccess) yield result.data!;
-      // Delay with early-exit check so cancel takes effect within 1s.
       for (var i = 0; i < 30 && _watchActive; i++) {
         await Future.delayed(const Duration(seconds: 1));
       }
@@ -238,8 +215,6 @@ class LocationService {
   }
 }
 
-/// Internal sentinel used to distinguish our manual timeout from other errors.
-/// Avoids the dart:async / geolocator TimeoutException mismatch on geolocator 14.x.
 class _LocationTimeoutException implements Exception {
   const _LocationTimeoutException();
 }

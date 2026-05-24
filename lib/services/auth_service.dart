@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-import '../config/runtime_config.dart';
 
-/// Auth service — uses SharedPreferences as a local store for Hackathon Pitch.
+/// Auth service — Firestore is the source of truth.
+/// SharedPreferences is a local cache for offline / fast startup only.
 class AuthService {
   static const _usersKey = 'kaamyaab_users';
   static const _currentUserKey = 'kaamyaab_current_user';
@@ -12,7 +15,6 @@ class AuthService {
   // ── Singleton ─────────────────────────────────────────────────────────────
   static final AuthService _instance = AuthService._();
   factory AuthService() => _instance;
-  // Named getter required by main.dart: AuthService.instance.init()
   static AuthService get instance => _instance;
   AuthService._();
 
@@ -20,12 +22,15 @@ class AuthService {
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
-  /// Returns true if the current user is the Super Admin.
-  bool get isAdmin =>
-      _currentUser != null &&
-      _currentUser!.phone == RuntimeConfig.superAdminPhone;
+  // ── Firestore helper ──────────────────────────────────────────────────────
+  static bool get _hasFirestore => Firebase.apps.isNotEmpty;
+  static FirebaseFirestore get _db => FirebaseFirestore.instance;
+  static CollectionReference<Map<String, dynamic>> get _col =>
+      _db.collection('users');
 
-  // ── Initialise (call in main) ─────────────────────────────────────────────
+  // ── Initialise ────────────────────────────────────────────────────────────
+  /// Loads the session from SharedPreferences, then silently syncs from
+  /// Firestore so local cache always reflects the latest server data.
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString(_currentUserKey);
@@ -37,22 +42,108 @@ class AuthService {
         await prefs.remove(_currentUserKey);
       }
     }
+
+    // Silently re-sync from Firestore so local cache is always fresh.
+    if (_currentUser != null && _hasFirestore) {
+      try {
+        final doc = await _col.doc(_currentUser!.uid).get();
+        if (doc.exists) {
+          final fresh = AppUser.fromJson(doc.data()!);
+          _currentUser = fresh;
+          await prefs.setString(_currentUserKey, jsonEncode(fresh.toJson()));
+          // Also update the users list cache
+          final allUsers = await _loadAllUsers(prefs);
+          final idx = allUsers.indexWhere((u) => u.uid == fresh.uid);
+          if (idx >= 0) {
+            allUsers[idx] = fresh;
+          } else {
+            allUsers.add(fresh);
+          }
+          await _saveAllUsers(prefs, allUsers);
+        }
+      } catch (e) {
+        // Non-fatal — local cache is still usable
+        debugPrint('AuthService.init: Firestore sync failed — $e');
+      }
+    }
   }
 
-  Future<AuthResult> register(AppUser user) async {
+  // ── Get user by phone ─────────────────────────────────────────────────────
+  /// Queries Firestore first (authoritative), falls back to local cache.
+  /// This ensures users who cleared app data but still have a Firestore
+  /// document are found correctly.
+  Future<AppUser?> getUserByPhone(String phone) async {
+    // 1. Try Firestore first (source of truth)
+    if (_hasFirestore) {
+      try {
+        final query = await _col
+            .where('phone', isEqualTo: phone)
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          final fetchedUser = AppUser.fromJson(query.docs.first.data());
+          // Update local cache
+          final prefs = await SharedPreferences.getInstance();
+          final allUsers = await _loadAllUsers(prefs);
+          final idx = allUsers.indexWhere((u) => u.uid == fetchedUser.uid);
+          if (idx >= 0) {
+            allUsers[idx] = fetchedUser;
+          } else {
+            allUsers.add(fetchedUser);
+          }
+          await _saveAllUsers(prefs, allUsers);
+          return fetchedUser;
+        }
+      } catch (e) {
+        debugPrint('AuthService.getUserByPhone: Firestore error — $e');
+      }
+    }
+
+    // 2. Fall back to local cache (offline mode)
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
+    final localMatch = allUsers.where((u) => u.phone == phone).toList();
+    return localMatch.isNotEmpty ? localMatch.first : null;
+  }
 
-    if (allUsers.any((u) => u.phone == user.phone)) {
+  // ── Register ──────────────────────────────────────────────────────────────
+  /// Registers a new user. Writes to Firestore first (required), then caches
+  /// locally. Returns an error if Firestore write fails so the user knows
+  /// their account was not created.
+  Future<AuthResult> register(AppUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Check for duplicate (Firestore first)
+    final existing = await getUserByPhone(user.phone);
+    if (existing != null) {
       return AuthResult.error('This phone number is already registered.');
     }
 
+    final uid = user.uid.isEmpty
+        ? 'USR-${DateTime.now().millisecondsSinceEpoch}'
+        : user.uid;
     final newUser = user.copyWith(
+      uid: uid,
       isAvailable: true,
       rating: 0.0,
       totalJobs: 0,
     );
 
+    // 1. Write to Firestore (mandatory — this is the source of truth)
+    if (_hasFirestore) {
+      try {
+        await _col.doc(newUser.uid).set(newUser.toJson());
+        debugPrint('AuthService.register: user written to Firestore — ${newUser.uid}');
+      } catch (e) {
+        debugPrint('AuthService.register: Firestore write FAILED — $e');
+        return AuthResult.error(
+          'Could not save your account. Please check your internet connection and try again.',
+        );
+      }
+    }
+
+    // 2. Cache locally
+    final allUsers = await _loadAllUsers(prefs);
     allUsers.add(newUser);
     await _saveAllUsers(prefs, allUsers);
 
@@ -62,16 +153,18 @@ class AuthService {
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────
+  /// Phone-based login. OTP verification is handled upstream.
+  /// Queries Firestore first to get the latest user data, then caches locally.
   Future<AuthResult> login(String phone) async {
     final prefs = await SharedPreferences.getInstance();
-    final allUsers = await _loadAllUsers(prefs);
 
-    final matched = allUsers.where((u) => u.phone == phone).toList();
-    if (matched.isEmpty) {
+    // Look up user — Firestore first (handles cleared-data case)
+    final user = await getUserByPhone(phone);
+
+    if (user == null) {
       return AuthResult.error('No account found with this phone number.');
     }
 
-    final user = matched.first;
     final banned = await _loadBannedUids(prefs);
     if (banned.contains(user.uid)) {
       return AuthResult.error('Your account has been suspended.');
@@ -91,8 +184,99 @@ class AuthService {
 
   Future<void> signOut() => logout();
 
-  // ── Worker lookup (phone validation for booking) ───────────────────────────
+  // ── Refresh current user from Firestore ───────────────────────────────────
+  /// Re-fetches the signed-in user's document from Firestore and updates both
+  /// in-memory state and SharedPreferences. Call after login or profile update.
+  Future<void> refreshUserFromFirestore() async {
+    if (_currentUser == null || !_hasFirestore) return;
+    try {
+      final doc = await _col.doc(_currentUser!.uid).get();
+      if (doc.exists) {
+        final fresh = AppUser.fromJson(doc.data()!);
+        _currentUser = fresh;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_currentUserKey, jsonEncode(fresh.toJson()));
+
+        final allUsers = await _loadAllUsers(prefs);
+        final idx = allUsers.indexWhere((u) => u.uid == fresh.uid);
+        if (idx >= 0) {
+          allUsers[idx] = fresh;
+        } else {
+          allUsers.add(fresh);
+        }
+        await _saveAllUsers(prefs, allUsers);
+        debugPrint('AuthService.refreshUserFromFirestore: synced ${fresh.uid}');
+      }
+    } catch (e) {
+      debugPrint('AuthService.refreshUserFromFirestore: failed — $e');
+    }
+  }
+
+  // ── Refresh (local only) ──────────────────────────────────────────────────
+  /// Re-reads the current user from local SharedPreferences cache.
+  Future<void> refreshCurrentUser() async {
+    if (_currentUser == null) return;
+    // Prefer Firestore refresh if available
+    if (_hasFirestore) {
+      await refreshUserFromFirestore();
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    final updated = allUsers.where((u) => u.uid == _currentUser!.uid).toList();
+    if (updated.isNotEmpty) {
+      _currentUser = updated.first;
+    }
+  }
+
+  // ── Worker rating ─────────────────────────────────────────────────────────
+  Future<void> updateWorkerRating({
+    required String workerUid,
+    required double newRating,
+    required int newTotalJobs,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    final idx = allUsers.indexWhere((u) => u.uid == workerUid);
+    if (idx < 0) return;
+    allUsers[idx] = allUsers[idx].copyWith(
+      rating: newRating,
+      totalJobs: newTotalJobs,
+    );
+    await _saveAllUsers(prefs, allUsers);
+
+    if (_hasFirestore) {
+      try {
+        await _col.doc(workerUid).update({
+          'rating': newRating,
+          'total_jobs': newTotalJobs,
+        });
+      } catch (_) {}
+    }
+
+    if (_currentUser?.uid == workerUid) {
+      _currentUser = allUsers[idx];
+      await prefs.setString(
+          _currentUserKey, jsonEncode(allUsers[idx].toJson()));
+    }
+  }
+
+  // ── Worker lookup ─────────────────────────────────────────────────────────
   Future<AppUser?> findWorkerByPhone(String phone) async {
+    // Try Firestore first
+    if (_hasFirestore) {
+      try {
+        final query = await _col
+            .where('phone', isEqualTo: phone)
+            .where('role', isEqualTo: 'worker')
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          return AppUser.fromJson(query.docs.first.data());
+        }
+      } catch (_) {}
+    }
+    // Local fallback
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
     try {
@@ -108,24 +292,66 @@ class AuthService {
   }
 
   Future<bool> isPhoneRegistered(String phone) async {
-    final prefs = await SharedPreferences.getInstance();
-    final allUsers = await _loadAllUsers(prefs);
-    return allUsers.any((u) => u.phone == phone);
+    final user = await getUserByPhone(phone);
+    return user != null;
   }
 
-  // ── All users (for admin panel) ───────────────────────────────────────────
+  // ── All users ─────────────────────────────────────────────────────────────
   Future<List<AppUser>> getAllUsers() async {
     final prefs = await SharedPreferences.getInstance();
     return _loadAllUsers(prefs);
   }
 
   Future<List<AppUser>> getAllWorkers({String? city, String? category}) async {
+    // Try Firestore for live worker data
+    if (_hasFirestore) {
+      try {
+        Query<Map<String, dynamic>> query =
+            _col.where('role', isEqualTo: 'worker');
+        if (city != null && city.isNotEmpty) {
+          query = query.where('city', isEqualTo: city);
+        }
+        if (category != null && category != 'All' && category.isNotEmpty) {
+          query = query.where('service_category', isEqualTo: category);
+        }
+        final snap = await query.get();
+        if (snap.docs.isNotEmpty) {
+          final workers =
+              snap.docs.map((d) => AppUser.fromJson(d.data())).toList();
+          // Update local cache with fetched workers
+          final prefs = await SharedPreferences.getInstance();
+          final allUsers = await _loadAllUsers(prefs);
+          for (final w in workers) {
+            final idx = allUsers.indexWhere((u) => u.uid == w.uid);
+            if (idx >= 0) {
+              allUsers[idx] = w;
+            } else {
+              allUsers.add(w);
+            }
+          }
+          await _saveAllUsers(prefs, allUsers);
+          return workers;
+        }
+      } catch (e) {
+        debugPrint('AuthService.getAllWorkers: Firestore error — $e');
+      }
+    }
+
+    // Fall back to local cache
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
     return allUsers.where((u) {
-      if (!u.isWorker) return false;
-      if (city != null && u.city != city) return false;
-      if (category != null && category != 'All' && u.serviceCategory != category) return false;
+      if (!u.isWorker) {
+        return false;
+      }
+      if (city != null && u.city != city) {
+        return false;
+      }
+      if (category != null &&
+          category != 'All' &&
+          u.serviceCategory != category) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -141,19 +367,38 @@ class AuthService {
       _currentUser = allUsers[idx];
       await _saveAllUsers(prefs, allUsers);
       await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
+
+      if (_hasFirestore) {
+        try {
+          await _col
+              .doc(_currentUser!.uid)
+              .update({'is_available': available});
+        } catch (_) {}
+      }
     }
   }
 
-  Future<void> updateWorkerService(String category, List<String> skills) async {
+  Future<void> updateWorkerService(
+      String category, List<String> skills) async {
     if (_currentUser == null || !_currentUser!.isWorker) return;
     final prefs = await SharedPreferences.getInstance();
     final allUsers = await _loadAllUsers(prefs);
     final idx = allUsers.indexWhere((u) => u.uid == _currentUser!.uid);
     if (idx >= 0) {
-      allUsers[idx] = allUsers[idx].copyWith(serviceCategory: category, skills: skills);
+      allUsers[idx] =
+          allUsers[idx].copyWith(serviceCategory: category, skills: skills);
       _currentUser = allUsers[idx];
       await _saveAllUsers(prefs, allUsers);
       await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
+
+      if (_hasFirestore) {
+        try {
+          await _col.doc(_currentUser!.uid).update({
+            'service_category': category,
+            'skills': skills,
+          });
+        } catch (_) {}
+      }
     }
   }
 
@@ -167,6 +412,47 @@ class AuthService {
       _currentUser = allUsers[idx];
       await _saveAllUsers(prefs, allUsers);
       await prefs.setString(_currentUserKey, jsonEncode(_currentUser!.toJson()));
+
+      if (_hasFirestore) {
+        try {
+          await _col
+              .doc(_currentUser!.uid)
+              .update({'availability_rules': rules});
+        } catch (_) {}
+      }
+    }
+  }
+
+  // ── Update profile ────────────────────────────────────────────────────────
+  /// Updates the user profile in Firestore first, then syncs to local cache.
+  Future<void> updateUserProfile(AppUser updatedUser) async {
+    // 1. Firestore first
+    if (_hasFirestore) {
+      try {
+        await _col.doc(updatedUser.uid).set(updatedUser.toJson());
+        debugPrint(
+            'AuthService.updateUserProfile: Firestore updated — ${updatedUser.uid}');
+      } catch (e) {
+        debugPrint('AuthService.updateUserProfile: Firestore error — $e');
+        // Continue to update local cache even if Firestore fails
+      }
+    }
+
+    // 2. Update local cache
+    final prefs = await SharedPreferences.getInstance();
+    final allUsers = await _loadAllUsers(prefs);
+    final idx = allUsers.indexWhere((u) => u.uid == updatedUser.uid);
+    if (idx >= 0) {
+      allUsers[idx] = updatedUser;
+      await _saveAllUsers(prefs, allUsers);
+    } else {
+      allUsers.add(updatedUser);
+      await _saveAllUsers(prefs, allUsers);
+    }
+
+    if (_currentUser?.uid == updatedUser.uid) {
+      _currentUser = updatedUser;
+      await prefs.setString(_currentUserKey, jsonEncode(updatedUser.toJson()));
     }
   }
 
@@ -178,6 +464,11 @@ class AuthService {
       banned.add(uid);
       await prefs.setString(_bannedKey, jsonEncode(banned));
     }
+    if (_hasFirestore) {
+      try {
+        await _col.doc(uid).update({'is_banned': true});
+      } catch (_) {}
+    }
   }
 
   Future<void> unbanUser(String uid) async {
@@ -185,9 +476,23 @@ class AuthService {
     final banned = await _loadBannedUids(prefs);
     banned.remove(uid);
     await prefs.setString(_bannedKey, jsonEncode(banned));
+    if (_hasFirestore) {
+      try {
+        await _col.doc(uid).update({'is_banned': false});
+      } catch (_) {}
+    }
   }
 
   Future<bool> isUserBanned(String uid) async {
+    // Check Firestore first for ban status
+    if (_hasFirestore) {
+      try {
+        final doc = await _col.doc(uid).get();
+        if (doc.exists) {
+          return doc.data()?['is_banned'] == true;
+        }
+      } catch (_) {}
+    }
     final prefs = await SharedPreferences.getInstance();
     final banned = await _loadBannedUids(prefs);
     return banned.contains(uid);
@@ -204,52 +509,16 @@ class AuthService {
     final updated = allUsers.where((u) => u.uid != uid).toList();
     await _saveAllUsers(prefs, updated);
     await unbanUser(uid);
-  }
+    if (_currentUser?.uid == uid) {
+      await prefs.remove(_currentUserKey);
+      _currentUser = null;
+    }
 
-  // ── Hackathon Seeding Logic ───────────────────────────────────────────────
-  Future<void> seedDemoData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = await _loadAllUsers(prefs);
-    
-    // Remove old demos if any, so we start fresh
-    existing.removeWhere((u) => u.uid.startsWith('demo_'));
-
-    final demos = [
-      AppUser(uid: 'demo_plumber_1', name: 'Tariq Mehmood', phone: '03001234501',
-        cnic: '1111111111111', city: 'Lahore', area: 'DHA Phase 5', role: UserRole.worker,
-        createdAt: DateTime.now(), serviceCategory: 'Plumber',
-        subRole: 'Emergency Plumber', skills: ['Pipe Fitting', 'Leak Repair', 'Bathroom Fitting'],
-        baseRatePkr: 600, experienceYears: 8, isAvailable: true, rating: 4.8, totalJobs: 312,
-        bio: '8 years experience in all types of plumbing. Available 24/7 for emergencies.'),
-      AppUser(uid: 'demo_elec_1', name: 'Asif Raza', phone: '03001234502',
-        cnic: '2222222222222', city: 'Karachi', area: 'Gulshan', role: UserRole.worker,
-        createdAt: DateTime.now(), serviceCategory: 'Electrician',
-        subRole: 'Solar Installer', skills: ['Solar Panels', 'Inverter/UPS', 'Wiring', 'CCTV'],
-        baseRatePkr: 800, experienceYears: 6, isAvailable: true, rating: 4.6, totalJobs: 187,
-        bio: 'Expert in solar installation and power backup systems. Government certified.'),
-      AppUser(uid: 'demo_ac_1', name: 'Usman Ali', phone: '03001234503',
-        cnic: '3333333333333', city: 'Karachi', area: 'DHA', role: UserRole.worker,
-        createdAt: DateTime.now(), serviceCategory: 'AC Technician',
-        subRole: 'Split AC Specialist', skills: ['AC Installation', 'Gas Filling', 'AC Service', 'Compressor Repair'],
-        baseRatePkr: 1200, experienceYears: 5, isAvailable: true, rating: 4.9, totalJobs: 428,
-        bio: 'Top-rated AC technician in Karachi. Same-day service available.'),
-      AppUser(uid: 'demo_carp_1', name: 'Nadeem Akhtar', phone: '03001234504',
-        cnic: '4444444444444', city: 'Lahore', area: 'Johar Town', role: UserRole.worker,
-        createdAt: DateTime.now(), serviceCategory: 'Carpenter',
-        subRole: 'Furniture Maker', skills: ['Furniture Repair', 'Kitchen Cabinets', 'Custom Work', 'Polishing'],
-        baseRatePkr: 700, experienceYears: 12, isAvailable: false, rating: 4.7, totalJobs: 503,
-        bio: 'Master carpenter with 12 years specializing in custom furniture and kitchen design.'),
-      AppUser(uid: 'demo_paint_1', name: 'Kamran Shah', phone: '03001234505',
-        cnic: '5555555555555', city: 'Karachi', area: 'DHA', role: UserRole.worker,
-        createdAt: DateTime.now(), serviceCategory: 'Painter',
-        subRole: 'Texture Paint Expert', skills: ['Interior', 'Texture Paint', 'Waterproofing', 'Wood Polish'],
-        baseRatePkr: 500, experienceYears: 7, isAvailable: true, rating: 4.5, totalJobs: 241,
-        bio: 'Specializes in premium texture finishes and waterproofing. Own equipment.'),
-    ];
-
-    existing.addAll(demos);
-    await _saveAllUsers(prefs, existing);
-    // Note: plaintext password storage removed (was security anti-pattern).
+    if (_hasFirestore) {
+      try {
+        await _col.doc(uid).delete();
+      } catch (_) {}
+    }
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -258,7 +527,9 @@ class AuthService {
     if (raw == null) return [];
     try {
       final list = jsonDecode(raw) as List;
-      return list.map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return [];
     }
@@ -274,8 +545,10 @@ class AuthService {
     }
   }
 
-  Future<void> _saveAllUsers(SharedPreferences prefs, List<AppUser> users) async {
-    await prefs.setString(_usersKey, jsonEncode(users.map((u) => u.toJson()).toList()));
+  Future<void> _saveAllUsers(
+      SharedPreferences prefs, List<AppUser> users) async {
+    await prefs.setString(
+        _usersKey, jsonEncode(users.map((u) => u.toJson()).toList()));
   }
 }
 

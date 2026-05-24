@@ -5,6 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../services/language_service.dart';
 import '../services/ai_service.dart';
+import '../services/booking_history_service.dart';
+import '../services/auth_service.dart';
+import '../services/worker_notification_service.dart';
 
 class DisputesTab extends StatefulWidget {
   final LanguageService lang;
@@ -25,6 +28,11 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
   bool _isJudging = false;
   Map<String, dynamic>? _verdict;
   final List<_JudgeReasoningStep> _reasoningSteps = [];
+  String? _selectedBookingId;
+  String? _selectedProviderName;
+  String? _selectedProviderId;
+  String? _selectedServiceType;
+  String? _selectedReceiptNumber;
 
   final _descCtrl = TextEditingController();
   final _quotedCtrl = TextEditingController();
@@ -35,26 +43,7 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
   late AnimationController _pulseCtrl;
 
   // ── Past Cases List ───────────────────────────────────────────────────
-  final List<Map<String, dynamic>> _pastCases = [
-    {
-      'id': 'CR-2026-0091',
-      'provider': 'Rashid Khan',
-      'type': 'Price Overcharge',
-      'status': 'resolved',
-      'verdict': 'user_favor',
-      'refund': 300.0,
-      'date': 'May 10, 2026',
-    },
-    {
-      'id': 'CR-2026-0088',
-      'provider': 'Khalid Javed',
-      'type': 'No-Show',
-      'status': 'resolved',
-      'verdict': 'user_favor',
-      'refund': 0.0,
-      'date': 'Apr 28, 2026',
-    },
-  ];
+  final List<Map<String, dynamic>> _pastCases = [];
 
   static const _conflictTypes = [
     {'id': 'price_disagreement', 'label': 'Price Dispute', 'urLabel': 'قیمت کا تنازع', 'icon': Icons.attach_money_rounded, 'desc': 'Provider charged more than quoted', 'urDesc': 'کارکن نے طے شدہ قیمت سے زیادہ چارج کیا'},
@@ -137,14 +126,47 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Step 5: Get AI verdict
+    // Look up the provider's real DNA score from AuthService.
+    // Falls back to a reasonable default if the provider is not in local storage
+    // (e.g., JSON/mock providers used in development).
+    int providerDnaScore = 700;
+    int providerDisputeCount = 0;
+    if (_selectedProviderId != null) {
+      try {
+        final allWorkers = await AuthService().getAllWorkers();
+        final match = allWorkers
+            .where((w) => w.uid == _selectedProviderId)
+            .toList();
+        if (match.isNotEmpty) {
+          providerDnaScore = match.first.dnaScore;
+          providerDisputeCount = 0; // No dispute count in model yet; extend later.
+        }
+      } catch (_) {}
+    }
+
     final result = await AiService.analyzeDispute(
       disputeType: _selectedType!,
       description: _description,
       quotedPrice: _quotedPrice,
       chargedPrice: _chargedPrice,
-      providerDnaScore: 720,
-      providerDisputeCount: 3,
+      providerDnaScore: providerDnaScore,
+      providerDisputeCount: providerDisputeCount,
     );
+
+    // Notify the worker of the dispute
+    if (_selectedProviderId != null) {
+      final user = AuthService().currentUser;
+      final customerName = user != null ? (user.name.isNotEmpty ? user.name : user.phone) : 'Customer';
+      final typeLabel = _conflictTypes.firstWhere((t) => t['id'] == _selectedType, orElse: () => {'label': 'Dispute'})['label'] as String;
+      
+      WorkerNotificationService().notifyDisputeFiled(
+        workerUid: _selectedProviderId!,
+        customerName: customerName,
+        serviceType: _selectedServiceType ?? typeLabel,
+        reason: _description,
+        receiptNumber: _selectedReceiptNumber,
+      );
+    }
 
     // Step 5: Verdict
     _addReasoning(
@@ -225,6 +247,11 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
       _verdict = null;
       _reasoningSteps.clear();
       _isFiling = false;
+      _selectedBookingId = null;
+      _selectedProviderName = null;
+      _selectedProviderId = null;
+      _selectedServiceType = null;
+      _selectedReceiptNumber = null;
     });
     _descCtrl.clear();
     _quotedCtrl.clear();
@@ -235,7 +262,7 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
     if (_verdict != null) {
       final newCase = {
         'id': 'CR-2026-${(1000 + _pastCases.length).toString()}',
-        'provider': _t('Assigned Worker', 'مقرر کارکن'),
+        'provider': _selectedProviderName ?? _t('Assigned Worker', 'مقرر کارکن'),
         'type': _conflictTypes.firstWhere((t) => t['id'] == _selectedType, orElse: () => {'label': 'Dispute'})['label'],
         'status': 'resolved',
         'verdict': _verdict!['verdict'] ?? 'mediated',
@@ -419,6 +446,84 @@ class _DisputesTabState extends State<DisputesTab> with TickerProviderStateMixin
           ),
           style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, height: 1.4),
         ),
+        const SizedBox(height: 20),
+
+        // Booking Picker Dropdown
+        StreamBuilder<List<Map<String, dynamic>>>(
+          stream: BookingHistoryService().watchCurrentUserBookings(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            final bookings = snapshot.data!;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t('Select Booking to Dispute', 'بکنگ منتخب کریں'),
+                  style: const TextStyle(
+                      color: AppTheme.tealPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardDark,
+                    borderRadius: AppTheme.radiusMd,
+                    border: Border.all(
+                        color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      dropdownColor: AppTheme.backgroundDark,
+                      isExpanded: true,
+                      value: _selectedBookingId,
+                      hint: Text(
+                        _t('Choose a past booking...', 'پرانی بکنگ منتخب کریں...'),
+                        style: const TextStyle(
+                            color: AppTheme.textMuted, fontSize: 13),
+                      ),
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: AppTheme.tealPrimary),
+                      items: bookings.map((b) {
+                        return DropdownMenuItem<String>(
+                          value: b['id'] as String,
+                          child: Text(
+                            '${b['service_type']} - ${b['provider_name']} (${b['scheduled_date']})',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val == null) return;
+                        final selected = bookings.firstWhere((b) => b['id'] == val);
+                        setState(() {
+                          _selectedBookingId = val;
+                          _selectedProviderName = selected['provider_name'] as String?;
+                          _selectedProviderId = selected['provider_id'] as String?;
+                          _selectedServiceType = selected['service_type'] as String?;
+                          _selectedReceiptNumber = selected['receipt_number'] as String?;
+                          
+                          // Pre-fill fields
+                          _quotedPrice = (selected['quoted_price_pkr'] as num?)?.toDouble() ?? 0.0;
+                          _chargedPrice = (selected['final_price_pkr'] as num?)?.toDouble() ?? 0.0;
+                          _quotedCtrl.text = _quotedPrice.toInt().toString();
+                          _chargedCtrl.text = _chargedPrice.toInt().toString();
+                          if (_step < 1) _step = 1;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+        ),
+
         const SizedBox(height: 16),
 
         // Conflict types grid

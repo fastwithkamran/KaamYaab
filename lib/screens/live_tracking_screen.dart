@@ -8,6 +8,8 @@ import '../theme/app_theme.dart';
 import '../models/provider_model.dart';
 import '../models/service_request_model.dart';
 import '../services/location_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 /// Uber-style live worker tracking screen.
 /// Shows an animated worker marker moving toward the user on a Google Map.
@@ -44,6 +46,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   late int _totalSeconds;
   Timer? _movementTimer;
   Timer? _etaTimer;
+  StreamSubscription<DocumentSnapshot>? _trackingSubscription;
 
   String _status = 'En-Route'; // En-Route → Arriving → Arrived
   bool _arrived = false;
@@ -117,7 +120,40 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
     _totalSeconds = _etaSeconds > 0 ? _etaSeconds : 1;
 
     _buildMarkersAndRoute();
-    _startSimulation();
+
+    if (Firebase.apps.isNotEmpty) {
+      _trackingSubscription = FirebaseFirestore.instance
+          .collection('worker_locations')
+          .doc(widget.match.provider.id)
+          .snapshots()
+          .listen((snapshot) {
+        if (!mounted || !snapshot.exists) return;
+        final data = snapshot.data();
+        if (data == null) return;
+
+        // Use safe cast — latitude/longitude may be null during a partial Firestore write.
+        final lat = (data['latitude'] as num?)?.toDouble() ?? _workerPos.latitude;
+        final lng = (data['longitude'] as num?)?.toDouble() ?? _workerPos.longitude;
+        final statusStr = data['status'] as String? ?? 'En-Route';
+        final progress = (data['progress'] as num?)?.toDouble() ?? 0.0;
+        final eta = (data['eta_minutes'] as num?)?.toInt() ?? widget.match.etaMinutes;
+
+        setState(() {
+          _workerPos = LatLng(lat, lng);
+          _status = statusStr;
+          _etaSeconds = eta * 60;
+          _arrived = progress >= 1.0 || statusStr == 'Arrived';
+        });
+
+        _buildMarkersAndRoute();
+
+        if (_arrived) {
+          _trackingSubscription?.cancel();
+        }
+      });
+    } else {
+      _startSimulation();
+    }
 
     if (mounted) {
       setState(() {
@@ -278,6 +314,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   void dispose() {
     _movementTimer?.cancel();
     _etaTimer?.cancel();
+    _trackingSubscription?.cancel();
     _pulseCtrl.dispose();
     _statusCtrl.dispose();
     _mapController?.dispose();
@@ -384,7 +421,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Live Tracking (Simulated)',
+            const Text('Live Tracking',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
           ],
         ),
@@ -524,7 +561,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
             GestureDetector(
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('📞 Calling worker... (demo mode)'),
+                  content: Text('📞 Calling worker...'),
                   behavior: SnackBarBehavior.floating,
                 ));
               },

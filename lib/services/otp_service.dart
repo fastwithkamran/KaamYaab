@@ -8,26 +8,31 @@ import '../config/runtime_config.dart';
 /// OTP (One-Time Password) service for phone verification.
 ///
 /// Uses Firebase Phone Auth when available. Falls back to in-app simulation
-/// when Firebase OTP is unavailable (for example on web in this prototype).
+/// when Firebase OTP is unavailable (e.g. web builds / emulator).
+///
+/// Security note: [OtpSendResult.demoCode] is only populated in debug builds.
+/// In release builds the field is always null so the raw OTP code never
+/// travels through the app layer.
 class OtpService {
   static final OtpService _instance = OtpService._();
+  factory OtpService() => _instance;
+  OtpService._();
+
   static const int _minE164Digits = 10;
   static const int _maxE164Digits = 15;
   static const int _localPhoneDigits = 11;
 
-  factory OtpService() => _instance;
-  OtpService._();
-
   final Map<String, _OtpRecord> _otpStore = {};
   final Map<String, _FirebaseOtpSession> _firebaseStore = {};
   final Set<String> _autoVerifiedPhones = {};
-  bool _isSendingOtp = false; // debounce: prevents concurrent send races
+  bool _isSendingOtp = false;
 
-  /// Sends an OTP to [phone]. Returns immediately with an error if a send
-  /// is already in progress (prevents race conditions on rapid taps).
+  /// Sends an OTP to [phone].
+  /// Returns immediately with an error if a send is already in progress.
   Future<OtpSendResult> sendOtp(String phone) async {
     if (_isSendingOtp) {
-      return const OtpSendResult.error('OTP already being sent. Please wait a moment.');
+      return const OtpSendResult.error(
+          'OTP already being sent. Please wait a moment.');
     }
     _isSendingOtp = true;
     try {
@@ -46,19 +51,18 @@ class OtpService {
     }
 
     _autoVerifiedPhones.remove(normalized);
+
     if (!_canUseFirebaseOtp) {
-      final code = await _sendMockOtp(normalized);
-      return OtpSendResult.successMock(code);
+      return await _sendMockOtpResult(normalized);
     }
 
     final completer = Completer<OtpSendResult>();
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: normalized,
-        timeout: Duration(seconds: RuntimeConfig.otpAutoRetrievalTimeoutSeconds),
+        timeout: Duration(
+            seconds: RuntimeConfig.otpAutoRetrievalTimeoutSeconds),
         verificationCompleted: (credential) async {
-          // Firebase can auto-verify on some Android devices. Mark as verified
-          // so manual OTP entry can complete immediately.
           _autoVerifiedPhones.add(normalized);
           if (!completer.isCompleted) {
             completer.complete(const OtpSendResult.successReal());
@@ -67,10 +71,7 @@ class OtpService {
         verificationFailed: (e) {
           if (!completer.isCompleted) {
             completer.complete(
-              OtpSendResult.error(
-                _firebaseErrorToMessage(e),
-                fallbackCode: null,
-              ),
+              OtpSendResult.error(_firebaseErrorToMessage(e)),
             );
           }
         },
@@ -102,38 +103,39 @@ class OtpService {
       );
 
       if (!sent.success) {
-        return _fallbackResult(
-          sent.errorMessage ?? 'Could not send OTP.',
-          normalized,
-        );
+        return await _fallbackResult(
+            sent.errorMessage ?? 'Could not send OTP.', normalized);
       }
 
       return sent;
     } catch (_) {
-      return _fallbackResult(
-        'Could not send OTP right now.',
-        normalized,
-      );
+      return await _fallbackResult('Could not send OTP right now.', normalized);
     }
   }
 
-  Future<OtpSendResult> _fallbackResult(String message, String normalized) async {
-    final code = await _sendMockOtp(normalized);
-    return OtpSendResult.error(message, fallbackCode: code);
+  Future<OtpSendResult> _fallbackResult(
+      String message, String normalized) async {
+    final mockResult = await _sendMockOtpResult(normalized);
+    // Carry the original error message but keep the mock code (debug-only).
+    return OtpSendResult.error(message,
+        fallbackCode: mockResult.demoCode);
   }
 
-  Future<String> _sendMockOtp(String phone) async {
+  /// Stores a mock OTP and returns a result.
+  /// [demoCode] is only set in debug builds — never in release.
+  Future<OtpSendResult> _sendMockOtpResult(String phone) async {
     final code = _generateCode();
-    final expiry = DateTime.now()
-        .add(Duration(seconds: RuntimeConfig.otpExpirySeconds));
-
-    _otpStore[phone] = _OtpRecord(code: code, expiry: expiry);
-
-    await Future.delayed(const Duration(milliseconds: 800)); // Simulate network
-    return code;
+    _otpStore[phone] = _OtpRecord(
+      code: code,
+      expiry: DateTime.now()
+          .add(Duration(seconds: RuntimeConfig.otpExpirySeconds)),
+    );
+    await Future.delayed(const Duration(milliseconds: 800));
+    // In release builds, never expose the raw code through the result object.
+    return OtpSendResult.successMock(kDebugMode ? code : null);
   }
 
-  /// Verifies [code] entered by user against stored OTP for [phone].
+  /// Verifies [code] entered by the user against the stored OTP for [phone].
   Future<OtpResult> verify(String phone, String code) async {
     final normalized = _normalizePhone(phone);
     if (normalized == null) return OtpResult.noRecord;
@@ -156,25 +158,18 @@ class OtpService {
             verificationId: session.verificationId,
             smsCode: code,
           );
-          // IMPORTANT — intentional signIn→signOut pattern:
-          // signInWithCredential validates the SMS code server-side (no other
-          // way to verify with the Firebase Phone Auth SDK). The immediate
-          // signOut removes the transient Firebase session because app auth
-          // is managed entirely by AuthService via SharedPreferences, not by
-          // FirebaseAuth. This does fire a Firebase auth-state change, but
-          // no listeners should react to FirebaseAuth.currentUser directly;
-          // they should use AuthService.currentUser instead. Removing the
-          // signOut() would leave a stale Firebase session that causes
-          // auth-state desync on the next cold launch.
+          // Intentional signIn → signOut pattern: signInWithCredential validates
+          // the SMS code server-side. The immediate signOut removes the transient
+          // Firebase session because app auth is managed entirely by AuthService
+          // via SharedPreferences, not by FirebaseAuth.
           await FirebaseAuth.instance.signInWithCredential(credential);
           await FirebaseAuth.instance.signOut();
           _firebaseStore.remove(normalized);
           return OtpResult.verified;
         } on FirebaseAuthException catch (e) {
-          if (e.code == 'session-expired') {
-            return OtpResult.expired;
-          }
-          return OtpResult.invalid;
+          return e.code == 'session-expired'
+              ? OtpResult.expired
+              : OtpResult.invalid;
         } catch (_) {
           return OtpResult.invalid;
         }
@@ -192,7 +187,7 @@ class OtpService {
     return OtpResult.verified;
   }
 
-  /// Clears any stored OTP for [phone] (e.g., on cancel).
+  /// Clears any stored OTP for [phone] (e.g. on cancel).
   void clear(String phone) {
     final normalized = _normalizePhone(phone);
     if (normalized == null) return;
@@ -206,8 +201,7 @@ class OtpService {
     return (100000 + rng.nextInt(900000)).toString();
   }
 
-  bool get _canUseFirebaseOtp =>
-      !kIsWeb && Firebase.apps.isNotEmpty;
+  bool get _canUseFirebaseOtp => !kIsWeb && Firebase.apps.isNotEmpty;
 
   String? _normalizePhone(String phone) {
     final raw = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
@@ -215,7 +209,6 @@ class OtpService {
       final digits = raw.substring(1).replaceAll(RegExp(r'[^0-9]'), '');
       return _isValidE164Digits(digits) ? '+$digits' : null;
     }
-
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.startsWith('0') && digits.length == _localPhoneDigits) {
       return '+${RuntimeConfig.defaultCountryDialCode}${digits.substring(1)}';
@@ -244,6 +237,8 @@ class OtpService {
   }
 }
 
+// ── Internal models ────────────────────────────────────────────────────────
+
 class _OtpRecord {
   final String code;
   final DateTime expiry;
@@ -265,18 +260,21 @@ class _FirebaseOtpSession {
     String? verificationId,
     DateTime? expiry,
     int? resendToken,
-  }) {
-    return _FirebaseOtpSession(
-      verificationId: verificationId ?? this.verificationId,
-      expiry: expiry ?? this.expiry,
-      resendToken: resendToken ?? this.resendToken,
-    );
-  }
+  }) =>
+      _FirebaseOtpSession(
+        verificationId: verificationId ?? this.verificationId,
+        expiry: expiry ?? this.expiry,
+        resendToken: resendToken ?? this.resendToken,
+      );
 }
+
+// ── Result types ───────────────────────────────────────────────────────────
 
 class OtpSendResult {
   final bool success;
   final bool isMock;
+
+  /// Raw OTP code — only populated in debug builds. Always null in release.
   final String? demoCode;
   final String? errorMessage;
 
@@ -288,9 +286,10 @@ class OtpSendResult {
   });
 
   const OtpSendResult.successReal()
-      : this._(success: true, isMock: false, demoCode: null);
+      : this._(success: true, isMock: false);
 
-  factory OtpSendResult.successMock(String code) => OtpSendResult._(
+  /// [code] is null in release builds (see [OtpService._sendMockOtpResult]).
+  factory OtpSendResult.successMock(String? code) => OtpSendResult._(
         success: true,
         isMock: true,
         demoCode: code,

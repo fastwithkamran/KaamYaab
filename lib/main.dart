@@ -10,7 +10,6 @@ import 'screens/customer_hub_screen.dart';
 import 'screens/simulation_dashboard_screen.dart';
 import 'screens/auth/role_select_screen.dart';
 import 'screens/auth/language_selection_screen.dart';
-import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/workers_browse_screen.dart';
 import 'screens/voice_booking_agent.dart';
 import 'services/auth_service.dart';
@@ -91,7 +90,6 @@ class KaamYaabApp extends StatelessWidget {
         '/login': (context) => const RoleSelectScreen(),
         '/home': (context) => const MainShell(),
         '/dashboard': (context) => const WorkerHomeScreen(),
-        '/admin': (context) => const AdminDashboardScreen(),
         '/workers': (context) => const WorkersBrowseScreen(),
         '/voice-booking': (context) => const VoiceBookingAgent(),
         '/hub': (context) => const CustomerHubScreen(),
@@ -261,7 +259,7 @@ class _GlassNavItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: ctrl,
-        builder: (_, _) {
+        builder: (context, child) {
           final t = ctrl.value;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 250),
