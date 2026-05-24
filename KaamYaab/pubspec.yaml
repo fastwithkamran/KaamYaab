@@ -1,0 +1,74 @@
+name: kaamyaab
+description: AI Service Orchestrator for Pakistan's Informal Economy
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: "^3.7.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
+
+  http: ^1.2.2
+  dio: ^5.4.3
+
+  # Firebase
+  firebase_core: ^4.9.0
+  cloud_firestore: ^6.4.1
+  firebase_auth: ^6.5.1
+  firebase_messaging: ^16.2.2
+
+  # Location (requires Flutter >= 3.29.0)
+  geolocator: ^14.0.2
+  google_maps_flutter: ^2.14.2
+
+  # Animations & UI (removed abandoned glassmorphism)
+  lottie: ^3.1.2
+  shimmer: ^3.0.0
+  animated_text_kit: ^4.2.2
+  fl_chart: ^1.2.0
+  flutter_animate: ^4.5.0
+
+  # Storage & Persistence
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.4
+
+  # Utilities
+  intl: ^0.20.2
+  uuid: ^4.4.0
+  timeago: ^3.6.1
+  url_launcher: ^6.3.0
+  permission_handler: ^12.0.1
+  image_picker: ^1.0.4
+  flutter_tts: ^4.2.2
+  speech_to_text: ^7.3.0
+
+  # Typography
+  google_fonts: ^8.1.0
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^4.0.3
+  build_runner: ^2.4.9
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/data/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
