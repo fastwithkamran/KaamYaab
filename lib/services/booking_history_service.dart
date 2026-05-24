@@ -2,13 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'auth_service.dart';
 
-/// Persists customer booking history in Firestore for end-to-end visibility.
+/// Persists customer booking history in Firestore.
 class BookingHistoryService {
   BookingHistoryService._();
   static final BookingHistoryService _instance = BookingHistoryService._();
   factory BookingHistoryService() => _instance;
 
-  /// Lazy Firestore accessor — only available when Firebase is initialised.
   FirebaseFirestore? get _db =>
       Firebase.apps.isNotEmpty ? FirebaseFirestore.instance : null;
 
@@ -49,42 +48,30 @@ class BookingHistoryService {
       'receipt_number': receiptNumber,
       'surge_multiplier': surgeMultiplier,
       'negotiated_note': negotiatedNote,
+      // user_rating intentionally omitted at booking creation — set via updateFeedback.
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     });
   }
 
+  /// Live stream of the current customer's bookings, newest first.
   Stream<List<Map<String, dynamic>>> watchCurrentUserBookings() {
     if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
-    if (user == null) {
-      return Stream.value(const <Map<String, dynamic>>[]);
-    }
+    if (user == null) return Stream.value(const []);
 
     return _db!
         .collection('bookings')
         .where('customer_uid', isEqualTo: user.uid)
+        .orderBy('created_at', descending: true)
         .snapshots()
-        .map((snapshot) {
-      final items = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-
-      items.sort((a, b) {
-        final aDate = _toDateTime(a['created_at']);
-        final bDate = _toDateTime(b['created_at']);
-        if (aDate == null && bDate == null) return 0;
-        if (aDate == null) return 1;
-        if (bDate == null) return -1;
-        return bDate.compareTo(aDate);
-      });
-      return items;
-    });
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 
-  /// Updates booking with user rating and feedback text after service completion.
   Future<void> updateFeedback({
     required String requestId,
     required double rating,
@@ -101,77 +88,87 @@ class BookingHistoryService {
         .limit(1)
         .get();
 
-    if (query.docs.isNotEmpty) {
-      await query.docs.first.reference.update({
-        'user_rating': rating,
-        'user_feedback': feedback,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+    if (query.docs.isEmpty) return;
+
+    final bookingDoc = query.docs.first;
+    await bookingDoc.reference.update({
+      'user_rating': rating,
+      'user_feedback': feedback,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+
+    // ── Propagate rating to the worker's local AppUser profile ─────────────────
+    // Read provider_id from the booking we just updated, then aggregate all
+    // rated bookings for that provider to compute an accurate new average.
+    final providerId =
+        bookingDoc.data()['provider_id'] as String?;
+    if (providerId != null && providerId.isNotEmpty) {
+      try {
+        final ratedSnap = await _db!
+            .collection('bookings')
+            .where('provider_id', isEqualTo: providerId)
+            .where('user_rating', isGreaterThan: 0)
+            .get();
+
+        if (ratedSnap.docs.isNotEmpty) {
+          final ratings = ratedSnap.docs
+              .map((d) =>
+                  (d.data()['user_rating'] as num?)?.toDouble() ?? 0.0)
+              .toList();
+          final avgRating =
+              ratings.fold(0.0, (a, b) => a + b) / ratings.length;
+          await AuthService().updateWorkerRating(
+            workerUid: providerId,
+            newRating: double.parse(avgRating.toStringAsFixed(2)),
+            newTotalJobs: ratedSnap.docs.length,
+          );
+        }
+      } catch (_) {
+        // Non-fatal — local profile update is best-effort.
+      }
     }
   }
 
-  DateTime? _toDateTime(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) return DateTime.tryParse(value);
-    return null;
-  }
-
-  /// Stream of completed bookings where this worker was the provider.
+  /// Live stream of all bookings where this worker was the provider, newest first.
   Stream<List<Map<String, dynamic>>> watchWorkerBookings() {
     if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
     if (user == null) return Stream.value(const []);
+
     return _db!
         .collection('bookings')
         .where('provider_id', isEqualTo: user.uid)
+        .orderBy('created_at', descending: true)
         .snapshots()
-        .map((snap) {
-      final items = snap.docs.map((d) {
-        final data = d.data();
-        data['id'] = d.id;
-        return data;
-      }).toList()
-        ..sort((a, b) {
-          final aD = _toDateTime(a['created_at']);
-          final bD = _toDateTime(b['created_at']);
-          if (aD == null && bD == null) return 0;
-          if (aD == null) return 1;
-          if (bD == null) return -1;
-          return bD.compareTo(aD);
-        });
-      return items;
-    });
+        .map((snap) => snap.docs.map((d) {
+              final data = d.data();
+              data['id'] = d.id;
+              return data;
+            }).toList());
   }
 
-  /// Stream of reviews (bookings with user_rating set) left for this worker.
+  /// Live stream of reviews (bookings with a user_rating) left for this worker.
+  ///
+  /// Uses a server-side [isGreaterThan] filter instead of client-side filtering
+  /// so Firestore only transmits documents that actually have a rating set.
+  /// Requires a composite index on (provider_id ASC, user_rating ASC, updated_at DESC)
+  /// — add it via the Firebase Console or firestore.indexes.json.
   Stream<List<Map<String, dynamic>>> watchWorkerReviews() {
     if (!_isFirebaseReady) return Stream.value(const []);
     final user = AuthService().currentUser;
     if (user == null) return Stream.value(const []);
+
     return _db!
         .collection('bookings')
         .where('provider_id', isEqualTo: user.uid)
+        .where('user_rating', isGreaterThan: 0)
+        .orderBy('user_rating') // required by Firestore when using isGreaterThan
+        .orderBy('updated_at', descending: true)
         .snapshots()
-        .map((snap) {
-      final items = snap.docs
-          .where((d) => d.data()['user_rating'] != null)
-          .map((d) {
-            final data = d.data();
-            data['id'] = d.id;
-            return data;
-          })
-          .toList()
-        ..sort((a, b) {
-          final aD = _toDateTime(a['updated_at'] ?? a['created_at']);
-          final bD = _toDateTime(b['updated_at'] ?? b['created_at']);
-          if (aD == null && bD == null) return 0;
-          if (aD == null) return 1;
-          if (bD == null) return -1;
-          return bD.compareTo(aD);
-        });
-      return items;
-    });
+        .map((snap) => snap.docs.map((d) {
+              final data = d.data();
+              data['id'] = d.id;
+              return data;
+            }).toList());
   }
 }

@@ -92,13 +92,56 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent> with TickerProvid
               _submit();
             }
           },
-          localeId: LanguageService().isUrdu ? 'ur_PK' : 'en_US',
+          listenOptions: stt.SpeechListenOptions(
+            localeId: LanguageService().isUrdu ? 'ur_PK' : 'en_US',
+          ),
         );
       }
     } else {
       setState(() => _isListening = false);
       _speech.stop();
     }
+  }
+
+  /// Safely parses the AI response map — never throws, always returns valid strings.
+  Map<String, dynamic> _parseResponse(Map<String, dynamic> response) {
+    String reply = '';
+    String action = 'CHAT';
+    Map<String, dynamic>? searchParams;
+
+    try {
+      final rawReply = response['reply'];
+      final rawAction = response['action'];
+
+      if (rawReply is String && rawReply.isNotEmpty) {
+        reply = rawReply;
+      } else if (rawReply != null) {
+        reply = rawReply.toString();
+      }
+
+      if (rawAction is String && rawAction.isNotEmpty) {
+        action = rawAction.toUpperCase();
+      } else if (rawAction != null) {
+        action = rawAction.toString().toUpperCase();
+      }
+
+      final rawParams = response['search_params'];
+      if (rawParams is Map<String, dynamic>) {
+        searchParams = rawParams;
+      } else if (rawParams is Map) {
+        searchParams = Map<String, dynamic>.from(rawParams);
+      }
+    } catch (e) {
+      debugPrint('Voice response parse error: $e');
+    }
+
+    if (reply.isEmpty) {
+      reply = LanguageService().isUrdu
+          ? 'Maafi chahta hoon, mujhe samajh nahi aaya. Dobara poochein?'
+          : 'Sorry, I did not understand that. Could you rephrase?';
+    }
+
+    return {'reply': reply, 'action': action, 'search_params': searchParams};
   }
 
   Future<void> _submit() async {
@@ -114,13 +157,15 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent> with TickerProvid
     try {
       final loc = await LocationService().getCurrentLocation();
       final defaultArea = loc.isSuccess ? loc.data!.city : 'Unknown';
-      final response = await AiService.chat(
+      final rawResponse = await AiService.chat(
         userMessage: input,
         cohereHistory: _chatHistory.toCohereFormat(),
         userArea: _currentRequest?.area ?? defaultArea,
         userLanguage: LanguageService().isUrdu ? 'urdu' : 'english',
       );
 
+      // ✅ Safe parsing — never throws on malformed Cohere response
+      final response = _parseResponse(rawResponse);
       final reply = response['reply'] as String;
       final action = response['action'] as String;
       final searchParams = response['search_params'] as Map<String, dynamic>?;
@@ -133,6 +178,11 @@ class _VoiceBookingAgentState extends State<VoiceBookingAgent> with TickerProvid
       }
     } catch (e) {
       debugPrint('Voice Chat Error: $e');
+      final errMsg = LanguageService().isUrdu
+          ? 'Maafi chahta hoon, thora sa masla aa raha hai. Dobara koshish karein.'
+          : 'Sorry, something went wrong. Please try again.';
+      await _chatHistory.addMessage('CHATBOT', errMsg);
+      await _tts.speak(errMsg);
     } finally {
       if (mounted) setState(() => _isAILoading = false);
     }

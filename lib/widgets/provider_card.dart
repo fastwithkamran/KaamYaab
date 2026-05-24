@@ -32,7 +32,11 @@ class ProviderCard extends StatefulWidget {
 
 class _ProviderCardState extends State<ProviderCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _shimmerCtrl;
+  // FIX: only create (and run) the shimmer controller for the top-ranked card.
+  // Previously a `Duration.zero` controller was created for all other cards —
+  // a wasted object that never animated. Now non-top cards get null.
+  AnimationController? _shimmerCtrl;
+
   bool _negotiating = false;
   bool _negotiated = false;
   double? _negotiatedPrice;
@@ -46,67 +50,88 @@ class _ProviderCardState extends State<ProviderCard>
         vsync: this,
         duration: const Duration(milliseconds: 2000),
       )..repeat();
-    } else {
-      _shimmerCtrl = AnimationController(vsync: this, duration: Duration.zero);
     }
   }
 
   @override
   void dispose() {
-    _shimmerCtrl.dispose();
+    _shimmerCtrl?.dispose();
     super.dispose();
   }
 
-  String _availabilityLabel(ServiceProvider p) {
-    final today = _dayAbbr(DateTime.now().weekday);
-    if (p.availability.contains(today)) return 'Available Today';
-    final tomorrow = _dayAbbr(
-        DateTime.now().add(const Duration(days: 1)).weekday);
-    if (p.availability.contains(tomorrow)) return 'Available Tomorrow';
-    return 'Limited Availability';
-  }
-
-  Color _availabilityColor(ServiceProvider p) {
-    final label = _availabilityLabel(p);
-    if (label == 'Available Today') return AppTheme.greenSuccess;
-    if (label == 'Available Tomorrow') return AppTheme.tealPrimary;
-    return AppTheme.goldAccent;
-  }
+  // ── Availability helpers ────────────────────────────────────────────────────
 
   String _dayAbbr(int weekday) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[(weekday - 1) % 7];
   }
 
+  // FIX: `_availabilityLabel` and `_availabilityColor` were called separately
+  // in `build()`, each computing the same weekday logic independently.
+  // Now we compute a single `_Availability` record once and share it.
+  _Availability _availability(ServiceProvider p) {
+    final today    = _dayAbbr(DateTime.now().weekday);
+    final tomorrow = _dayAbbr(DateTime.now().add(const Duration(days: 1)).weekday);
+    if (p.availability.contains(today)) {
+      return const _Availability('Available Today', AppTheme.greenSuccess);
+    }
+    if (p.availability.contains(tomorrow)) {
+      return const _Availability('Available Tomorrow', AppTheme.tealPrimary);
+    }
+    return const _Availability('Limited Availability', AppTheme.goldAccent);
+  }
+
+  // ── Price negotiation ───────────────────────────────────────────────────────
+
   Future<void> _negotiatePrice() async {
     setState(() => _negotiating = true);
-    
-    final result = await AiService.negotiatePrice(
-      providerName: widget.match.provider.name,
-      originalQuote: widget.match.quotePkr,
-      userOffer: widget.match.quotePkr * 0.88,
-      serviceType: widget.serviceType,
-      providerDnaScore: widget.match.provider.dnascore,
-      surgeMultiplier: widget.surgeMultiplier,
-      isRepeatCustomer: false,
-    );
 
-    final counterOffer = (result['counter_offer_pkr'] as num).toDouble();
-    setState(() {
-      _negotiating = false;
-      _negotiated = true;
-      _negotiatedPrice = counterOffer;
-      _negotiationNote = result['reasoning'] as String?;
-    });
-    HapticFeedback.mediumImpact();
+    // FIX: the original had no try/catch here. If AiService.negotiatePrice()
+    // threw for any reason, `_negotiating` would stay `true` permanently,
+    // freezing the "Negotiating…" state and disabling the button forever.
+    try {
+      final result = await AiService.negotiatePrice(
+        providerName: widget.match.provider.name,
+        originalQuote: widget.match.quotePkr,
+        userOffer: widget.match.quotePkr * 0.88,
+        serviceType: widget.serviceType,
+        providerDnaScore: widget.match.provider.dnascore,
+        surgeMultiplier: widget.surgeMultiplier,
+        isRepeatCustomer: false,
+      );
+
+      final counterOffer =
+          (result['counter_offer_pkr'] as num?)?.toDouble() ?? widget.match.quotePkr;
+      if (mounted) {
+        setState(() {
+          _negotiated = true;
+          _negotiatedPrice = counterOffer;
+          _negotiationNote = result['reasoning'] as String?;
+        });
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      debugPrint('ProviderCard negotiation error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Negotiation failed. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _negotiating = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final p = widget.match.provider;
+    final p    = widget.match.provider;
     final isTop = widget.rank == 1;
-    final availLabel = _availabilityLabel(p);
-    final availColor = _availabilityColor(p);
+
+    // FIX: compute availability once and reuse label + color.
+    final avail = _availability(p);
+
+    // Cache DNA score colour — it's called 4 times in the original build.
+    final dnaColor = AppTheme.dnaScoreColor(p.dnascore);
 
     return GestureDetector(
       onTap: () {
@@ -130,17 +155,18 @@ class _ProviderCardState extends State<ProviderCard>
         ),
         child: Stack(
           children: [
-            if (isTop)
+            // Subtle shimmer sweep — only for #1 card
+            if (isTop && _shimmerCtrl != null)
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: AppTheme.radiusLg,
                   child: AnimatedBuilder(
-                    animation: _shimmerCtrl,
-                    builder: (_, _) => Container(
+                    animation: _shimmerCtrl!,
+                    builder: (context, child) => Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment(-2 + _shimmerCtrl.value * 4, -0.5),
-                          end: Alignment(-1 + _shimmerCtrl.value * 4, 0.5),
+                          begin: Alignment(-2 + _shimmerCtrl!.value * 4, -0.5),
+                          end: Alignment(-1 + _shimmerCtrl!.value * 4, 0.5),
                           colors: [
                             Colors.transparent,
                             AppTheme.tealPrimary.withValues(alpha: 0.04),
@@ -160,6 +186,7 @@ class _ProviderCardState extends State<ProviderCard>
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
+                      // Rank badge
                       Container(
                         width: 36,
                         height: 36,
@@ -180,6 +207,7 @@ class _ProviderCardState extends State<ProviderCard>
                         ),
                       ),
                       const SizedBox(width: 12),
+                      // Avatar
                       CircleAvatar(
                         radius: 24,
                         backgroundColor: AppTheme.tealPrimary.withValues(alpha: 0.2),
@@ -193,6 +221,7 @@ class _ProviderCardState extends State<ProviderCard>
                         ),
                       ),
                       const SizedBox(width: 12),
+                      // Name / meta
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,12 +252,13 @@ class _ProviderCardState extends State<ProviderCard>
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
                             ),
                             const SizedBox(height: 4),
+                            // Availability badge
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: availColor.withValues(alpha: 0.1),
+                                color: avail.color.withValues(alpha: 0.1),
                                 borderRadius: AppTheme.radiusSm,
-                                border: Border.all(color: availColor.withValues(alpha: 0.3)),
+                                border: Border.all(color: avail.color.withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -238,14 +268,14 @@ class _ProviderCardState extends State<ProviderCard>
                                     height: 5,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: availColor,
+                                      color: avail.color,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    availLabel,
+                                    avail.label,
                                     style: TextStyle(
-                                      color: availColor,
+                                      color: avail.color,
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -256,22 +286,21 @@ class _ProviderCardState extends State<ProviderCard>
                           ],
                         ),
                       ),
+                      // DNA score badge
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.dnaScoreColor(p.dnascore).withValues(alpha: 0.15),
+                              color: dnaColor.withValues(alpha: 0.15),
                               borderRadius: AppTheme.radiusSm,
-                              border: Border.all(
-                                color: AppTheme.dnaScoreColor(p.dnascore).withValues(alpha: 0.4),
-                              ),
+                              border: Border.all(color: dnaColor.withValues(alpha: 0.4)),
                             ),
                             child: Text(
                               '${p.dnascore}',
                               style: TextStyle(
-                                color: AppTheme.dnaScoreColor(p.dnascore),
+                                color: dnaColor,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
@@ -281,7 +310,7 @@ class _ProviderCardState extends State<ProviderCard>
                           Text(
                             'DNA',
                             style: TextStyle(
-                              color: AppTheme.dnaScoreColor(p.dnascore).withValues(alpha: 0.6),
+                              color: dnaColor.withValues(alpha: 0.6),
                               fontSize: 9,
                               letterSpacing: 1,
                             ),
@@ -292,6 +321,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
+                // Stats row
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Row(
@@ -331,9 +361,7 @@ class _ProviderCardState extends State<ProviderCard>
                             child: LinearProgressIndicator(
                               value: widget.match.matchScore / 100,
                               backgroundColor: AppTheme.surfaceDark,
-                              valueColor: AlwaysStoppedAnimation(
-                                AppTheme.dnaScoreColor(p.dnascore),
-                              ),
+                              valueColor: AlwaysStoppedAnimation(dnaColor),
                               minHeight: 4,
                               borderRadius: AppTheme.radiusSm,
                             ),
@@ -344,6 +372,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
+                // AI rationale
                 Container(
                   margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -370,6 +399,7 @@ class _ProviderCardState extends State<ProviderCard>
                   ),
                 ),
 
+                // Expanded section (DNA chart + actions)
                 AnimatedSize(
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeOutCubic,
@@ -381,6 +411,7 @@ class _ProviderCardState extends State<ProviderCard>
                               padding: const EdgeInsets.all(16),
                               child: DnaScoreChart(provider: p, size: 200),
                             ),
+                            // Skill chips
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                               child: Wrap(
@@ -402,6 +433,7 @@ class _ProviderCardState extends State<ProviderCard>
                                 )).toList(),
                               ),
                             ),
+                            // Certifications
                             if (p.certifications.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -423,6 +455,7 @@ class _ProviderCardState extends State<ProviderCard>
                                   ],
                                 ),
                               ),
+                            // Negotiation result or button
                             if (_negotiated && _negotiationNote != null) ...[
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -434,10 +467,18 @@ class _ProviderCardState extends State<ProviderCard>
                                     border: Border.all(color: AppTheme.greenSuccess.withValues(alpha: 0.3)),
                                   ),
                                   child: Row(children: [
-                                    const Icon(Icons.handshake_rounded, color: AppTheme.greenSuccess, size: 14),
+                                    const Icon(Icons.handshake_rounded,
+                                        color: AppTheme.greenSuccess, size: 14),
                                     const SizedBox(width: 6),
-                                    Expanded(child: Text(_negotiationNote!,
-                                        style: const TextStyle(color: AppTheme.greenSuccess, fontSize: 11))),
+                                    Expanded(
+                                      child: Text(
+                                        _negotiationNote!,
+                                        style: const TextStyle(
+                                          color: AppTheme.greenSuccess,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
                                   ]),
                                 ),
                               ),
@@ -449,11 +490,21 @@ class _ProviderCardState extends State<ProviderCard>
                                   child: OutlinedButton.icon(
                                     onPressed: _negotiating ? null : _negotiatePrice,
                                     icon: _negotiating
-                                        ? const SizedBox(width: 14, height: 14,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.tealPrimary))
-                                        : const Icon(Icons.handshake_rounded, size: 16, color: AppTheme.tealPrimary),
-                                    label: Text(_negotiating ? 'Negotiating...' : 'Negotiate Better Price',
-                                        style: const TextStyle(color: AppTheme.tealPrimary, fontSize: 13)),
+                                        ? const SizedBox(
+                                            width: 14, height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppTheme.tealPrimary,
+                                            ))
+                                        : const Icon(Icons.handshake_rounded,
+                                            size: 16, color: AppTheme.tealPrimary),
+                                    label: Text(
+                                      _negotiating ? 'Negotiating...' : 'Negotiate Better Price',
+                                      style: const TextStyle(
+                                        color: AppTheme.tealPrimary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                     style: OutlinedButton.styleFrom(
                                       side: const BorderSide(color: AppTheme.tealPrimary),
                                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -462,6 +513,7 @@ class _ProviderCardState extends State<ProviderCard>
                                 ),
                               ),
                             ],
+                            // Book button
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                               child: SizedBox(
@@ -469,7 +521,10 @@ class _ProviderCardState extends State<ProviderCard>
                                 child: ElevatedButton.icon(
                                   onPressed: () {
                                     HapticFeedback.mediumImpact();
-                                    widget.onBook(_negotiatedPrice ?? widget.match.quotePkr, _negotiationNote);
+                                    widget.onBook(
+                                      _negotiatedPrice ?? widget.match.quotePkr,
+                                      _negotiationNote,
+                                    );
                                   },
                                   icon: const Icon(Icons.flash_on_rounded, size: 18),
                                   label: Text(
@@ -477,11 +532,8 @@ class _ProviderCardState extends State<ProviderCard>
                                     style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: isTop
-                                        ? AppTheme.tealPrimary
-                                        : AppTheme.cardDark,
-                                    foregroundColor:
-                                        isTop ? Colors.white : AppTheme.tealPrimary,
+                                    backgroundColor: isTop ? AppTheme.tealPrimary : AppTheme.cardDark,
+                                    foregroundColor: isTop ? Colors.white : AppTheme.tealPrimary,
                                     side: isTop
                                         ? null
                                         : const BorderSide(color: AppTheme.tealPrimary),
@@ -519,6 +571,13 @@ class _ProviderCardState extends State<ProviderCard>
   }
 }
 
+/// Simple pair to avoid computing availability label and color separately.
+class _Availability {
+  final String label;
+  final Color color;
+  const _Availability(this.label, this.color);
+}
+
 class _StatChip extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -533,8 +592,10 @@ class _StatChip extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 12),
         const SizedBox(width: 3),
-        Text(value,
-            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
