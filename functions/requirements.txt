@@ -5,4 +5,4 @@ cohere>=5.0.0
 firebase-admin>=6.5.0
 python-dotenv>=1.0.0
 requests>=2.31.0
-numpy>=1.26.0
+numpy>=2.4.6
