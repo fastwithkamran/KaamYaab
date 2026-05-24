@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 [![Cohere](https://img.shields.io/badge/Cohere%20AI-00C7B7?style=for-the-badge&logo=cohere&logoColor=white)](https://cohere.com)
 [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Windows-blue?style=for-the-badge)](#)
+[![Platform](https://img.shields.io/badge/Platform-Android-blue?style=for-the-badge)](#)
 
 An agentic, end-to-end service lifecycle platform for informal-economy professionals in Pakistan — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, painters, and cleaners. Powered by **Cohere command-a-03-2025** and a robust multi-agent orchestration architecture, **KaamYaab** connects customers with workers using voice booking, dynamic matching, smart negotiation, travel-aware scheduling, transparent pricing, and automated dispute resolution.
 
