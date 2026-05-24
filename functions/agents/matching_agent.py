@@ -1,5 +1,5 @@
 """
-KaamYaab — Matching Agent  (v3 — Optimized)
+KaamYaab — Matching Agent  (v4 — Optimized)
 KaamYaab Autonomous Agent System | Cohere-Powered
 
 Bug Fixes (v2 → v3)
@@ -18,6 +18,18 @@ Bug Fixes (v2 → v3)
 • BUG-8 NOTE: COMPLEXITY_REQUIRED_LEVEL sets contain both "complex" and "expert"
   because the data uses "complex" as the raw experience_level value and we normalise
   it to "expert" before lookup — both are kept so either form matches correctly.
+
+Bug Fixes (v3 → v4)
+────────────────────
+• FIX-5+6: Hard filter used a brittle 12-branch `or` chain that was also duplicated
+  in the relaxed fallback filter. The fallback only covered 5 of 12 service types,
+  silently returning no results for carpentry, painting, gardening, cooking, driver,
+  and security. Replaced both with a shared _service_matches() helper backed by
+  _SERVICE_ALIASES so coverage is identical and the logic lives in one place.
+• FIX-9: run() had no input validation — a None provider list or missing lat/lng
+  caused cryptic KeyError/TypeError deep in haversine(). Added guards at entry.
+• FIX-10: Magic number 14 (max inactive days) appeared in two separate places.
+  Defined once as _MAX_INACTIVE_DAYS = 14.
 """
 
 import json
@@ -49,6 +61,10 @@ COMPLEXITY_REQUIRED_LEVEL = {
 }
 
 DAY_ABBR = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+# FIX-10: single source of truth for the staleness cutoff used in both the
+# hard filter (run()) and the review recency scorer (_review_recency_score()).
+_MAX_INACTIVE_DAYS = 14
 
 
 # ── Geo Utilities ──────────────────────────────────────────────────────────────
@@ -152,7 +168,7 @@ def _review_recency_score(provider: Dict) -> float:
     if last_active:
         try:
             delta = (datetime.datetime.now() - datetime.datetime.strptime(last_active, "%Y-%m-%d")).days
-            if delta > 14:
+            if delta > _MAX_INACTIVE_DAYS:
                 score *= 0.60
             elif delta > 7:
                 score *= 0.80
@@ -350,6 +366,36 @@ def calculate_quote(
     }
 
 
+# ── Service Matching ──────────────────────────────────────────────────────────
+# FIX-5+6: Replaces the duplicate 12-branch `or` chain that appeared in both the
+# hard filter and (incompletely) in the fallback filter. A single dict drives both.
+# Keys are substrings checked against the *requested* service; values are accepted
+# substrings in the *provider's* service_category. All comparisons are lowercase.
+_SERVICE_ALIASES: Dict[str, List[str]] = {
+    "ac":       ["ac", "technician"],
+    "plumb":    ["plumb", "pipe"],
+    "electric": ["electric"],
+    "clean":    ["clean"],
+    "tutor":    ["tutor", "teach"],
+    "carpent":  ["carpent", "wood", "furniture"],
+    "paint":    ["paint"],
+    "garden":   ["garden", "plant"],
+    "cook":     ["cook", "chef"],
+    "driver":   ["driver"],
+    "security": ["security", "guard"],
+}
+
+
+def _service_matches(cat: str, service_lower: str) -> bool:
+    """Return True if provider category `cat` matches the requested `service_lower`."""
+    if cat == service_lower:
+        return True
+    for svc_key, cat_aliases in _SERVICE_ALIASES.items():
+        if svc_key in service_lower:
+            return any(alias in cat for alias in cat_aliases)
+    return False
+
+
 # ── Main Matching Function ─────────────────────────────────────────────────────
 
 def run(
@@ -362,30 +408,29 @@ def run(
     is_repeat_customer: bool = False,
 ) -> Dict[str, Any]:
     """Filter, score, and rank providers. Returns top_n matches with full transparency."""
+    # ── FIX-9: Input Validation ───────────────────────────────────────────────
+    if not providers:
+        return {
+            "status":   "no_providers",
+            "message":  "Provider list is empty.",
+            "fallback": "waitlist",
+            "matches":  [],
+            "agent":    "MatchingAgent",
+        }
+    if user_lat is None or user_lng is None:
+        raise ValueError("MatchingAgent: user_lat and user_lng are required.")
+
     service_type   = intent.get("service_type", "Unknown")
     job_complexity = intent.get("job_complexity", "basic")
     budget_sens    = float(intent.get("budget_sensitivity", 0.5))
     service_lower  = service_type.lower()
 
     # ── Step 1: Hard Filter ────────────────────────────────────────────────────
+    # FIX-5+6: replaced brittle 12-branch or-chain with _service_matches() helper.
     filtered: List[Dict] = []
     for p in providers:
         cat = str(p.get("service_category", "")).lower()
-        service_match = (
-            cat == service_lower
-            or ("ac" in service_lower and ("ac" in cat or "technician" in cat))
-            or ("plumb" in service_lower and ("plumb" in cat or "pipe" in cat))
-            or ("electric" in service_lower and "electric" in cat)
-            or ("clean" in service_lower and "clean" in cat)
-            or ("tutor" in service_lower and ("tutor" in cat or "teach" in cat))
-            or ("carpent" in service_lower and ("carpent" in cat or "wood" in cat or "furniture" in cat))
-            or ("paint" in service_lower and "paint" in cat)
-            or ("garden" in service_lower and ("garden" in cat or "plant" in cat))
-            or ("cook" in service_lower and ("cook" in cat or "chef" in cat))
-            or ("driver" in service_lower and "driver" in cat)
-            or ("security" in service_lower and ("security" in cat or "guard" in cat))
-        )
-        if not service_match:
+        if not _service_matches(cat, service_lower):
             continue
 
         exp_raw = str(p.get("experience_level", "basic")).lower()
@@ -401,8 +446,9 @@ def run(
         last_active = p.get("last_active_date", "")
         if last_active:
             try:
+                # FIX-10: use _MAX_INACTIVE_DAYS constant instead of magic 14
                 delta = (datetime.datetime.now() - datetime.datetime.strptime(last_active, "%Y-%m-%d")).days
-                if delta > 14:
+                if delta > _MAX_INACTIVE_DAYS:
                     continue
             except ValueError:
                 pass
@@ -410,18 +456,12 @@ def run(
         filtered.append(p)
 
     if not filtered:
-        # Fallback: relaxed filter
+        # Fallback: relaxed filter — same service matching, just loosen other constraints.
+        # FIX-5: now uses _service_matches() so all 12 service types are covered
+        # (previously only 5 were handled, silently dropping carpentry/painting/etc.).
         for p in providers:
             cat = str(p.get("service_category", "")).lower()
-            service_match = (
-                cat == service_lower
-                or ("ac" in service_lower and ("ac" in cat or "technician" in cat))
-                or ("plumb" in service_lower and "plumb" in cat)
-                or ("electric" in service_lower and "electric" in cat)
-                or ("clean" in service_lower and "clean" in cat)
-                or ("tutor" in service_lower and "tutor" in cat)
-            )
-            if service_match and p.get("dispute_count", 0) < 5:
+            if _service_matches(cat, service_lower) and p.get("dispute_count", 0) < 5:
                 filtered.append(p)
 
         if not filtered:
