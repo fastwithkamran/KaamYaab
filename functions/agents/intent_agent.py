@@ -1,9 +1,6 @@
 """
-KaamYaab — Intent Agent  (v3 — Optimized)
+KaamYaab — Intent Agent  (v4 — Optimized)
 KaamYaab Autonomous Agent System | Cohere-Powered
-
-Extracts structured intent from multilingual user input
-(Urdu, Roman Urdu, English, mixed/code-switched).
 
 Extracts structured intent from multilingual user input
 (Urdu, Roman Urdu, English, mixed/code-switched).
@@ -18,6 +15,16 @@ Bug Fixes (v2 → v3)
   very first attempt if no exception occurred but model returned None — added guard.
 • MIGRATION: Replaced google.generativeai with Cohere (command-r-plus).
   Set COHERE_API_KEY in your environment — no key needed from you, just export it.
+
+Bug Fixes (v3 → v4)
+────────────────────
+• FIX-1: COMPLEXITY_MED contained "cleaning" — any Cleaning service request was classified
+  as "intermediate" complexity. Routine cleaning is "basic". Removed "cleaning" from the set.
+• FIX-2: _detect_service used substring `k in lower` for all keywords, causing short tokens
+  like "ac" to match unrelated words (e.g. "place", "each"). Short keywords (≤3 chars) now
+  use word-boundary regex matching.
+• FIX-12: Sentiment detection in fast_parse was binary (frustrated vs neutral). Added polite
+  marker detection and a dedicated "urgent" sentiment for high-urgency non-frustrated requests.
 """
 
 import json
@@ -176,13 +183,20 @@ BUDGET_KEYWORDS = {
 
 # ── Complexity Keywords ────────────────────────────────────────────────────────
 # BUG-3 FIX: removed duplicate "replace" from the set
+# FIX-1: removed "cleaning" from COMPLEXITY_MED — it was causing every Cleaning
+# service request to be classified as "intermediate" when routine cleaning is "basic".
 COMPLEXITY_HIGH = {"install", "installation", "wiring", "replace", "compressor",
                    "overhaul", "rewire", "complete", "full service"}
 COMPLEXITY_MED  = {"gas", "diagnose", "repair", "service", "leak", "fix", "refill",
-                   "check", "tuneup", "tune-up", "cleaning"}
+                   "check", "tuneup", "tune-up"}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Polite Markers ─────────────────────────────────────────────────────────────
+# FIX-12: used by fast_parse to distinguish "urgent but polite" from "frustrated"
+_POLITE_MARKERS = {
+    "please", "kindly", "shukriya", "shukria", "meherbani",
+    "if possible", "when convenient", "no rush", "ap ki meherbani",
+}
 
 def _detect_area(lower: str) -> str:
     """Return the best matched Islamabad sector or 'Unknown'."""
@@ -208,9 +222,15 @@ def _detect_area(lower: str) -> str:
 
 
 def _detect_service(lower: str) -> str:
+    # FIX-2: short tokens (≤3 chars) use word-boundary regex so "ac" does not
+    # match inside "place", "each", "practice", etc.
     for svc, keywords in SERVICE_KEYWORDS.items():
-        if any(k in lower for k in keywords):
-            return svc
+        for k in keywords:
+            if len(k) <= 3:
+                if re.search(rf'\b{re.escape(k)}\b', lower):
+                    return svc
+            elif k in lower:
+                return svc
     return "Unknown"
 
 
@@ -317,6 +337,18 @@ def fast_parse(text: str) -> dict:
         risk += 0.25
     risk = round(min(risk, 1.0), 2)
 
+    # FIX-12: four-way sentiment — emergency→frustrated, polite high-urgency→urgent,
+    # polite markers present→polite, otherwise→neutral.
+    is_polite = any(m in lower for m in _POLITE_MARKERS)
+    if urgency == "emergency":
+        sentiment = "frustrated"
+    elif urgency == "high" and not is_polite:
+        sentiment = "urgent"
+    elif is_polite:
+        sentiment = "polite"
+    else:
+        sentiment = "neutral"
+
     return {
         "service_type":           service,
         "location":               "Islamabad",
@@ -332,7 +364,7 @@ def fast_parse(text: str) -> dict:
         "issue_description":      text[:150],
         "job_complexity":         complexity,
         "risk_score":             risk,
-        "sentiment":              "frustrated" if urgency in ("emergency", "high") else "neutral",
+        "sentiment":              sentiment,
     }
 
 
