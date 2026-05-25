@@ -27,6 +27,8 @@ class _WorkerNotificationsTabState extends State<WorkerNotificationsTab> {
         return AppTheme.purpleLight;
       case WorkerNotifType.dispute:
         return AppTheme.redAlert;
+      case WorkerNotifType.request:
+        return AppTheme.goldAccent;
     }
   }
 
@@ -38,6 +40,8 @@ class _WorkerNotificationsTabState extends State<WorkerNotificationsTab> {
         return Icons.handshake_rounded;
       case WorkerNotifType.dispute:
         return Icons.warning_amber_rounded;
+      case WorkerNotifType.request:
+        return Icons.bolt_rounded;
     }
   }
 
@@ -171,10 +175,13 @@ class _WorkerNotificationsTabState extends State<WorkerNotificationsTab> {
   Widget _buildNotifCard(WorkerNotification notif, String workerUid) {
     final themeColor = _getNotifColor(notif.type);
     final themeIcon = _getNotifIcon(notif.type);
+    final isRequest = notif.type == WorkerNotifType.request;
+    final isNegotiation = notif.type == WorkerNotifType.negotiation;
+    final status = notif.meta['status'] as String? ?? 'pending';
 
     return InkWell(
       onTap: () {
-        if (!notif.isRead) {
+        if (!notif.isRead && !isRequest && !isNegotiation) {
           _notifService.markRead(workerUid, notif.id);
         }
       },
@@ -200,75 +207,254 @@ class _WorkerNotificationsTabState extends State<WorkerNotificationsTab> {
                   )
                 ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            // Icon section
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: themeColor.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                themeIcon,
-                color: themeColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Details section
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon section
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    themeIcon,
+                    color: themeColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Details section
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          notif.title,
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.bold,
-                            fontSize: 14,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notif.title,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
+                          if (!notif.isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: themeColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        notif.body,
+                        style: TextStyle(
+                          color: notif.isRead ? AppTheme.textSecondary : AppTheme.textPrimary,
+                          fontSize: 12.5,
+                          height: 1.4,
                         ),
                       ),
-                      if (!notif.isRead)
+                      if (isRequest && notif.meta['job_description'] != null) ...[
+                        const SizedBox(height: 12),
                         Container(
-                          width: 8,
-                          height: 8,
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: themeColor,
-                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _t('PROJECT DETAILS', 'پروجیکٹ کی تفصیلات'),
+                                style: const TextStyle(
+                                  color: AppTheme.textMuted,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                notif.meta['job_description'] as String,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _formatTime(notif.createdAt),
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 10.5,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    notif.body,
-                    style: TextStyle(
-                      color: notif.isRead ? AppTheme.textSecondary : AppTheme.textPrimary,
-                      fontSize: 12.5,
-                      height: 1.4,
+                ),
+              ],
+            ),
+            if (isRequest && status == 'pending') ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        _notifService.updateRequestStatus(workerUid, notif.id, 'rejected');
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.redAlert),
+                        foregroundColor: AppTheme.redAlert,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text(_t('Reject', 'مسترد کریں')),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _formatTime(notif.createdAt),
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 10.5,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        _notifService.updateRequestStatus(workerUid, notif.id, 'accepted');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.tealPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text(_t('Accept', 'قبول کریں')),
                     ),
                   ),
                 ],
               ),
-            ),
+            ] else if (isNegotiation && status == 'pending') ...[
+               const SizedBox(height: 16),
+               _buildNegotiationActions(workerUid, notif),
+            ] else if ((isRequest || isNegotiation) && status != 'pending') ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: status == 'accepted' || status == 'countered'
+                      ? AppTheme.greenSuccess.withValues(alpha: 0.1) 
+                      : AppTheme.redAlert.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    status == 'accepted' 
+                        ? _t('Accepted', 'قبول کر لیا گیا') 
+                        : status == 'countered'
+                            ? _t('Countered: Rs.${notif.meta['counter_offer_pkr']}', 'جوابی آفر: Rs.${notif.meta['counter_offer_pkr']}')
+                            : _t('Rejected', 'مسترد کر دیا گیا'),
+                    style: TextStyle(
+                      color: status == 'accepted' || status == 'countered' ? AppTheme.greenSuccess : AppTheme.redAlert,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNegotiationActions(String workerUid, WorkerNotification notif) {
+    final TextEditingController counterCtrl = TextEditingController();
+    
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  _notifService.updateNegotiationStatus(workerUid, notif.id, 'rejected');
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.redAlert),
+                  foregroundColor: AppTheme.redAlert,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(_t('Reject', 'مسترد کریں')),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  _notifService.updateNegotiationStatus(workerUid, notif.id, 'accepted');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.tealPrimary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(_t('Accept', 'قبول کریں')),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: counterCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: _t('Enter counter-offer...', 'جوابی آفر لکھیں...'),
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () {
+                final val = double.tryParse(counterCtrl.text);
+                if (val != null && val > 0) {
+                  HapticFeedback.mediumImpact();
+                  _notifService.updateNegotiationStatus(workerUid, notif.id, 'countered', counterOffer: val);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.goldAccent,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(_t('Counter', 'جوابی آفر')),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

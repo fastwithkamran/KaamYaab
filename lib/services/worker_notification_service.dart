@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 /// Types of notification a worker can receive.
-enum WorkerNotifType { booking, negotiation, dispute }
+enum WorkerNotifType { booking, negotiation, dispute, request }
 
 extension WorkerNotifTypeX on WorkerNotifType {
   String get value {
@@ -13,6 +13,8 @@ extension WorkerNotifTypeX on WorkerNotifType {
         return 'negotiation';
       case WorkerNotifType.dispute:
         return 'dispute';
+      case WorkerNotifType.request:
+        return 'request';
     }
   }
 
@@ -22,6 +24,8 @@ extension WorkerNotifTypeX on WorkerNotifType {
         return WorkerNotifType.negotiation;
       case 'dispute':
         return WorkerNotifType.dispute;
+      case 'request':
+        return WorkerNotifType.request;
       default:
         return WorkerNotifType.booking;
     }
@@ -108,15 +112,17 @@ class WorkerNotificationService {
   }
 
   /// Called when a customer submits a price counter-offer.
-  Future<void> notifyNegotiationRequest({
+  Future<String?> notifyNegotiationRequest({
     required String workerUid,
+    required String customerUid,
     required String customerName,
     required String serviceType,
     required double originalPrice,
     required double offerPrice,
+    required String requestId,
     String? receiptNumber,
   }) async {
-    await _col(workerUid)?.add({
+    final doc = await _col(workerUid)?.add({
       'type': WorkerNotifType.negotiation.value,
       'title': '💬 Price Negotiation Request',
       'body':
@@ -125,11 +131,32 @@ class WorkerNotificationService {
       'is_read': false,
       'created_at': FieldValue.serverTimestamp(),
       'meta': {
+        'customer_uid': customerUid,
+        'customer_name': customerName,
         'original_price_pkr': originalPrice,
         'offer_price_pkr': offerPrice,
         'service_type': serviceType,
+        'request_id': requestId,
         'receipt_number': receiptNumber,
+        'status': 'pending', // pending, accepted, rejected, countered
+        'counter_offer_pkr': null,
       },
+    });
+    return doc?.id;
+  }
+
+  /// Mark a negotiation as accepted, rejected or countered.
+  Future<void> updateNegotiationStatus(
+    String workerUid, 
+    String notifId, 
+    String status, 
+    {double? counterOffer}
+  ) async {
+    await _col(workerUid)?.doc(notifId).update({
+      'meta.status': status,
+      'meta.counter_offer_pkr': counterOffer,
+      'is_read': true,
+      'updated_at': FieldValue.serverTimestamp(),
     });
   }
 
@@ -154,6 +181,64 @@ class WorkerNotificationService {
         'reason': reason,
         'receipt_number': receiptNumber,
       },
+    });
+  }
+
+  /// Called by the agent when a customer selects a worker.
+  /// The worker must confirm they can work with the given requirements.
+  Future<String?> notifyBookingRequest({
+    required String workerUid,
+    required String customerUid,
+    required String customerName,
+    required String serviceType,
+    required String scheduledDate,
+    required String scheduledTime,
+    required double offeredPricePkr,
+    required String requestId,
+    required String jobDescription,
+    required String urgency,
+  }) async {
+    final doc = await _col(workerUid)?.add({
+      'type': WorkerNotifType.request.value,
+      'title': '📋 New Project Proposal',
+      'body':
+          '$customerName has a new project proposal for $serviceType. '
+          'They are offering Rs.${offeredPricePkr.toInt()} for $scheduledDate at $scheduledTime. '
+          'Urgency: ${urgency.toUpperCase()}. Please review the details below and approve to proceed.',
+      'is_read': false,
+      'created_at': FieldValue.serverTimestamp(),
+      'meta': {
+        'customer_uid': customerUid,
+        'customer_name': customerName,
+        'service_type': serviceType,
+        'scheduled_date': scheduledDate,
+        'scheduled_time': scheduledTime,
+        'offered_price_pkr': offeredPricePkr,
+        'request_id': requestId,
+        'job_description': jobDescription,
+        'urgency': urgency,
+        'status': 'pending', // pending, accepted, rejected
+      },
+    });
+    return doc?.id;
+  }
+
+  /// Mark a request as accepted or rejected.
+  Future<void> updateRequestStatus(String workerUid, String notifId, String status) async {
+    await _col(workerUid)?.doc(notifId).update({
+      'meta.status': status,
+      'is_read': true,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Listen to a specific notification document for status changes.
+  Stream<WorkerNotification?> watchNotification(String workerUid, String notifId) {
+    final col = _col(workerUid);
+    if (col == null) return Stream.value(null);
+    return col.doc(notifId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return WorkerNotification.fromDoc(doc);
     });
   }
 

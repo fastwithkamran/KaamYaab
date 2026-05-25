@@ -54,6 +54,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   String _feedback = '';
   bool _feedbackSubmitted = false;
   bool _bookingPersisted = false;
+  String? _requestNotifId;
+  String? _workerResponse; // pending, accepted, rejected
 
   // ── Negotiation agent state ───────────────────────────────────────────────
   double? _workerMinRate;
@@ -194,61 +196,88 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     setState(() => _isNegotiating = true);
 
     try {
-      // Single lookup — AuthService is a singleton so calling it twice
-      // returns the same object; cache it once to make that explicit.
       final customer = AuthService().currentUser;
-      final result = await AiService.negotiatePrice(
-        originalQuote: _finalPrice,
-        userOffer: offer,
-        providerName: widget.match.provider.name,
+      
+      // Send negotiation request to worker
+      final notifId = await WorkerNotificationService().notifyNegotiationRequest(
+        workerUid: widget.match.provider.id,
+        customerUid: customer?.uid ?? 'anon',
+        customerName: customer?.name.isNotEmpty == true ? customer!.name : (customer?.phone ?? 'Customer'),
         serviceType: widget.request.serviceType,
-        providerDnaScore: widget.match.provider.dnascore,
-        surgeMultiplier: widget.surgeMultiplier,
-        isRepeatCustomer: customer != null && customer.totalJobs > 3,
-        workerMinRatePkr: _workerMinRate,
-        workerNegotiationStyle: _workerNegotiationStyle,
+        originalPrice: _finalPrice,
+        offerPrice: offer,
+        requestId: widget.request.id,
+        receiptNumber: _receiptNumber,
       );
 
-      final counterOffer =
-          (result['counter_offer_pkr'] as num?)?.toDouble() ?? _finalPrice;
-      final reasoning = result['reasoning'] as String? ?? '';
+      if (notifId != null) {
+        final startTime = DateTime.now();
+        bool resolved = false;
+        
+        // Wait for worker or 20s simulation timeout
+        while (!resolved && DateTime.now().difference(startTime).inSeconds < 20) {
+          final snap = await FirebaseFirestore.instance
+              .collection('worker_notifications')
+              .doc(widget.match.provider.id)
+              .collection('items')
+              .doc(notifId)
+              .get();
+          
+          if (snap.exists) {
+            final data = snap.data();
+            final status = (data?['meta'] as Map?)?['status'] as String?;
+            
+            if (status == 'accepted') {
+              if (mounted) {
+                setState(() {
+                  _isNegotiating = false;
+                  _negotiationDone = true;
+                  _liveNegotiationResult = 'Worker accepted your offer! Rs.$offer confirmed.';
+                  _finalPrice = offer;
+                });
+              }
+              resolved = true;
+            } else if (status == 'rejected') {
+              if (mounted) {
+                setState(() {
+                  _isNegotiating = false;
+                  _negotiationDone = true;
+                  _liveNegotiationResult = 'Worker declined the offer. Keeping original price.';
+                });
+              }
+              resolved = true;
+            } else if (status == 'countered') {
+              final counter = (data?['meta'] as Map?)?['counter_offer_pkr'] as num?;
+              if (mounted) {
+                setState(() {
+                  _isNegotiating = false;
+                  _negotiationDone = true;
+                  _liveNegotiationResult = 'Worker countered with Rs.${counter?.toInt()}.';
+                  _finalPrice = counter?.toDouble() ?? _finalPrice;
+                });
+              }
+              resolved = true;
+            }
+          }
+          await Future.delayed(const Duration(seconds: 1));
+          if (!mounted) return;
+        }
 
-      // Notify the worker of the negotiation request
-      if (customer != null) {
-        WorkerNotificationService().notifyNegotiationRequest(
-          workerUid: widget.match.provider.id,
-          customerName: customer.name.isNotEmpty ? customer.name : customer.phone,
-          serviceType: widget.request.serviceType,
-          originalPrice: _finalPrice,
-          offerPrice: offer,
-          receiptNumber: _receiptNumber,
-        );
-      }
-
-      // Notify the customer of the worker's counter-offer
-      if (customer != null) {
-        CustomerNotificationService().notifyWorkerCounterOffer(
-          customerUid: customer.uid,
-          workerName: widget.match.provider.name,
-          serviceType: widget.request.serviceType,
-          counterOffer: counterOffer,
-        );
-      }
-
-      if (mounted) {
-        setState(() {
-          _isNegotiating = false;
-          _negotiationDone = true;
-          _liveNegotiationResult = reasoning;
-          _finalPrice = counterOffer; // always apply the counter
-        });
+        // Simulation fallback if no response
+        if (!resolved && mounted) {
+           setState(() {
+             _isNegotiating = false;
+             _liveNegotiationResult = 'No response from worker. Using AI recommended rate.';
+             // Optionally fall back to AI or original price
+           });
+        }
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           _isNegotiating = false;
           _liveNegotiationResult =
-              'Negotiation agent unavailable. Using quoted price.';
+              'Negotiation service unavailable. Using quoted price.';
         });
       }
     }
@@ -275,7 +304,70 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
         }).toList();
       });
 
-      if (i == 4 && Firebase.apps.isNotEmpty) {
+      if (i == 0) {
+        // ── Step 0: Notifying Workers ──────────────────────────────────────
+        final date = DateTime.now();
+        final scheduledDate =
+            '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        
+        _requestNotifId = await WorkerNotificationService().notifyBookingRequest(
+          workerUid: widget.match.provider.id,
+          customerUid: customer?.uid ?? 'anon',
+          customerName: customer?.name.isNotEmpty == true ? customer!.name : (customer?.phone ?? 'Customer'),
+          serviceType: widget.request.serviceType,
+          scheduledDate: scheduledDate,
+          scheduledTime: widget.match.recommendedSlot,
+          offeredPricePkr: _finalPrice,
+          requestId: widget.request.id,
+          jobDescription: widget.request.rawInput,
+          urgency: widget.request.urgency,
+        );
+        
+        await Future.delayed(const Duration(milliseconds: 1500));
+      } else if (i == 1) {
+        // ── Step 1: Worker Acceptance ──────────────────────────────────────
+        if (_requestNotifId != null) {
+          final startTime = DateTime.now();
+          bool resolved = false;
+          
+          // Poll/Wait for worker response or 30s timeout
+          while (!resolved && DateTime.now().difference(startTime).inSeconds < 30) {
+            final snap = await FirebaseFirestore.instance
+                .collection('worker_notifications')
+                .doc(widget.match.provider.id)
+                .collection('items')
+                .doc(_requestNotifId)
+                .get();
+            
+            if (snap.exists) {
+              final status = (snap.data()?['meta'] as Map?)?['status'] as String?;
+              if (status == 'accepted' || status == 'rejected') {
+                _workerResponse = status;
+                resolved = true;
+                break;
+              }
+            }
+            await Future.delayed(const Duration(seconds: 1));
+            if (!mounted) return;
+          }
+
+          if (_workerResponse != 'accepted') {
+            setState(() {
+              _isRunning = false;
+              _steps = _steps.map((s) => s.stepNumber == 2 
+                ? s.copyWith(
+                    status: 'failed', 
+                    agentNote: _workerResponse == 'rejected' 
+                        ? 'Worker declined the proposal.' 
+                        : 'No response from worker. Proposal expired.') 
+                : s).toList();
+            });
+            return;
+          }
+        } else {
+          await Future.delayed(const Duration(milliseconds: 2000));
+        }
+      } else if (i == 4 && Firebase.apps.isNotEmpty) {
         try {
           final locResult = await LocationService().getCurrentLocation();
           if (locResult.isSuccess && locResult.data != null) {
