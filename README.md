@@ -15,6 +15,7 @@ An agentic, end-to-end service lifecycle platform for informal-economy professio
 To make it as easy as possible to evaluate and test the KaamYaab application, we have provided a pre-compiled Android build and test credentials:
 
 * **📱 Download Android APK:** [KaamYaab APK (Google Drive)](https://drive.google.com/file/d/14QK5gLzhHbQfKpBiFX63M_4yTsrrOstM/view?usp=drive_link)
+
 * **🔑 Firebase OTP Test Credentials:**
   Skip the SMS wait times. Use these pre-configured sandbox numbers to test both user roles in the system:
   * **👤 Customer Account:**
@@ -23,7 +24,11 @@ To make it as easy as possible to evaluate and test the KaamYaab application, we
   * **🛠️ Service Provider (Worker) Account:**
     * Phone Number: `+92 331 1234568`
     * Verification OTP Code: `123456`
-* **🗺️ Demo Data Coverage:** 40 service providers have been pre-seeded into Firebase Firestore for demo purposes — all providers are currently based in **Karachi** only.
+
+> [!IMPORTANT]
+> **You must sign in using the demo credentials above** to access all 40 pre-seeded service providers and experience the full booking pipeline. Creating a new account will not have access to the seeded data.
+
+* **🗺️ Demo Data Coverage:** **40 service providers** have been pre-seeded into Firebase Firestore, distributed across major cities **all over Pakistan** — including Karachi, Lahore, Islamabad, Rawalpindi, Peshawar, Quetta, Multan, Faisalabad, and more.
 ---
 
 ## 📖 Table of Contents
