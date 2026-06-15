@@ -68,23 +68,8 @@ class MatchingService {
       }
     }
 
-    if (providersList.isEmpty) {
-      if (_mockProviders == null) {
-        try {
-          final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-          final decoded = jsonDecode(raw) as Map<String, dynamic>;
-          final list = (decoded['providers'] as List<dynamic>).cast<Map<String, dynamic>>();
-          _mockProviders = list.map(ServiceProvider.fromJson).toList();
-        } catch (e) {
-          if (kDebugMode) debugPrint('MatchingService: failed to load mock JSON — $e');
-          _mockProviders = [];
-        }
-      }
-      providersList = List<ServiceProvider>.from(_mockProviders!);
-    }
-
-    final allProviders = List<ServiceProvider>.from(providersList);
-
+    // ── Live registered workers (highest priority) ────────────────────────────
+    final List<ServiceProvider> liveProviders = [];
     try {
       final liveWorkers = await AuthService().getAllWorkers();
       for (final worker in liveWorkers) {
@@ -110,7 +95,6 @@ class MatchingService {
         final expLevel = _deriveExperienceLevel(worker.experienceYears);
         final isNewWorker = worker.totalJobs < 5;
 
-        // Use actual rating if set; new workers get a provisional score from RuntimeConfig.
         final effectiveRating = worker.rating > 0
             ? worker.rating
             : (isNewWorker
@@ -130,7 +114,6 @@ class MatchingService {
               : RuntimeConfig.defaultWorkerPriceFairnessScore,
         );
 
-        // Adjust DNA Score based on dynamic factors
         double score = 500.0;
         score += (effectiveRating / 5.0) * 150;
         score += (factors['completion']! * 100);
@@ -143,7 +126,7 @@ class MatchingService {
 
         final parsedSlots = _parseSlotsFromRules(worker.availabilityRules);
 
-        allProviders.add(ServiceProvider(
+        liveProviders.add(ServiceProvider(
           id: worker.uid,
           name: worker.name,
           phone: worker.phone,
@@ -162,7 +145,6 @@ class MatchingService {
           priceFairnessScore: factors['fairness']!,
           disputeCount: 0,
           surgeAcceptor: true,
-          // Fall back to RuntimeConfig default, not a hardcoded literal.
           baseRatePkr: worker.baseRatePkr ?? RuntimeConfig.defaultWorkerBaseRatePkr,
           experienceLevel: expLevel,
           certifications: [],
@@ -176,10 +158,39 @@ class MatchingService {
         ));
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('MatchingService: live worker merge failed — $e');
+      if (kDebugMode) debugPrint('MatchingService: live worker load failed — $e');
     }
 
-    return allProviders;
+    // If real workers exist → show ONLY them. Never mix with demo/mock workers.
+    if (liveProviders.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('MatchingService: ${liveProviders.length} live worker(s) found — skipping mock data.');
+      }
+      return liveProviders;
+    }
+
+    // ── Fallback: no live workers registered yet ──────────────────────────────
+    // Use Firestore providers collection or bundled mock JSON as demo data only.
+    if (kDebugMode) {
+      debugPrint('MatchingService: no live workers found — falling back to mock/demo data.');
+    }
+
+    if (providersList.isEmpty) {
+      if (_mockProviders == null) {
+        try {
+          final raw = await rootBundle.loadString('assets/data/providers_mock.json');
+          final decoded = jsonDecode(raw) as Map<String, dynamic>;
+          final list = (decoded['providers'] as List<dynamic>).cast<Map<String, dynamic>>();
+          _mockProviders = list.map(ServiceProvider.fromJson).toList();
+        } catch (e) {
+          if (kDebugMode) debugPrint('MatchingService: failed to load mock JSON — $e');
+          _mockProviders = [];
+        }
+      }
+      providersList = List<ServiceProvider>.from(_mockProviders!);
+    }
+
+    return providersList;
   }
 
   static void clearCache() {
