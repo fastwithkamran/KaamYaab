@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'fcm_service.dart';
 
 /// Types of notification a worker can receive.
 enum WorkerNotifType { booking, negotiation, dispute, request }
@@ -109,6 +110,17 @@ class WorkerNotificationService {
         'scheduled_time': scheduledTime,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(workerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '🎉 New Booking Confirmed!',
+        body: '$customerName booked you for $serviceType — Rs.${finalPricePkr.toInt()}',
+        data: {'type': 'booking', 'receipt': receiptNumber},
+      );
+    }
   }
 
   /// Called when a customer submits a price counter-offer.
@@ -138,10 +150,22 @@ class WorkerNotificationService {
         'service_type': serviceType,
         'request_id': requestId,
         'receipt_number': receiptNumber,
-        'status': 'pending', // pending, accepted, rejected, countered
+        'status': 'pending',
         'counter_offer_pkr': null,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(workerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '💬 Price Negotiation Request',
+        body: '$customerName offered Rs.${offerPrice.toInt()} for $serviceType',
+        data: {'type': 'negotiation', 'request_id': requestId},
+      );
+    }
+
     return doc?.id;
   }
 
@@ -182,6 +206,17 @@ class WorkerNotificationService {
         'receipt_number': receiptNumber,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(workerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '⚠️ Dispute Filed Against You',
+        body: '$customerName filed a dispute for $serviceType. Reason: $reason',
+        data: {'type': 'dispute'},
+      );
+    }
   }
 
   /// Called by the agent when a customer selects a worker.
@@ -217,9 +252,21 @@ class WorkerNotificationService {
         'request_id': requestId,
         'job_description': jobDescription,
         'urgency': urgency,
-        'status': 'pending', // pending, accepted, rejected
+        'status': 'pending',
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(workerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '📋 New Project Proposal',
+        body: '$customerName needs $serviceType on $scheduledDate. Offer: Rs.${offeredPricePkr.toInt()}',
+        data: {'type': 'request', 'request_id': requestId},
+      );
+    }
+
     return doc?.id;
   }
 
