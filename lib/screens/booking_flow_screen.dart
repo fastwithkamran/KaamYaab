@@ -211,65 +211,78 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       );
 
       if (notifId != null) {
-        final startTime = DateTime.now();
-        bool resolved = false;
-        
-        // Wait for worker or 20s simulation timeout
-        while (!resolved && DateTime.now().difference(startTime).inSeconds < 20) {
-          final snap = await FirebaseFirestore.instance
-              .collection('worker_notifications')
-              .doc(widget.match.provider.id)
-              .collection('items')
-              .doc(notifId)
-              .get();
-          
-          if (snap.exists) {
-            final data = snap.data();
-            final status = (data?['meta'] as Map?)?['status'] as String?;
-            
-            if (status == 'accepted') {
-              if (mounted) {
-                setState(() {
-                  _isNegotiating = false;
-                  _negotiationDone = true;
-                  _liveNegotiationResult = 'Worker accepted your offer! Rs.$offer confirmed.';
-                  _finalPrice = offer;
-                });
-              }
-              resolved = true;
-            } else if (status == 'rejected') {
-              if (mounted) {
-                setState(() {
-                  _isNegotiating = false;
-                  _negotiationDone = true;
-                  _liveNegotiationResult = 'Worker declined the offer. Keeping original price.';
-                });
-              }
-              resolved = true;
-            } else if (status == 'countered') {
-              final counter = (data?['meta'] as Map?)?['counter_offer_pkr'] as num?;
-              if (mounted) {
-                setState(() {
-                  _isNegotiating = false;
-                  _negotiationDone = true;
-                  _liveNegotiationResult = 'Worker countered with Rs.${counter?.toInt()}.';
-                  _finalPrice = counter?.toDouble() ?? _finalPrice;
-                });
-              }
-              resolved = true;
-            }
+        // ── Mock worker: auto-accept after 2s (no real user behind this provider) ──
+        if (widget.match.provider.isMock) {
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) {
+            setState(() {
+              _isNegotiating = false;
+              _negotiationDone = true;
+              _liveNegotiationResult = 'Worker accepted your offer! Rs.$offer confirmed.';
+              _finalPrice = offer;
+            });
           }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!mounted) return;
-        }
+        } else {
+          final startTime = DateTime.now();
+          bool resolved = false;
+          
+          // Wait for worker or 20s simulation timeout
+          while (!resolved && DateTime.now().difference(startTime).inSeconds < 20) {
+            final snap = await FirebaseFirestore.instance
+                .collection('worker_notifications')
+                .doc(widget.match.provider.id)
+                .collection('items')
+                .doc(notifId)
+                .get();
+            
+            if (snap.exists) {
+              final data = snap.data();
+              final status = (data?['meta'] as Map?)?['status'] as String?;
+              
+              if (status == 'accepted') {
+                if (mounted) {
+                  setState(() {
+                    _isNegotiating = false;
+                    _negotiationDone = true;
+                    _liveNegotiationResult = 'Worker accepted your offer! Rs.$offer confirmed.';
+                    _finalPrice = offer;
+                  });
+                }
+                resolved = true;
+              } else if (status == 'rejected') {
+                if (mounted) {
+                  setState(() {
+                    _isNegotiating = false;
+                    _negotiationDone = true;
+                    _liveNegotiationResult = 'Worker declined the offer. Keeping original price.';
+                  });
+                }
+                resolved = true;
+              } else if (status == 'countered') {
+                final counter = (data?['meta'] as Map?)?['counter_offer_pkr'] as num?;
+                if (mounted) {
+                  setState(() {
+                    _isNegotiating = false;
+                    _negotiationDone = true;
+                    _liveNegotiationResult = 'Worker countered with Rs.${counter?.toInt()}.';
+                    _finalPrice = counter?.toDouble() ?? _finalPrice;
+                  });
+                }
+                resolved = true;
+              }
+            }
+            await Future.delayed(const Duration(seconds: 1));
+            if (!mounted) return;
+          }
 
-        // Simulation fallback if no response
-        if (!resolved && mounted) {
-           setState(() {
-             _isNegotiating = false;
-             _liveNegotiationResult = 'No response from worker. Using AI recommended rate.';
-             // Optionally fall back to AI or original price
-           });
+          // Simulation fallback if no response
+          if (!resolved && mounted) {
+             setState(() {
+               _isNegotiating = false;
+               _liveNegotiationResult = 'No response from worker. Using AI recommended rate.';
+               // Optionally fall back to AI or original price
+             });
+          }
         }
       }
     } catch (_) {
@@ -327,28 +340,35 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
       } else if (i == 1) {
         // ── Step 1: Worker Acceptance ──────────────────────────────────────
         if (_requestNotifId != null) {
-          final startTime = DateTime.now();
-          bool resolved = false;
-          
-          // Poll/Wait for worker response or 30s timeout
-          while (!resolved && DateTime.now().difference(startTime).inSeconds < 30) {
-            final snap = await FirebaseFirestore.instance
-                .collection('worker_notifications')
-                .doc(widget.match.provider.id)
-                .collection('items')
-                .doc(_requestNotifId)
-                .get();
-            
-            if (snap.exists) {
-              final status = (snap.data()?['meta'] as Map?)?['status'] as String?;
-              if (status == 'accepted' || status == 'rejected') {
-                _workerResponse = status;
-                resolved = true;
-                break;
-              }
-            }
-            await Future.delayed(const Duration(seconds: 1));
+          // ── Mock worker: simulate instant acceptance (no real user) ──────
+          if (widget.match.provider.isMock) {
+            await Future.delayed(const Duration(seconds: 3));
             if (!mounted) return;
+            _workerResponse = 'accepted';
+          } else {
+            final startTime = DateTime.now();
+            bool resolved = false;
+            
+            // Poll/Wait for worker response or 30s timeout
+            while (!resolved && DateTime.now().difference(startTime).inSeconds < 30) {
+              final snap = await FirebaseFirestore.instance
+                  .collection('worker_notifications')
+                  .doc(widget.match.provider.id)
+                  .collection('items')
+                  .doc(_requestNotifId)
+                  .get();
+              
+              if (snap.exists) {
+                final status = (snap.data()?['meta'] as Map?)?['status'] as String?;
+                if (status == 'accepted' || status == 'rejected') {
+                  _workerResponse = status;
+                  resolved = true;
+                  break;
+                }
+              }
+              await Future.delayed(const Duration(seconds: 1));
+              if (!mounted) return;
+            }
           }
 
           if (_workerResponse != 'accepted') {
@@ -501,7 +521,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     final p = widget.match.provider;
     switch (step) {
       case 0:
-        return 'Task sent to ${p.name} and 2 others near ${widget.request.area}';
+        return 'Task sent to ${p.name} near ${widget.request.area}';
       case 1:
         return '${p.name} accepted! Time confirmed for ${widget.match.recommendedSlot}';
       case 2:
