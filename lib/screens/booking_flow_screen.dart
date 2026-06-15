@@ -12,7 +12,7 @@ import '../services/in_app_notification_service.dart';
 import '../services/booking_history_service.dart';
 import '../services/worker_notification_service.dart';
 import '../services/matching_service.dart';
-import '../services/ai_service.dart';
+
 import '../services/auth_service.dart';
 import '../services/customer_notification_service.dart';
 import '../services/location_service.dart';
@@ -629,36 +629,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(7),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.tealPrimary
-                                        .withValues(alpha: 0.12),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                      Icons.auto_awesome_rounded,
-                                      color: AppTheme.tealPrimary,
-                                      size: 16),
-                                ),
-                                const SizedBox(width: 10),
-                                const Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Booking Pipeline',
-                                        style: TextStyle(
-                                            color: AppTheme.textPrimary,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700)),
-                                    Text('AI orchestrating 7-step agentic flow',
-                                        style: TextStyle(
-                                            color: AppTheme.textMuted,
-                                            fontSize: 10)),
-                                  ],
-                                ),
-                              ],
+                            _AgentStatusBanner(
+                              steps: _steps,
+                              currentStep: _currentStep,
+                              workerName: p.name,
+                              isComplete: _isComplete,
+                              workerResponse: _workerResponse,
                             ),
                             const SizedBox(height: 20),
                             ..._steps.asMap().entries.map((e) => _TimelineStep(
@@ -731,94 +707,189 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
     );
   }
 
-  // ── Header — unchanged from your version ─────────────────────────────────
+  // ── Header — rich worker identity card ──────────────────────────────────
   Widget _buildHeader(ServiceProvider p) {
+    // Determine live status label + colour based on booking state
+    final String statusLabel;
+    final Color statusColor;
+    if (_isComplete) {
+      statusLabel = 'Completed';
+      statusColor = AppTheme.greenSuccess;
+    } else if (_currentStep >= 4) {
+      statusLabel = 'En-Route';
+      statusColor = AppTheme.tealPrimary;
+    } else if (_workerResponse == 'accepted') {
+      statusLabel = 'Accepted';
+      statusColor = AppTheme.greenSuccess;
+    } else if (_isRunning) {
+      statusLabel = 'Connecting';
+      statusColor = AppTheme.goldAccent;
+    } else {
+      statusLabel = 'Pending';
+      statusColor = AppTheme.textMuted;
+    }
+
+    // Category icon
+    final categoryIcons = {
+      'Plumber': '🔧', 'Electrician': '⚡', 'Carpenter': '🪚',
+      'Painter': '🎨', 'Cleaner': '🧹', 'Driver': '🚗',
+      'Cook': '👨‍🍳', 'Mason': '🧱', 'AC Technician': '❄️',
+    };
+    final catIcon = categoryIcons.entries
+        .where((e) => widget.request.serviceType.toLowerCase().contains(e.key.toLowerCase()))
+        .map((e) => e.value)
+        .firstOrNull ?? '👷';
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.tealGlassGradient,
+        color: AppTheme.cardDark,
         borderRadius: AppTheme.radiusLg,
-        border:
-            Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
-                  borderRadius: AppTheme.radiusSm),
-              child: const Icon(Icons.arrow_back_ios_rounded,
-                  color: AppTheme.textSecondary, size: 16),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                shape: BoxShape.circle),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: AppTheme.cardDark,
-              child: Text(
-                p.name.length >= 2 ? p.name.substring(0, 2) : p.name,
-                style: const TextStyle(
-                    color: AppTheme.tealPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(p.name,
-                    style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15)),
-                Text(
-                  '${widget.request.serviceType} · ${widget.request.area} · ${widget.match.recommendedSlot}',
-                  style:
-                      const TextStyle(color: AppTheme.textMuted, fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          if (_isRunning)
-            AnimatedBuilder(
-              animation: _pulseCtrl,
-              builder: (_, child) =>
-                  Opacity(opacity: 0.5 + 0.5 * _pulseCtrl.value, child: child),
-              child: const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppTheme.tealPrimary),
-              ),
-            )
-          else if (_isComplete)
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                  color: AppTheme.greenSuccess.withValues(alpha: 0.15),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded,
-                  color: AppTheme.greenSuccess, size: 16),
-            ),
+        border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.tealPrimary.withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: 1,
+          )
         ],
       ),
-    );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Top row: back + avatar + name + status ──────────────────────
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: AppTheme.radiusSm),
+                  child: const Icon(Icons.arrow_back_ios_rounded,
+                      color: AppTheme.textSecondary, size: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Avatar with gradient ring + category badge overlay
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: const BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        shape: BoxShape.circle),
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: AppTheme.surfaceDark,
+                      child: Text(
+                        p.name.length >= 2 ? p.name.substring(0, 2) : p.name,
+                        style: const TextStyle(
+                            color: AppTheme.tealPrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -2,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.backgroundDark,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(catIcon, style: const TextStyle(fontSize: 11)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.name,
+                        style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15)),
+                    const SizedBox(height: 2),
+                    // Status pill + DNA badge row
+                    Row(children: [
+                      AnimatedBuilder(
+                        animation: _pulseCtrl,
+                        builder: (_, child) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.12 + 0.06 * _pulseCtrl.value),
+                            borderRadius: AppTheme.radiusSm,
+                            border: Border.all(
+                              color: statusColor.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: statusColor,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(statusLabel,
+                                style: TextStyle(
+                                    color: statusColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700)),
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.purpleAgent.withValues(alpha: 0.1),
+                          borderRadius: AppTheme.radiusSm,
+                        ),
+                        child: Text(
+                          '⭐ ${p.rating.toStringAsFixed(1)}  🧬 DNA ${p.dnascore}',
+                          style: const TextStyle(
+                              color: AppTheme.purpleLight,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // ── Info chips row ───────────────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _InfoChip(Icons.build_rounded, widget.request.serviceType, AppTheme.tealPrimary),
+              const SizedBox(width: 6),
+              _InfoChip(Icons.location_on_rounded, widget.request.area, AppTheme.goldAccent),
+              const SizedBox(width: 6),
+              _InfoChip(Icons.schedule_rounded, widget.match.recommendedSlot, AppTheme.greenSuccess),
+              const SizedBox(width: 6),
+              _InfoChip(Icons.directions_walk_rounded, '${widget.match.distanceKm.toStringAsFixed(1)} km · ${widget.match.etaMinutes} min', AppTheme.textMuted),
+            ]),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 350.ms).slideY(begin: -0.05);
   }
-
-  // ── Price card — your UI + negotiation style badge + floor row ────────────
   Widget _buildPriceCard() {
     final styleColor = _workerNegotiationStyle == 'firm'
         ? AppTheme.redAlert
@@ -956,16 +1027,30 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
   }
 
   // ── Negotiation panel — styled to match the rest of the screen ────────────
+  // ── Negotiation panel — chat-style with quick-offer chips ────────────────
   Widget _buildNegotiationPanel() {
+    final quickOffers = [
+      (_finalPrice * 0.80).round(),
+      (_finalPrice * 0.85).round(),
+      (_finalPrice * 0.90).round(),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.cardDark,
         borderRadius: AppTheme.radiusLg,
-        border:
-            Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.25)),
+        border: Border.all(color: AppTheme.goldAccent.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.goldAccent.withValues(alpha: 0.05),
+            blurRadius: 16,
+            spreadRadius: 1,
+          )
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ── Panel header ────────────────────────────────────────────────
         Row(children: [
           Container(
             padding: const EdgeInsets.all(7),
@@ -986,7 +1071,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
                       fontSize: 14)),
               Text(
                 _workerMinRate != null
-                    ? 'Floor Rs.${_workerMinRate!.toInt()} · AI agent negotiates on worker\'s behalf'
+                    ? 'Floor Rs.${_workerMinRate!.toInt()} · AI agent negotiates on behalf of worker'
                     : 'Make a counter-offer. AI agent will respond.',
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
               ),
@@ -994,7 +1079,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
           ),
           if (_negotiationDone)
             Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                   color: AppTheme.greenSuccess.withValues(alpha: 0.15),
                   shape: BoxShape.circle),
@@ -1002,176 +1087,323 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
                   color: AppTheme.greenSuccess, size: 14),
             ),
         ]),
-        const SizedBox(height: 14),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _offerCtrl,
-              enabled: !_negotiationDone && !_isNegotiating,
-              keyboardType: TextInputType.number,
-              style:
-                  const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Your offer in Rs.',
-                hintStyle: const TextStyle(
-                    color: Colors.white38, fontSize: 13),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.04),
-                prefixText: 'Rs. ',
-                prefixStyle: const TextStyle(
-                    color: AppTheme.goldAccent,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            height: 46,
-            child: ElevatedButton(
-              onPressed: (_negotiationDone || _isNegotiating)
-                  ? null
-                  : _runNegotiation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.goldAccent,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20),
-                disabledBackgroundColor:
-                    AppTheme.goldAccent.withValues(alpha: 0.4),
-              ),
-              child: _isNegotiating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.black),
-                    )
-                  : const Text('Send',
-                      style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ]),
 
-        // ── AI agent response bubble ─────────────────────────────────────
+        const SizedBox(height: 14),
+
+        // ── Chat-style conversation bubbles ──────────────────────────────
         if (_liveNegotiationResult != null) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _negotiationDone
-                  ? AppTheme.greenSuccess.withValues(alpha: 0.07)
-                  : AppTheme.purpleAgent.withValues(alpha: 0.07),
-              borderRadius: AppTheme.radiusSm,
-              border: Border.all(
-                color: _negotiationDone
-                    ? AppTheme.greenSuccess.withValues(alpha: 0.25)
-                    : AppTheme.purpleAgent.withValues(alpha: 0.25),
+          // User offer bubble (right-aligned)
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Container(
+              constraints: const BoxConstraints(maxWidth: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  topRight: Radius.circular(14),
+                  bottomLeft: Radius.circular(14),
+                  bottomRight: Radius.circular(4),
+                ),
+                border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25)),
               ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('You offered',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+                Text(
+                  'Rs. ${_offerCtrl.text.isNotEmpty ? _offerCtrl.text : "—"}',
+                  style: const TextStyle(
+                      color: AppTheme.tealPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15),
+                ),
+              ]),
             ),
-            child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text(_negotiationDone ? '🤖' : '⚖️',
-                  style: const TextStyle(fontSize: 14)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+          ]),
+          const SizedBox(height: 8),
+
+          // Agent response bubble (left-aligned)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.purpleAgent.withValues(alpha: 0.15),
+                border: Border.all(color: AppTheme.purpleAgent.withValues(alpha: 0.3)),
+              ),
+              child: const Center(child: Text('🤖', style: TextStyle(fontSize: 13))),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _negotiationDone
+                      ? AppTheme.greenSuccess.withValues(alpha: 0.08)
+                      : AppTheme.purpleAgent.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(14),
+                    bottomLeft: Radius.circular(14),
+                    bottomRight: Radius.circular(14),
+                  ),
+                  border: Border.all(
+                    color: _negotiationDone
+                        ? AppTheme.greenSuccess.withValues(alpha: 0.25)
+                        : AppTheme.purpleAgent.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Negotiation Agent',
                       style: TextStyle(
                           color: AppTheme.purpleLight,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5)),
                   const SizedBox(height: 4),
                   Text(_liveNegotiationResult!,
                       style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 12,
-                          height: 1.4)),
+                          color: AppTheme.textPrimary, fontSize: 12, height: 1.4)),
                   if (_negotiationDone) ...[
                     const SizedBox(height: 6),
-                    Text('Final Price: Rs.${_finalPrice.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                            color: AppTheme.greenSuccess,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.greenSuccess.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('Final: Rs.${_finalPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                              color: AppTheme.greenSuccess,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800)),
+                    ),
                   ],
                 ]),
               ),
-            ]),
-          ),
+            ),
+          ]),
+          const SizedBox(height: 14),
         ],
+
+        // ── Quick-offer chips ────────────────────────────────────────────
+        if (!_negotiationDone) ...[
+          const Text('QUICK OFFERS',
+              style: TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2)),
+          const SizedBox(height: 8),
+          Row(children: quickOffers.map((amt) => Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: _isNegotiating ? null : () {
+                _offerCtrl.text = amt.toString();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.goldAccent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppTheme.goldAccent.withValues(alpha: 0.3)),
+                ),
+                child: Text('Rs.$amt',
+                    style: const TextStyle(
+                        color: AppTheme.goldAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+          )).toList()),
+          const SizedBox(height: 12),
+        ],
+
+        // ── Input row ────────────────────────────────────────────────────
+        if (!_negotiationDone)
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _offerCtrl,
+                enabled: !_negotiationDone && !_isNegotiating,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Your offer in Rs.',
+                  hintStyle:
+                      const TextStyle(color: Colors.white38, fontSize: 13),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.04),
+                  prefixText: 'Rs. ',
+                  prefixStyle: const TextStyle(
+                      color: AppTheme.goldAccent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 46,
+              child: ElevatedButton(
+                onPressed:
+                    (_negotiationDone || _isNegotiating) ? null : _runNegotiation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.goldAccent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  disabledBackgroundColor:
+                      AppTheme.goldAccent.withValues(alpha: 0.4),
+                ),
+                child: _isNegotiating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Text('Send',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ]),
       ]),
     ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.05);
   }
-
-  // ── Success banner — unchanged from your version ──────────────────────────
+  // ── Success banner — celebration card ────────────────────────────────────
   Widget _buildSuccessBanner() {
     return AnimatedBuilder(
       animation: _successAnim,
       builder: (_, child) => Transform.scale(
         scale: 0.85 + 0.15 * _successAnim.value,
-        child:
-            Opacity(opacity: _successAnim.value.clamp(0.0, 1.0), child: child),
+        child: Opacity(
+            opacity: _successAnim.value.clamp(0.0, 1.0), child: child),
       ),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0D9B87), Color(0xFF06B3A0), Color(0xFF048C7A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: AppTheme.radiusLg,
-          boxShadow: AppTheme.tealGlowStrong,
-        ),
-        child: Column(
-          children: [
-            const Text('🎉', style: TextStyle(fontSize: 40)),
-            const SizedBox(height: 10),
-            const Text('Booking Confirmed!',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20)),
-            const SizedBox(height: 6),
-            Text(
-              '${widget.match.provider.name} arrives by ${widget.match.recommendedSlot} · Rs. ${_finalPrice.toStringAsFixed(0)}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: AppTheme.radiusMd,
-              ),
-              child: Text(
-                'Receipt $_receiptNumber',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5),
-              ),
-            ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+              blurRadius: 24,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            )
           ],
         ),
+        child: Column(children: [
+          // ── Top celebration section ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(children: [
+              const Text('🎉', style: TextStyle(fontSize: 48))
+                  .animate()
+                  .scale(begin: const Offset(0.5, 0.5), duration: 600.ms,
+                      curve: Curves.elasticOut),
+              const SizedBox(height: 10),
+              const Text('Booking Confirmed!',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      letterSpacing: -0.3)),
+              const SizedBox(height: 6),
+              Text(
+                '${widget.match.provider.name} will arrive by ${widget.match.recommendedSlot}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+
+              // ── Info chips ──────────────────────────────────────────
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _SuccessChip(
+                      Icons.payments_rounded, 'Rs.${_finalPrice.toStringAsFixed(0)}'),
+                  _SuccessChip(Icons.schedule_rounded, widget.match.recommendedSlot),
+                  _SuccessChip(Icons.receipt_long_rounded, _receiptNumber),
+                ],
+              ),
+            ]),
+          ),
+
+          // ── Divider ──────────────────────────────────────────────────
+          Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.15),
+          ),
+
+          // ── Action buttons ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(children: [
+              Expanded(
+                child: _SuccessActionButton(
+                  icon: Icons.phone_rounded,
+                  label: 'Call Worker',
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('📞 Calling ${widget.match.provider.name}... (simulated)'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppTheme.cardDark,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SuccessActionButton(
+                  icon: Icons.calendar_month_rounded,
+                  label: 'Add to Calendar',
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('📅 Added to calendar (simulated)'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppTheme.cardDark,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SuccessActionButton(
+                  icon: Icons.share_rounded,
+                  label: 'Share',
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🔗 Share link copied (simulated)'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppTheme.cardDark,
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ]),
       ),
     );
   }
-
-  // ── Feedback — unchanged from your version ────────────────────────────────
   Widget _buildFeedback() {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1364,94 +1596,311 @@ class _BookingFlowScreenState extends State<BookingFlowScreen>
 }
 
 // ── Timeline Step — unchanged from your version ───────────────────────────────
+
+// ── _InfoChip ─────────────────────────────────────────────────────────────────
+
+// ── _SuccessChip ──────────────────────────────────────────────────────────────
+class _SuccessChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SuccessChip(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: Colors.white),
+        const SizedBox(width: 5),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+// ── _SuccessActionButton ──────────────────────────────────────────────────────
+class _SuccessActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SuccessActionButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(height: 4),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+}
+
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _InfoChip(this.icon, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 11, color: color),
+        const SizedBox(width: 5),
+        Text(label,
+            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+// ── _AgentStatusBanner ───────────────────────────────────────────────────────
+// Dynamic banner at top of pipeline card showing what AI is doing right now.
+class _AgentStatusBanner extends StatelessWidget {
+  final List<BookingStep> steps;
+  final int currentStep;
+  final String workerName;
+  final bool isComplete;
+  final String? workerResponse;
+
+  const _AgentStatusBanner({
+    required this.steps,
+    required this.currentStep,
+    required this.workerName,
+    required this.isComplete,
+    required this.workerResponse,
+  });
+
+  static const _stepIcons = [
+    Icons.send_rounded,
+    Icons.handshake_rounded,
+    Icons.phone_in_talk_rounded,
+    Icons.notifications_active_rounded,
+    Icons.directions_car_rounded,
+    Icons.build_rounded,
+    Icons.star_rounded,
+  ];
+
+  (String, Color, IconData) get _status {
+    if (isComplete) {
+      return ('✅  Booking fully complete!', AppTheme.greenSuccess, Icons.celebration_rounded);
+    }
+    if (currentStep < 0) {
+      return ('⏳  Preparing booking...', AppTheme.textMuted, Icons.hourglass_top_rounded);
+    }
+    if (workerResponse == 'rejected') {
+      return ('❌  Worker declined the request', AppTheme.redAlert, Icons.cancel_rounded);
+    }
+    final labels = [
+      '📡  Notifying $workerName...',
+      '⏳  Waiting for $workerName to respond...',
+      '🤝  Deal locked — details exchanged',
+      '🔔  Reminders scheduled for you',
+      '🚗  $workerName is on the way!',
+      '🔧  Job in progress',
+      '⭐  Wrapping up — please rate!',
+    ];
+    final colours = [
+      AppTheme.tealPrimary,
+      AppTheme.goldAccent,
+      AppTheme.greenSuccess,
+      AppTheme.purpleLight,
+      AppTheme.tealPrimary,
+      AppTheme.goldAccent,
+      AppTheme.goldAccent,
+    ];
+    final i = currentStep.clamp(0, labels.length - 1);
+    return (labels[i], colours[i], _stepIcons[i]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = _status;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: Container(
+        key: ValueKey(label),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: AppTheme.radiusMd,
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label,
+                  style: TextStyle(
+                      color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+              Text('AI Agentic Pipeline  ·  7-step orchestration',
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 9)),
+            ]),
+          ),
+          if (!isComplete && currentStep >= 0 && workerResponse != 'rejected')
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: color.withValues(alpha: 0.7),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── _TimelineStep — premium redesign ─────────────────────────────────────────
 class _TimelineStep extends StatelessWidget {
   final BookingStep step;
   final int index, currentStep;
   final bool isLast;
-  const _TimelineStep(
-      {required this.step,
-      required this.index,
-      required this.isLast,
-      required this.currentStep});
+
+  const _TimelineStep({
+    required this.step,
+    required this.index,
+    required this.isLast,
+    required this.currentStep,
+  });
+
+  // Step icons are represented via _stepEmojis for the dot center.
+
+  static const _stepEmojis = ['📡', '✋', '📞', '🔔', '🚗', '🔧', '⭐'];
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = step.status == 'completed';
-    final isActive = step.status == 'active';
-    final isPending = !isCompleted && !isActive;
-    final color = isCompleted
-        ? AppTheme.greenSuccess
-        : isActive
-            ? AppTheme.tealPrimary
-            : AppTheme.textMuted;
+    final isActive    = step.status == 'active';
+    final isFailed    = step.status == 'failed';
+    final isPending   = !isCompleted && !isActive && !isFailed;
+
+    final Color dotColor;
+    final Color lineColor;
+    if (isCompleted) {
+      dotColor = AppTheme.greenSuccess;
+      lineColor = AppTheme.greenSuccess;
+    } else if (isActive) {
+      dotColor = AppTheme.tealPrimary;
+      lineColor = AppTheme.tealPrimary.withValues(alpha: 0.3);
+    } else if (isFailed) {
+      dotColor = AppTheme.redAlert;
+      lineColor = AppTheme.redAlert.withValues(alpha: 0.2);
+    } else {
+      dotColor = AppTheme.textMuted.withValues(alpha: 0.4);
+      lineColor = AppTheme.textMuted.withValues(alpha: 0.1);
+    }
+
+    final stepEmoji = index < _stepEmojis.length ? _stepEmojis[index] : '•';
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: isPending ? 0.06 : 0.14),
-                  border:
-                      Border.all(color: color, width: isActive ? 2 : 1.5),
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                              color: AppTheme.tealPrimary
-                                  .withValues(alpha: 0.4),
-                              blurRadius: 14,
-                              spreadRadius: 1)
-                        ]
-                      : [],
-                ),
-                child: Center(
-                  child: isCompleted
-                      ? Icon(Icons.check_rounded, color: color, size: 15)
-                      : isActive
-                          ? SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: color))
-                          : Text('${index + 1}',
-                              style: TextStyle(
-                                  color: color,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700)),
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          isCompleted
-                              ? AppTheme.greenSuccess
-                                  .withValues(alpha: 0.5)
-                              : color.withValues(alpha: 0.15),
-                          AppTheme.textMuted.withValues(alpha: 0.08),
-                        ],
-                      ),
+          // ── Left column: dot + connector line ───────────────────────────
+          SizedBox(
+            width: 44,
+            child: Column(
+              children: [
+                // Step dot
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: dotColor.withValues(alpha: isPending ? 0.04 : 0.13),
+                    border: Border.all(
+                      color: dotColor,
+                      width: isActive ? 2 : 1.5,
                     ),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: isCompleted
+                        ? Icon(Icons.check_rounded, color: dotColor, size: 16)
+                        : isFailed
+                            ? Icon(Icons.close_rounded, color: dotColor, size: 16)
+                            : isActive
+                                ? SizedBox(
+                                    width: 15,
+                                    height: 15,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: dotColor))
+                                : Text(stepEmoji,
+                                    style: const TextStyle(fontSize: 14)),
                   ),
                 ),
-            ],
+                // Connector line — dashed when pending, solid when done
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      child: isCompleted
+                          ? Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    AppTheme.greenSuccess.withValues(alpha: 0.7),
+                                    AppTheme.greenSuccess.withValues(alpha: 0.15),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : CustomPaint(
+                              painter: _DashedLinePainter(lineColor),
+                              size: const Size(2, double.infinity),
+                            ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
+
+          // ── Right column: title + description + note ─────────────────────
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16, top: 4),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 18, top: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1461,48 +1910,89 @@ class _TimelineStep extends StatelessWidget {
                           style: TextStyle(
                             color: isPending
                                 ? AppTheme.textMuted
-                                : AppTheme.textPrimary,
-                            fontWeight: isActive || isCompleted
-                                ? FontWeight.w600
+                                : isFailed
+                                    ? AppTheme.redAlert
+                                    : AppTheme.textPrimary,
+                            fontWeight: (isActive || isCompleted)
+                                ? FontWeight.w700
                                 : FontWeight.w400,
                             fontSize: 13,
                           )),
                     ),
                     if (step.timestamp != null)
-                      Text(step.timestamp!,
-                          style: const TextStyle(
-                              color: AppTheme.textMuted, fontSize: 10)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.greenSuccess.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(step.timestamp!,
+                            style: const TextStyle(
+                                color: AppTheme.greenSuccess,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600)),
+                      ),
                   ]),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(step.description,
-                      style: const TextStyle(
-                          color: AppTheme.textMuted,
+                      style: TextStyle(
+                          color: isPending
+                              ? AppTheme.textMuted.withValues(alpha: 0.5)
+                              : AppTheme.textMuted,
                           fontSize: 11,
                           height: 1.4)),
+
+                  // Agent note bubble
                   if (step.agentNote != null) ...[
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppTheme.greenSuccess.withValues(alpha: 0.07),
+                        color: isFailed
+                            ? AppTheme.redAlert.withValues(alpha: 0.07)
+                            : AppTheme.greenSuccess.withValues(alpha: 0.07),
                         borderRadius: AppTheme.radiusSm,
                         border: Border.all(
-                            color: AppTheme.greenSuccess
-                                .withValues(alpha: 0.2)),
+                            color: isFailed
+                                ? AppTheme.redAlert.withValues(alpha: 0.25)
+                                : AppTheme.greenSuccess.withValues(alpha: 0.2)),
                       ),
-                      child: Row(children: [
-                        const Icon(Icons.check_rounded,
-                            color: AppTheme.greenSuccess, size: 11),
-                        const SizedBox(width: 5),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(
+                          isFailed ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+                          color: isFailed ? AppTheme.redAlert : AppTheme.greenSuccess,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 6),
                         Expanded(
                             child: Text(step.agentNote!,
-                                style: const TextStyle(
-                                    color: AppTheme.greenSuccess,
+                                style: TextStyle(
+                                    color: isFailed ? AppTheme.redAlert : AppTheme.greenSuccess,
                                     fontSize: 10,
-                                    height: 1.3))),
+                                    height: 1.4))),
                       ]),
                     ),
+                  ],
+
+                  // "Agent working..." shimmer text for active step
+                  if (isActive && step.agentNote == null) ...[
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.tealPrimary.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('Agent working on this step...',
+                          style: TextStyle(
+                              color: AppTheme.tealPrimary,
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic)),
+                    ]),
                   ],
                 ],
               ),
@@ -1512,4 +2002,31 @@ class _TimelineStep extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Dashed connector line painter ─────────────────────────────────────────────
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  const _DashedLinePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+    const dashHeight = 4.0;
+    const dashSpace = 4.0;
+    double startY = 0;
+    while (startY < size.height) {
+      canvas.drawLine(
+        Offset(size.width / 2, startY),
+        Offset(size.width / 2, startY + dashHeight),
+        paint,
+      );
+      startY += dashHeight + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedLinePainter old) => old.color != color;
 }
