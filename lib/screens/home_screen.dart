@@ -231,6 +231,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _matches = results;
         if (results.isNotEmpty) _expandedCard = 0;
       });
+
+      // ── No worker found: inform user via chat ────────────────────────────
+      if (results.isEmpty) {
+        final service = _currentRequest?.serviceType ?? 'this service';
+        final area = _currentRequest?.area ?? 'your area';
+        _chatHistory.addMessage(
+          'CHATBOT',
+          _lang.isUrdu
+              ? '❌ معذرت! "$service" کے لیے "$area" میں ابھی کوئی کارکن دستیاب نہیں ہے۔ براہ کرم علاقہ تبدیل کریں یا بعد میں دوبارہ کوشش کریں۔'
+              : '❌ No workers found for "$service" in "$area" right now. Try a different area, broaden your service type, or check back later.',
+        );
+        setState(() {});
+      }
+
       _scrollToBottom();
     }
   }
