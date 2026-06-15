@@ -14,7 +14,8 @@ class WorkersBrowseScreen extends StatefulWidget {
   State<WorkersBrowseScreen> createState() => _WorkersBrowseScreenState();
 }
 
-class _WorkersBrowseScreenState extends State<WorkersBrowseScreen> {
+class _WorkersBrowseScreenState extends State<WorkersBrowseScreen>
+    with WidgetsBindingObserver {
   List<AppUser> _allWorkers = [];
   List<AppUser> _filtered = [];
   bool _loading = true;
@@ -22,6 +23,7 @@ class _WorkersBrowseScreenState extends State<WorkersBrowseScreen> {
   String _searchQuery = '';
   String _sortBy = 'rating'; // 'rating' | 'price_low' | 'price_high' | 'jobs'
   bool _availableOnly = false;
+  DateTime? _lastLoaded;
 
   static const _categories = [
     'All',
@@ -54,8 +56,34 @@ class _WorkersBrowseScreenState extends State<WorkersBrowseScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedCategory = widget.initialCategory ?? 'All';
     _loadWorkers();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reloadIfStale();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reloadIfStale();
+  }
+
+  void _reloadIfStale() {
+    final now = DateTime.now();
+    if (_lastLoaded == null ||
+        now.difference(_lastLoaded!) > const Duration(seconds: 30)) {
+      _loadWorkers();
+    }
   }
 
   bool _isCategoryMatch(String? workerCategory, String selectedCategory) {
@@ -94,12 +122,14 @@ class _WorkersBrowseScreenState extends State<WorkersBrowseScreen> {
   }
 
   Future<void> _loadWorkers() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     final workers = await AuthService().getAllWorkers();
     if (!mounted) return;
     setState(() {
       _allWorkers = workers.where((w) => w.isProfileComplete).toList();
       _loading = false;
+      _lastLoaded = DateTime.now();
     });
     _applyFilters();
   }
