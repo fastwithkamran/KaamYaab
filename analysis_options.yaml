@@ -1,5 +1,12 @@
 include: package:flutter_lints/flutter.yaml
 
+# Exclude root-level snippet/insert files — they are code fragments intended
+# to be copy-pasted into real widget files and are not standalone Dart files.
+analyzer:
+  exclude:
+    - home_widgets_insert.dart
+    - voice_banner_insert.dart
+
 linter:
   rules:
     # Performance hints — suppressed project-wide to keep output clean.
