@@ -27,6 +27,7 @@ class ServiceProvider {
   final bool isVerified;
   final String lastActiveDate;
   final bool isAvailable;
+  final bool isMock;
 
   const ServiceProvider({
     required this.id,
@@ -57,6 +58,7 @@ class ServiceProvider {
     required this.isVerified,
     required this.lastActiveDate,
     this.isAvailable = true,
+    this.isMock = false,
   });
 
   factory ServiceProvider.fromJson(Map<String, dynamic> json) {
@@ -89,6 +91,7 @@ class ServiceProvider {
       isVerified: json['is_verified'] as bool,
       lastActiveDate: json['last_active_date'] as String,
       isAvailable: json['is_available'] as bool? ?? true,
+      isMock: json['is_mock'] as bool? ?? false,
     );
   }
 
@@ -121,6 +124,7 @@ class ServiceProvider {
     'is_verified': isVerified,
     'last_active_date': lastActiveDate,
     'is_available': isAvailable,
+    'is_mock': isMock,
   };
 
   double get completionRate =>
