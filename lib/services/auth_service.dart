@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
+import 'fcm_service.dart';
 
 /// Auth service — Firestore is the source of truth.
 /// SharedPreferences is a local cache for offline / fast startup only.
@@ -172,11 +173,23 @@ class AuthService {
 
     _currentUser = user;
     await prefs.setString(_currentUserKey, jsonEncode(user.toJson()));
+
+    // Save FCM token so this user can receive push notifications.
+    FcmService().saveTokenForUser(user.uid).catchError(
+      (e) => debugPrint('⚠️ FCM token save skipped: $e'),
+    );
+
     return AuthResult.success(user);
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
+    // Clear FCM token first so this device stops receiving pushes.
+    if (_currentUser != null) {
+      FcmService().clearTokenForUser(_currentUser!.uid).catchError(
+        (e) => debugPrint('⚠️ FCM token clear skipped: $e'),
+      );
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currentUserKey);
     _currentUser = null;

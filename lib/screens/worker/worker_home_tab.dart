@@ -90,7 +90,12 @@ class _WorkerHomeTabState extends State<WorkerHomeTab>
       backgroundColor: Colors.transparent,
       builder: (_) =>
           const WorkerAgentChatBottomSheet(initialMode: AgentInputMode.voice),
-    ).then((_) => _loadProfile());
+    ).then((_) async {
+      // Force a fresh Firestore pull so the completion banner
+      // disappears immediately after the AI agent saves the profile.
+      await AuthService().refreshUserFromFirestore();
+      _loadProfile();
+    });
   }
 
   Future<void> _toggleOnline() async {

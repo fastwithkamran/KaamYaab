@@ -24,6 +24,7 @@ class AppUser {
   final int totalJobs;
   final String? bio;
   final String? profileImageBase64; // Base64 encoded profile photo
+  final bool? profileComplete;       // Explicit Firestore-persisted flag set by AI onboarding
 
   // Map locations & availability
   final double? latitude;
@@ -55,6 +56,7 @@ class AppUser {
     this.latitude,
     this.longitude,
     this.availabilityRules,
+    this.profileComplete,
   });
 
   bool get isWorker => role == UserRole.worker;
@@ -62,18 +64,22 @@ class AppUser {
   bool get hasProfileImage =>
       profileImageBase64 != null && profileImageBase64!.isNotEmpty;
 
-  /// True only when ALL mandatory worker profile fields are filled.
-  bool get isProfileComplete =>
-      isWorker &&
-      serviceCategory != null &&
-      serviceCategory!.isNotEmpty &&
-      serviceCategory != 'Unassigned' &&
-      skills != null &&
-      skills!.isNotEmpty &&
-      baseRatePkr != null &&
-      minRatePkr != null &&
-      availabilityRules != null &&
-      availabilityRules!.isNotEmpty;
+  /// True when the worker has completed onboarding via AI.
+  /// Reads the explicit persisted flag first (set by AI onboarding commit);
+  /// falls back to field-level computation for backward compatibility.
+  bool get isProfileComplete {
+    // Explicit flag wins — set to true by _commitFullProfile() in the AI agent.
+    if (profileComplete != null) return profileComplete!;
+    // Fallback: compute from individual fields (old workers without the flag).
+    return isWorker &&
+        serviceCategory != null &&
+        serviceCategory!.isNotEmpty &&
+        serviceCategory != 'Unassigned' &&
+        skills != null &&
+        skills!.isNotEmpty &&
+        baseRatePkr != null &&
+        minRatePkr != null;
+  }
 
   /// The effective negotiation floor. Falls back to 80 % of base rate.
   double get effectiveMinRate {
@@ -142,6 +148,7 @@ class AppUser {
       availabilityRules: json['availability_rules'] != null
           ? List<String>.from(json['availability_rules'] as List)
           : null,
+      profileComplete: json['profile_complete'] as bool?,
     );
   }
 
@@ -170,6 +177,7 @@ class AppUser {
         'latitude': latitude,
         'longitude': longitude,
         'availability_rules': availabilityRules,
+        'profile_complete': profileComplete,
       };
 
   AppUser copyWith({
@@ -195,6 +203,7 @@ class AppUser {
     List<String>? availabilityRules,
     double? latitude,
     double? longitude,
+    bool? profileComplete,
   }) {
     return AppUser(
       uid: uid ?? this.uid,
@@ -221,6 +230,7 @@ class AppUser {
       availabilityRules: availabilityRules ?? this.availabilityRules,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      profileComplete: profileComplete ?? this.profileComplete,
     );
   }
 }

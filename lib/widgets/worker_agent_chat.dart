@@ -276,21 +276,37 @@ class _WorkerAgentChatScreenState extends State<WorkerAgentChatScreen>
       final user = AuthService().currentUser;
       if (user == null) return;
 
+      // Ensure availability rules always have a fallback so isProfileComplete
+      // never fails due to a missing field.
+      final collectedRules = _collectedProfile['availability_rules'];
+      final List<String> finalRules = collectedRules != null
+          ? List<String>.from(collectedRules as List)
+          : (user.availabilityRules?.isNotEmpty == true
+              ? user.availabilityRules!
+              : ['Flexible']);
+
+      // Ensure skills always have a fallback.
+      final collectedSkills = _collectedProfile['skills'];
+      final List<String> finalSkills = collectedSkills != null
+          ? List<String>.from(collectedSkills as List)
+          : (user.skills?.isNotEmpty == true
+              ? user.skills!
+              : [_collectedProfile['category'] as String? ?? user.serviceCategory ?? 'General']);
+
       final updated = user.copyWith(
         serviceCategory: _collectedProfile['category'] as String? ?? user.serviceCategory,
         subRole: _collectedProfile['sub_role'] as String? ?? user.subRole,
-        skills: _collectedProfile['skills'] != null
-            ? List<String>.from(_collectedProfile['skills'] as List)
-            : user.skills,
+        skills: finalSkills,
         baseRatePkr: (_collectedProfile['base_rate_pkr'] as num?)?.toDouble() ?? user.baseRatePkr,
         minRatePkr: (_collectedProfile['min_rate_pkr'] as num?)?.toDouble() ?? user.minRatePkr,
         maxRatePkr: (_collectedProfile['max_rate_pkr'] as num?)?.toDouble() ?? user.maxRatePkr,
         negotiationStyle: _collectedProfile['negotiation_style'] as String? ?? user.negotiationStyle,
         experienceYears: (_collectedProfile['experience_years'] as num?)?.toInt() ?? user.experienceYears,
         bio: _collectedProfile['bio'] as String? ?? user.bio,
-        availabilityRules: _collectedProfile['availability_rules'] != null
-            ? List<String>.from(_collectedProfile['availability_rules'] as List)
-            : user.availabilityRules,
+        availabilityRules: finalRules,
+        // Explicitly persist the completion flag so the worker home tab banner
+        // and the customer browse screen both see this worker as ready.
+        profileComplete: true,
       );
 
       await AuthService().updateUserProfile(updated);
