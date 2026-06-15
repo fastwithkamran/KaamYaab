@@ -73,6 +73,11 @@ android/key.properties
 android/app/key.properties
 
 # ──────────────────────────────────────────────────────────
+# iOS — local secrets (never commit)
+# ──────────────────────────────────────────────────────────
+ios/Flutter/Secrets.xcconfig
+
+# ──────────────────────────────────────────────────────────
 # macOS
 # ──────────────────────────────────────────────────────────
 .DS_Store
@@ -88,3 +93,6 @@ android/app/key.properties
 .history
 .svn/
 analyze_output.txt
+
+# FCM service account � contains private key, never commit
+assets/fcm_service_account.json

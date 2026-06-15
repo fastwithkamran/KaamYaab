@@ -30,7 +30,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="REDACTED_MAPS_KEY"/>
+            android:value="${MAPS_API_KEY}"/>
     </application>
     <queries>
         <intent>
