@@ -14,6 +14,7 @@ import 'screens/workers_browse_screen.dart';
 import 'screens/voice_booking_agent.dart';
 import 'services/auth_service.dart';
 import 'services/language_service.dart';
+import 'services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,15 @@ void main() async {
     firebaseReady = true;
   } catch (e) {
     debugPrint('⚠️  Firebase init failed — running in offline/demo mode: $e');
+  }
+
+  // ── FCM Push Notifications ────────────────────────────────────────────────
+  if (firebaseReady) {
+    try {
+      await FcmService().init();
+    } catch (e) {
+      debugPrint('⚠️  FcmService init failed: $e');
+    }
   }
 
   // ── Services ──────────────────────────────────────────────────────────────

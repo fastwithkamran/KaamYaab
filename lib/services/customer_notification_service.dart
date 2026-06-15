@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'fcm_service.dart';
 
 /// Types of notification a customer can receive.
 enum CustomerNotifType { enRoute, arrived, completed, counterOffer }
@@ -102,6 +103,17 @@ class CustomerNotificationService {
         'eta_minutes': etaMinutes,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(customerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '🚗 $workerName is on the way!',
+        body: 'ETA: $etaMinutes minutes • $serviceType',
+        data: {'type': 'en_route'},
+      );
+    }
   }
 
   /// Triggered when the worker marks status as arrived.
@@ -121,6 +133,17 @@ class CustomerNotificationService {
         'service_type': serviceType,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(customerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '🔔 $workerName has arrived!',
+        body: 'Your $serviceType worker is at your door',
+        data: {'type': 'arrived'},
+      );
+    }
   }
 
   /// Triggered when the worker completes a job.
@@ -142,6 +165,17 @@ class CustomerNotificationService {
         'final_price': finalPrice,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(customerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '🎉 Job Completed!',
+        body: '$workerName finished $serviceType • Rs.${finalPrice.toInt()} paid',
+        data: {'type': 'completed'},
+      );
+    }
   }
 
   /// Triggered when worker sends counter offer.
@@ -163,6 +197,17 @@ class CustomerNotificationService {
         'counter_offer': counterOffer,
       },
     });
+
+    // ── Push ─────────────────────────────────────────────────────────────
+    final token = await FcmService().getTokenForUser(customerUid);
+    if (token != null) {
+      await FcmService().sendPush(
+        toToken: token,
+        title: '💬 Counter-Offer from $workerName',
+        body: 'Rs.${counterOffer.toInt()} for $serviceType • Tap to respond',
+        data: {'type': 'counter_offer'},
+      );
+    }
   }
 
   // ── Read helpers ────────────────────────────────────────────────────────────
