@@ -45,6 +45,10 @@ assets/fcm_service_account.json
 .env.*
 lib/config/env_config.dart
 
+# Google Maps API key for Flutter web — NEVER commit the real file
+# Copy web/env.example.js → web/env.js and add your key there
+web/env.js
+
 # ──────────────────────────────────────────────────────────
 # Python (functions/agents)
 # ──────────────────────────────────────────────────────────
