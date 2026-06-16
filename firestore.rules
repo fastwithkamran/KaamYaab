@@ -15,80 +15,64 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
-    /// True when the signed-in user has the 'admin' custom claim.
-    function isAdmin() {
-      return isAuth() && request.auth.token.get('admin', false) == true;
-    }
-
-    /// Prevents clients from escalating their own role or admin flag.
-    function noRoleEscalation() {
-      return !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['role', 'is_banned', 'admin']);
-    }
-
     // ── 1. Users Collection ───────────────────────────────────────────────────
-    // - Any authenticated user can read worker profiles (needed for Browse screen).
-    // - Only the owner can write their own document.
-    // - Admins can read/write any user document (ban, delete, etc.).
+    // Any authenticated user can read worker profiles (needed for Browse screen).
+    // Only the owner can create or update their own document.
     match /users/{userId} {
-      allow read:  if isAuth();
+      allow read:   if isAuth();
       allow create: if isSelf(userId);
-      allow update: if (isSelf(userId) && noRoleEscalation()) || isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isSelf(userId);
+      allow delete: if false;
     }
 
     // ── 2. Bookings Collection ────────────────────────────────────────────────
-    // - A booking's customer or assigned worker can read it.
-    // - Any authenticated user can create a booking (customer places order).
-    // - Only the customer or worker involved can update (e.g. status change).
-    // - Admins have full access.
+    // Only the customer or assigned worker can read/update a booking.
+    // Any authenticated user can create a new booking.
     match /bookings/{bookingId} {
       allow read:   if isAuth() && (
                       resource.data.customer_uid == request.auth.uid ||
-                      resource.data.worker_uid   == request.auth.uid ||
-                      isAdmin()
+                      resource.data.worker_uid   == request.auth.uid
                     );
       allow create: if isAuth();
       allow update: if isAuth() && (
                       resource.data.customer_uid == request.auth.uid ||
-                      resource.data.worker_uid   == request.auth.uid ||
-                      isAdmin()
+                      resource.data.worker_uid   == request.auth.uid
                     );
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     // ── 3. Service Providers (legacy alias of users) ──────────────────────────
-    // Readable by any authenticated user; writable only by the owner or admin.
+    // Readable by any authenticated user; writable only by the owner.
     match /providers/{providerId} {
       allow read:   if isAuth();
-      allow write:  if isSelf(providerId) || isAdmin();
+      allow write:  if isSelf(providerId);
     }
 
     // ── 4. Worker Locations ───────────────────────────────────────────────────
-    // Only the worker themselves can update their location.
-    // Any authenticated user can read (needed for map/matching).
+    // Readable by any authenticated user (needed for map/matching).
+    // Only the worker themselves can write their location.
     match /worker_locations/{workerId} {
       allow read:   if isAuth();
-      allow write:  if isSelf(workerId) || isAdmin();
+      allow write:  if isSelf(workerId);
     }
 
     // ── 5. Customer Notifications ─────────────────────────────────────────────
     // Strictly private — only readable/writable by the owning customer.
     match /customer_notifications/{customerId} {
-      allow read, write: if isSelf(customerId) || isAdmin();
+      allow read, write: if isSelf(customerId);
 
       match /items/{itemId} {
-        allow read, write: if isSelf(customerId) || isAdmin();
+        allow read, write: if isSelf(customerId);
       }
     }
 
     // ── 6. Worker Notifications ───────────────────────────────────────────────
     // Strictly private — only readable/writable by the owning worker.
     match /worker_notifications/{workerId} {
-      allow read, write: if isSelf(workerId) || isAdmin();
+      allow read, write: if isSelf(workerId);
 
       match /items/{itemId} {
-        allow read, write: if isSelf(workerId) || isAdmin();
+        allow read, write: if isSelf(workerId);
       }
     }
 

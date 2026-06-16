@@ -42,8 +42,8 @@ class ProviderDataService {
   /// the seed is skipped entirely — this prevents accidental data overwrite on
   /// every app launch / hot restart.
   ///
-  /// Pass [force] = true only from a manual admin action when a full re-seed is
-  /// intentionally required (e.g. after a schema migration).
+  /// Pass [force] = true only when a full re-seed is intentionally required
+  /// (e.g. after a schema migration during development).
   Future<void> seedProvidersFromMockAsset({bool force = false}) async {
     if (!_isFirebaseReady) return;
 

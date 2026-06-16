@@ -26,7 +26,7 @@ To make it as easy as possible to evaluate and test the KaamYaab application, we
     * Verification OTP Code: `123456`
 
 > [!IMPORTANT]
-> **You must sign in using the demo credentials above** to access all 40 pre-seeded service providers and experience the full booking pipeline. Creating a new account will not have access to the seeded data.
+> **You must sign in using the demo credentials above** 
 
 * **🗺️ Demo Data Coverage:** **40 service providers** have been pre-seeded into Firebase Firestore, distributed across major cities **all over Pakistan** — including Karachi, Lahore, Islamabad, Rawalpindi, Peshawar, Quetta, Multan, Faisalabad, and more.
 ---

@@ -71,7 +71,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                         child: const Row(children: [
                           Icon(Icons.block, color: AppTheme.redError, size: 18),
                           SizedBox(width: 8),
-                          Expanded(child: Text('This worker has been suspended by our admin team.',
+                          Expanded(child: Text('This worker is currently unavailable.',
                               style: TextStyle(color: AppTheme.redError, fontSize: 13))),
                         ]),
                       ),

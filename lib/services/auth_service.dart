@@ -11,7 +11,6 @@ import 'fcm_service.dart';
 class AuthService {
   static const _usersKey = 'kaamyaab_users';
   static const _currentUserKey = 'kaamyaab_current_user';
-  static const _bannedKey = 'kaamyaab_banned';
 
   // ── Singleton ─────────────────────────────────────────────────────────────
   static final AuthService _instance = AuthService._();
@@ -164,11 +163,6 @@ class AuthService {
 
     if (user == null) {
       return AuthResult.error('No account found with this phone number.');
-    }
-
-    final banned = await _loadBannedUids(prefs);
-    if (banned.contains(user.uid)) {
-      return AuthResult.error('Your account has been suspended.');
     }
 
     _currentUser = user;
@@ -469,71 +463,6 @@ class AuthService {
     }
   }
 
-  // ── Admin: Ban / Unban / Delete ───────────────────────────────────────────
-  Future<void> banUser(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final banned = await _loadBannedUids(prefs);
-    if (!banned.contains(uid)) {
-      banned.add(uid);
-      await prefs.setString(_bannedKey, jsonEncode(banned));
-    }
-    if (_hasFirestore) {
-      try {
-        await _col.doc(uid).update({'is_banned': true});
-      } catch (_) {}
-    }
-  }
-
-  Future<void> unbanUser(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final banned = await _loadBannedUids(prefs);
-    banned.remove(uid);
-    await prefs.setString(_bannedKey, jsonEncode(banned));
-    if (_hasFirestore) {
-      try {
-        await _col.doc(uid).update({'is_banned': false});
-      } catch (_) {}
-    }
-  }
-
-  Future<bool> isUserBanned(String uid) async {
-    // Check Firestore first for ban status
-    if (_hasFirestore) {
-      try {
-        final doc = await _col.doc(uid).get();
-        if (doc.exists) {
-          return doc.data()?['is_banned'] == true;
-        }
-      } catch (_) {}
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final banned = await _loadBannedUids(prefs);
-    return banned.contains(uid);
-  }
-
-  Future<List<String>> getBannedUids() async {
-    final prefs = await SharedPreferences.getInstance();
-    return _loadBannedUids(prefs);
-  }
-
-  Future<void> deleteUser(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final allUsers = await _loadAllUsers(prefs);
-    final updated = allUsers.where((u) => u.uid != uid).toList();
-    await _saveAllUsers(prefs, updated);
-    await unbanUser(uid);
-    if (_currentUser?.uid == uid) {
-      await prefs.remove(_currentUserKey);
-      _currentUser = null;
-    }
-
-    if (_hasFirestore) {
-      try {
-        await _col.doc(uid).delete();
-      } catch (_) {}
-    }
-  }
-
   // ── Private helpers ───────────────────────────────────────────────────────
   Future<List<AppUser>> _loadAllUsers(SharedPreferences prefs) async {
     final raw = prefs.getString(_usersKey);
@@ -543,16 +472,6 @@ class AuthService {
       return list
           .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
           .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  Future<List<String>> _loadBannedUids(SharedPreferences prefs) async {
-    final raw = prefs.getString(_bannedKey);
-    if (raw == null) return [];
-    try {
-      return List<String>.from(jsonDecode(raw) as List);
     } catch (_) {
       return [];
     }
