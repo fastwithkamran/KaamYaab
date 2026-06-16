@@ -27,7 +27,7 @@ service firebase.storage {
     }
 
     // 2. Verification Documents (CNIC scans, certificates, licenses):
-    //    Readable and writable ONLY by the owner (or admin users)
+    //    Readable and writable ONLY by the owner
     match /verification_docs/{userId}/{fileName} {
       allow read, write: if isOwner(userId);
     }
