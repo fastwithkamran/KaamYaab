@@ -18,7 +18,7 @@ dependencies:
   dio: ^5.4.3
 
   # Firebase
-  firebase_core: ^4.9.0
+  firebase_core: ^4.10.0
   cloud_firestore: ^6.4.1
   firebase_auth: ^6.5.1
   firebase_messaging: ^16.3.0
