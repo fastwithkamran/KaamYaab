@@ -303,6 +303,35 @@ class AuthService {
     return user != null;
   }
 
+  // ── Ban check ─────────────────────────────────────────────────────────────
+  /// Returns true if the user with [uid] has been banned/suspended.
+  /// Checks the `banned` field on the Firestore user document first,
+  /// then falls back to the local cache. Returns false on any error so
+  /// a connectivity issue never blocks a legitimate user from logging in.
+  Future<bool> isUserBanned(String uid) async {
+    if (_hasFirestore) {
+      try {
+        final doc = await _col.doc(uid).get();
+        if (doc.exists) {
+          final data = doc.data();
+          return (data?['banned'] as bool?) ?? false;
+        }
+      } catch (e) {
+        debugPrint('AuthService.isUserBanned: Firestore error — $e');
+      }
+    }
+    // Local cache fallback — check cached user data
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final allUsers = await _loadAllUsers(prefs);
+      // AppUser model does not carry a banned flag; treat as not banned locally.
+      final _ = allUsers.firstWhere((u) => u.uid == uid);
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── All users ─────────────────────────────────────────────────────────────
   Future<List<AppUser>> getAllUsers() async {
     final prefs = await SharedPreferences.getInstance();

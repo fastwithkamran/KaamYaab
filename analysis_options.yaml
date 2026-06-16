@@ -1,11 +1,11 @@
 include: package:flutter_lints/flutter.yaml
 
-# Exclude root-level snippet/insert files — they are code fragments intended
+# Exclude script snippet/insert files — they are code fragments intended
 # to be copy-pasted into real widget files and are not standalone Dart files.
 analyzer:
   exclude:
-    - home_widgets_insert.dart
-    - voice_banner_insert.dart
+    - scripts/home_widgets_insert.dart
+    - scripts/voice_banner_insert.dart
 
 linter:
   rules:
