@@ -31,6 +31,12 @@ macos/Runner/GoogleService-Info.plist
 firebase-debug.log
 .firebaserc
 serviceAccountKey.json
+serviceAccountKey*.json
+
+# FCM service account — contains RSA private key, never commit
+assets/fcm_service_account.json
+# Downloaded Firebase Admin SDK key files (any generated private key JSON)
+*firebase-adminsdk*.json
 
 # ──────────────────────────────────────────────────────────
 # Environment / Config
@@ -94,5 +100,18 @@ ios/Flutter/Secrets.xcconfig
 .svn/
 analyze_output.txt
 
-# FCM service account � contains private key, never commit
-assets/fcm_service_account.json
+# ──────────────────────────────────────────────────────────
+# Large media — keep binaries out of git
+# ──────────────────────────────────────────────────────────
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# ──────────────────────────────────────────────────────────
+# Planning / integration artefacts (dev-only docs)
+# ──────────────────────────────────────────────────────────
+implementation_plan*.md
+integration_report.md
+faq_extracted.txt
+*.pdf
