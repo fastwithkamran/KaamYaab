@@ -1,5 +1,5 @@
 {
-  "name": "hackathon_project",
+  "name": "kaamyaab",
   "version": "1.0.0",
   "description": "> An agentic, end-to-end service lifecycle platform for informal-economy professionals — plumbers, electricians, AC technicians, tutors, beauticians, drivers, mechanics, and local service providers — powered by **Google Antigravity** as the core orchestrator.",
   "main": "seedworkers.js",
@@ -11,16 +11,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fastwithkamran/Hackathon_Project.git"
+    "url": "git+https://github.com/fastwithkamran/KaamYaab.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/fastwithkamran/Hackathon_Project/issues"
+    "url": "https://github.com/fastwithkamran/KaamYaab/issues"
   },
-  "homepage": "https://github.com/fastwithkamran/Hackathon_Project#readme",
+  "homepage": "https://github.com/fastwithkamran/KaamYaab#readme",
   "dependencies": {
     "firebase-admin": "^13.10.0",
     "form-data": "^2.5.6"
