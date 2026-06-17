@@ -5,7 +5,6 @@ import '../theme/app_theme.dart';
 import '../services/language_service.dart';
 import '../services/auth_service.dart';
 import '../services/booking_history_service.dart';
-import 'simulation_dashboard_screen.dart';
 import 'disputes_tab.dart';
 import '../services/customer_notification_service.dart';
 
@@ -524,34 +523,7 @@ class _SettingsTabState extends State<_SettingsTab> {
           onTap: () {},
         ),
 
-        const SizedBox(height: 20),
-        _SectionTitle(title: _t('DEVELOPER TOOLS', 'ڈیولپر ٹولز')),
-        _SettingRow(
-          icon: Icons.science_rounded,
-          iconColor: AppTheme.purpleAgent,
-          title: _t('Hackathon Simulator', 'ہیکاتھون سمیلیٹر'),
-          subtitle: _t(
-            'Test notifications, tracking & disputes',
-            'نوٹیفکیشن، ٹریکنگ اور تنازعات',
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppTheme.purpleAgent.withValues(alpha: 0.15),
-              borderRadius: AppTheme.radiusSm,
-            ),
-            child: const Text('DEV',
-                style: TextStyle(
-                    color: AppTheme.purpleAgent,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5)),
-          ),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SimulationDashboardScreen()),
-          ),
-        ),
+
 
         GestureDetector(
           onTap: () {

@@ -7,7 +7,6 @@ import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/worker_home_screen.dart';
 import 'screens/customer_hub_screen.dart';
-import 'screens/simulation_dashboard_screen.dart';
 import 'screens/auth/role_select_screen.dart';
 import 'screens/auth/language_selection_screen.dart';
 import 'screens/workers_browse_screen.dart';
@@ -103,7 +102,6 @@ class KaamYaabApp extends StatelessWidget {
         '/workers': (context) => const WorkersBrowseScreen(),
         '/voice-booking': (context) => const VoiceBookingAgent(),
         '/hub': (context) => const CustomerHubScreen(),
-        '/agent-logs': (context) => const SimulationDashboardScreen(),
         // Legacy aliases
         '/provider-dashboard': (context) => const WorkerHomeScreen(),
       },

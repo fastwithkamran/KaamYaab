@@ -45,7 +45,6 @@ To make it as easy as possible to evaluate and test the KaamYaab application, we
 10. [Dispute & Escalation Workflow](#10-dispute-&-escalation-workflow)
 11. [Developer Installation & Setup](#11-developer-installation-&-setup)
 12. [Engineering Rigor & Quality Control (Bug Fixes)](#12-engineering-rigor-&-quality-control-bug-fixes)
-13. [Hackathon Demo & Pitch Simulator](#13-hackathon-demo-&-pitch-simulator)
 
 ---
 
@@ -366,22 +365,4 @@ We maintain exceptional engineering discipline. Our production agents include ke
 * **Time Normalization Safeguards (FIX-7):** Integrated time-string standardizers (`_normalise_slot`) in `SchedulingAgent` and `MatchingAgent` so that different formats (e.g. `9:00` vs `09:00`) resolve to identical slots.
 * **Surge Revenue Forecast Correction (FIX-8):** Fixed earnings estimation math in `ProviderOptimizationAgent` to incorporate real-time surge multipliers, correcting under-forecasting in high-traffic periods.
 * **Escalation Loop Logic (BUG-12):** Replaced fuzzy string containment searches (`in`) with exact equality operators in `DisputeAgent` metrics, preventing incorrect reputation penalty applications.
-
----
-
-## 13. Hackathon Demo & Pitch Simulator
-
-KaamYaab includes a specialized **Hackathon Diagnostics Dashboard** to facilitate live pitching.
-
-1. **Accessing the Dashboard:**
-   * Compile and launch the Flutter mobile app.
-   * Navigate to the **Account** tab, and press **Hackathon Simulator** (or route to `/agent-logs`).
-2. **Simulations Supported:**
-   * **Booking Alerts:** Triggers simulated push notifications confirming worker selection.
-   * **ETA Tracker:** Triggers simulated travel coordinates and en-route bottom-sheet drawers.
-   * **Completion Loops:** Simulates service checklist validations and user reviews.
-   * **Disputes Live:** Simulates client disputes (e.g. overcharges) demonstrating automated DNA adjustments and refund actions.
-
----
-
 *Built for Pakistan's Service Economy · For the Hackathon organized by Google Developers Group Pakistan, built in AntiGravity*
