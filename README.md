@@ -146,11 +146,15 @@ The orchestration engine coordinates several specialized, autonomous agents that
 .
 ├── android/                   # Native Android configuration
 ├── ios/                       # Native iOS configuration
+├── linux/                     # Native Linux configuration
+├── macos/                     # Native macOS configuration
+├── web/                       # Native Web configuration
 ├── windows/                   # Native Windows configuration
 ├── assets/                    # Graphical assets and data schemas
 │   ├── animations/            # Lottie animation JSON files
 │   ├── data/                  # Local mock datasets (providers_mock.json)
-│   └── images/                # Static image assets and logo
+│   ├── images/                # Static image assets and logo
+│   └── fcm_service_account.json # Firebase Admin SDK service account key
 ├── functions/                 # Backend agent codebase (Python)
 │   ├── agents/
 │   │   ├── intent_agent.py    # Intent extraction agent and fallback parser
@@ -164,11 +168,15 @@ The orchestration engine coordinates several specialized, autonomous agents that
 │   ├── screens/               # Mobile UI layouts (Voice, Home, Browse, Dashboard)
 │   ├── services/              # API gateways, Firebase, location & AI services
 │   ├── theme/                 # Dark glassmorphism-ready design tokens
+│   ├── utils/                 # Geocoding, CNIC, and distance helper utilities
 │   ├── widgets/               # Reusable styled UI components
 │   └── main.dart              # Flutter application entry point
-├── seedworkers.js             # Node.js Firestore seeder script
-├── storage.rules              # Firebase Storage protection rules
-└── firestore.rules            # Firestore security policies
+├── scripts/                   # Utility and seeding scripts
+│   └── seedworkers.js         # Node.js Firestore seeder script
+├── firestore.rules            # Firestore security policies
+├── google-services.json       # Firebase services config for Android
+├── SETUP.md                   # Development setup environment guide
+└── storage.rules              # Firebase Storage protection rules
 ```
 
 ---
