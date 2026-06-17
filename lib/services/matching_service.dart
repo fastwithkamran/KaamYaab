@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../models/provider_model.dart';
@@ -20,7 +18,6 @@ class MatchingService {
   static const double _priceFitCenterRate = 0.5;
   static const double _priceFitBalanceScale = 62.5;
 
-  static List<ServiceProvider>? _mockProviders;
 
   // ── Double-Booking Prevention ─────────────────────────────────────────────
   static final Set<String> _bookedSlots = {};
@@ -35,7 +32,7 @@ class MatchingService {
 
   // ── Provider Loading ───────────────────────────────────────────────────────
 
-  /// Loads mock JSON providers (cached) and merges live registered workers.
+  /// Loads live providers from Firestore and merges registered workers.
   /// Live workers without GPS coordinates are logged and skipped.
   static Future<List<ServiceProvider>> loadProviders() async {
     // Dynamically fetch and sync booked slots from Firestore (Feature 4 - Schedule Blocking)
@@ -169,32 +166,15 @@ class MatchingService {
       return liveProviders;
     }
 
-    // ── Fallback: no live workers registered yet ──────────────────────────────
-    // Use Firestore providers collection or bundled mock JSON as demo data only.
+    // ── No live workers registered yet ───────────────────────────────────────
     if (kDebugMode) {
-      debugPrint('MatchingService: no live workers found — falling back to mock/demo data.');
-    }
-
-    if (providersList.isEmpty) {
-      if (_mockProviders == null) {
-        try {
-          final raw = await rootBundle.loadString('assets/data/providers_mock.json');
-          final decoded = jsonDecode(raw) as Map<String, dynamic>;
-          final list = (decoded['providers'] as List<dynamic>).cast<Map<String, dynamic>>();
-          _mockProviders = list.map(ServiceProvider.fromJson).toList();
-        } catch (e) {
-          if (kDebugMode) debugPrint('MatchingService: failed to load mock JSON — $e');
-          _mockProviders = [];
-        }
-      }
-      providersList = List<ServiceProvider>.from(_mockProviders!);
+      debugPrint('MatchingService: no live workers found — returning Firestore providers only.');
     }
 
     return providersList;
   }
 
   static void clearCache() {
-    _mockProviders = null;
     _bookedSlots.clear();
   }
 
@@ -407,19 +387,14 @@ class MatchingService {
 
   // ── Negotiation data lookup ───────────────────────────────────────────────
 
-  /// Returns a negotiation data map for [providerId] from the locally stored
-  /// worker list, or null for mock/JSON providers not found in AuthService.
+  /// Returns a negotiation data map for [providerId] from the signed-in user
+  /// record, or null if [providerId] does not match the current user.
   ///
   /// Keys returned (when non-null):
   ///   - 'minRatePkr'       (double?)
   ///   - 'maxRatePkr'       (double?)
   ///   - 'negotiationStyle' (String)
-  ///
-  /// FIX: Previously this only returned data when the CURRENT signed-in user
-  /// matched the providerId. Now it searches all stored workers so every
-  /// registered provider's actual rates are used during negotiation.
   static Map<String, dynamic>? getNegotiationData(String providerId) {
-    // Fast path: currently signed-in user (covers the worker's own device).
     final current = AuthService().currentUser;
     if (current != null && current.uid == providerId) {
       return {
@@ -428,8 +403,7 @@ class MatchingService {
         'negotiationStyle': current.negotiationStyle ?? 'moderate',
       };
     }
-    // The cached mock providers list won't have this data so return null;
-    // BookingFlowScreen will fall back to its 80%-of-base-rate heuristic.
+    // Provider not the current signed-in user — caller falls back to heuristic.
     return null;
   }
 

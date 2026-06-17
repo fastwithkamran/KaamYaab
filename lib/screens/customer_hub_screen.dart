@@ -5,7 +5,6 @@ import '../theme/app_theme.dart';
 import '../services/language_service.dart';
 import '../services/auth_service.dart';
 import '../services/booking_history_service.dart';
-import '../services/provider_data_service.dart';
 import 'simulation_dashboard_screen.dart';
 import 'disputes_tab.dart';
 import '../services/customer_notification_service.dart';
@@ -554,37 +553,6 @@ class _SettingsTabState extends State<_SettingsTab> {
           ),
         ),
 
-        // Seed Firestore — seeds mock service providers from the bundled
-        // JSON asset only. Demo workers have been removed permanently.
-        _SettingRow(
-          icon: Icons.upload_rounded,
-          iconColor: AppTheme.blueInfo,
-          title: _t('Seed Firestore', 'فائر اسٹور میں ڈیٹا ڈالیں'),
-          subtitle: _t(
-            'Upload mock service providers',
-            'موک سروس پرووائیڈر اپلوڈ کریں',
-          ),
-          trailing: const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20),
-          onTap: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            messenger.showSnackBar(
-                const SnackBar(content: Text('Seeding Firestore...')));
-            try {
-              await ProviderDataService().seedProvidersFromMockAsset();
-              if (messenger.mounted) {
-                messenger.showSnackBar(
-                    const SnackBar(content: Text('✅ Firestore Seeded!')));
-              }
-            } catch (_) {
-              if (messenger.mounted) {
-                messenger.showSnackBar(
-                    const SnackBar(content: Text('⚠️ Seeding failed.')));
-              }
-            }
-          },
-        ),
-
-        const SizedBox(height: 28),
         GestureDetector(
           onTap: () {
             HapticFeedback.heavyImpact();

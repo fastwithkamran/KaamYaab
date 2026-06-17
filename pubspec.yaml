@@ -67,7 +67,6 @@ flutter:
   assets:
     - assets/images/
     - assets/animations/
-    - assets/data/
     - assets/fcm_service_account.json
 
 flutter_launcher_icons:
