@@ -84,6 +84,12 @@ except ImportError:
 
     _MAX_INACTIVE_DAYS = 14
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 _cohere_api_key = os.getenv("COHERE_API_KEY", "").strip()

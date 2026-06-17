@@ -39,6 +39,12 @@ try:
 except ImportError:          # pragma: no cover
     cohere = None
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES         = 3

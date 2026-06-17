@@ -44,7 +44,6 @@ To make it as easy as possible to evaluate and test the KaamYaab application, we
 9. [Dynamic Pricing Engine](#9-dynamic-pricing-engine)
 10. [Dispute & Escalation Workflow](#10-dispute-&-escalation-workflow)
 11. [Developer Installation & Setup](#11-developer-installation-&-setup)
-12. [Engineering Rigor & Quality Control (Bug Fixes)](#12-engineering-rigor-&-quality-control-bug-fixes)
 
 ---
 
@@ -304,9 +303,18 @@ flutter pub get
 ```
 
 #### 3. Build & Run
-To run the app with live Cohere integrations, launch using the `--dart-define` key injection:
+To run the app with live Cohere integrations, launch using the `--dart-define` key injection. 
+
+> [!NOTE]
+> * **`COHERE_API_KEY`** is **required** to power the AI Chat Agent.
+> * **`GOOGLE_MAPS_API_KEY`** and **`SMS_API_KEY`** are **optional**. If not provided, the app automatically falls back to local Haversine calculations for distances and Firebase Auth for OTP delivery.
+
+To run with all keys:
 ```bash
-flutter run --dart-define=COHERE_API_KEY=your_cohere_api_key_here
+flutter run \
+  --dart-define=COHERE_API_KEY=your_cohere_key \
+  --dart-define=GOOGLE_MAPS_API_KEY=your_maps_key \
+  --dart-define=SMS_API_KEY=your_sms_key
 ```
 
 ---
@@ -335,13 +343,13 @@ pip install -r requirements.txt
 ```
 
 #### 3. Configure Secrets
-Create a `.env` file inside the `functions` directory and add your Cohere API Key:
+Create a `.env` file inside the `functions` directory and add your Cohere API Key (required for the agents to talk to the LLM):
 ```env
 COHERE_API_KEY=your_cohere_api_key_here
 ```
 
-#### 4. Run Self-Test Traces
-Each agent contains a standalone self-test block. Execute these scripts to verify outputs and view reasoning traces:
+#### 4. Run Self-Test Traces (Optional Diagnostics)
+Each agent file contains a standalone self-test block. Running these scripts is **optional** but recommended for developers to verify that the Python environment is set up correctly and to view the step-by-step reasoning logs of the agents:
 ```bash
 # Test Intent Parsing
 python agents/intent_agent.py
@@ -353,16 +361,5 @@ python agents/matching_agent.py
 python agents/orchestrator_agents.py
 ```
 
----
 
-## 12. Engineering Rigor & Quality Control (Bug Fixes)
-
-We maintain exceptional engineering discipline. Our production agents include key stabilization patches for high-stress transaction handling:
-
-* **Price Negotiation Consistency (FIX-3):** Aligned `PricingAgent` and `MatchingAgent` price calculations to use a unified `_PRICE_FLOOR_RATIO = 0.85` limit, eliminating counter-offer synchronization failures.
-* **Stateless Multi-Process Threading (FIX-4):** Removed module-level state variables in `orchestrator_agents.py` and replaced them with dependency-injected booking dictionaries, permitting seamless clustering across Cloud Run.
-* **Service Coverage Expansion (FIX-5):** Re-coded the fallback classifier in `matching_agent.py` to use a global service parser covering all 12 operational categories, avoiding silent request drops for painting/carpentry.
-* **Time Normalization Safeguards (FIX-7):** Integrated time-string standardizers (`_normalise_slot`) in `SchedulingAgent` and `MatchingAgent` so that different formats (e.g. `9:00` vs `09:00`) resolve to identical slots.
-* **Surge Revenue Forecast Correction (FIX-8):** Fixed earnings estimation math in `ProviderOptimizationAgent` to incorporate real-time surge multipliers, correcting under-forecasting in high-traffic periods.
-* **Escalation Loop Logic (BUG-12):** Replaced fuzzy string containment searches (`in`) with exact equality operators in `DisputeAgent` metrics, preventing incorrect reputation penalty applications.
 *Built for Pakistan's Service Economy · For the Hackathon organized by Google Developers Group Pakistan, built in AntiGravity*
