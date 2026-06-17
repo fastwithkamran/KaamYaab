@@ -152,7 +152,6 @@ The orchestration engine coordinates several specialized, autonomous agents that
 ├── windows/                   # Native Windows configuration
 ├── assets/                    # Graphical assets and data schemas
 │   ├── animations/            # Lottie animation JSON files
-│   ├── data/                  # Local mock datasets (providers_mock.json)
 │   ├── images/                # Static image assets and logo
 │   └── fcm_service_account.json # Firebase Admin SDK service account key
 ├── functions/                 # Backend agent codebase (Python)
@@ -376,7 +375,7 @@ KaamYaab includes a specialized **Hackathon Diagnostics Dashboard** to facilitat
 
 1. **Accessing the Dashboard:**
    * Compile and launch the Flutter mobile app.
-   * Navigate to the **Account** tab, and press **Hackathon Diagnostics** (or route to `/agent-logs`).
+   * Navigate to the **Account** tab, and press **Hackathon Simulator** (or route to `/agent-logs`).
 2. **Simulations Supported:**
    * **Booking Alerts:** Triggers simulated push notifications confirming worker selection.
    * **ETA Tracker:** Triggers simulated travel coordinates and en-route bottom-sheet drawers.
