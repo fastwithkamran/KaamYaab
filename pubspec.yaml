@@ -39,7 +39,7 @@ dependencies:
   path_provider: ^2.1.6
 
   # Utilities
-  intl: ^0.20.2
+  intl: ^0.20.3
   uuid: ^4.4.0
   timeago: ^3.6.1
   url_launcher: ^6.3.0
