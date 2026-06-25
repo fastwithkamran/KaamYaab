@@ -19,7 +19,7 @@ dependencies:
 
   # Firebase
   firebase_core: ^4.10.0
-  cloud_firestore: ^6.4.1
+  cloud_firestore: ^6.6.0
   firebase_auth: ^6.5.3
   firebase_messaging: ^16.3.0
 
