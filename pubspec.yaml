@@ -24,7 +24,7 @@ dependencies:
   firebase_messaging: ^16.3.0
 
   # Location (requires Flutter >= 3.29.0)
-  geolocator: ^14.0.2
+  geolocator: ^14.0.3
   google_maps_flutter: ^2.17.1
 
   # Animations & UI (removed abandoned glassmorphism)
